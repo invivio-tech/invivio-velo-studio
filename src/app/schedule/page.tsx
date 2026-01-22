@@ -1,0 +1,94 @@
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { DollarSign, Users, CalendarCheck } from 'lucide-react';
+import Image from 'next/image';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
+
+export default function SchedulePage() {
+  const calendarImage = PlaceHolderImages.find(p => p.id === 'dashboard-appointments');
+
+  const stats = [
+    {
+      title: 'Today\'s Revenue',
+      value: 'R$1,250.00',
+      icon: DollarSign,
+      change: '+15% from yesterday',
+    },
+    {
+      title: 'Appointments Today',
+      value: '22',
+      icon: CalendarCheck,
+      change: '+5 scheduled',
+    },
+    {
+      title: 'New Customers',
+      value: '4',
+      icon: Users,
+      change: '+1 this week',
+    },
+  ];
+
+  return (
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+      <h1 className="text-3xl font-headline font-bold tracking-tight">
+        Dashboard
+      </h1>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {stats.map((stat) => (
+          <Card key={stat.title}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+              <stat.icon className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stat.value}</div>
+              <p className="text-xs text-muted-foreground">{stat.change}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <Card className="col-span-4">
+          <CardHeader>
+            <CardTitle className='font-headline'>Appointment Calendar</CardTitle>
+          </CardHeader>
+          <CardContent className="pl-2">
+            <p className="text-muted-foreground mb-4">
+              Manage your appointments for the week.
+            </p>
+            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg">
+              {calendarImage && (
+                <Image
+                  src={calendarImage.imageUrl}
+                  alt={calendarImage.description}
+                  fill
+                  className="object-cover"
+                  data-ai-hint={calendarImage.imageHint}
+                />
+              )}
+               <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+               <div className="absolute bottom-4 left-4 text-white">
+                  <h3 className="font-headline text-xl">Coming Soon</h3>
+                  <p>Interactive calendar functionality.</p>
+               </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="col-span-4 md:col-span-3">
+          <CardHeader>
+            <CardTitle className='font-headline'>Recent Activity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">
+              A log of recent appointments and actions will appear here.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

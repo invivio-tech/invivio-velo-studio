@@ -1,3 +1,34 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "service-classic-cut",
+      "description": "A classic men's haircut.",
+      "imageUrl": "https://images.unsplash.com/photo-1763598895731-20b333aa343b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8Y2xhc3NpYyUyMGhhaXJjdXR8ZW58MHx8fHwxNzY5MDY4ODczfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "classic haircut"
+    },
+    {
+      "id": "service-beard-trim",
+      "description": "Professional beard trimming and shaping.",
+      "imageUrl": "https://images.unsplash.com/photo-1643899552590-e654ceb6caa5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8YmVhcmQlMjB0cmltfGVufDB8fHx8MTc2OTA5Mjc4MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "beard trim"
+    },
+    {
+      "id": "service-hot-shave",
+      "description": "A traditional hot towel shave.",
+      "imageUrl": "https://images.unsplash.com/photo-1733995471058-3d6ff2013de3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxob3QlMjBzaGF2ZXxlbnwwfHx8fDE3NjkwOTI3ODF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "hot shave"
+    },
+    {
+      "id": "service-kids-cut",
+      "description": "Stylish and fun haircuts for kids.",
+      "imageUrl": "https://images.unsplash.com/photo-1761370571919-0c99c0011d27?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxjaGlsZCUyMGhhaXJjdXR8ZW58MHx8fHwxNzY5MDkyNzgxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "child haircut"
+    },
+    {
+      "id": "dashboard-appointments",
+      "description": "A view of the appointment book.",
+      "imageUrl": "https://images.unsplash.com/photo-1599153015672-0854fa6301aa?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxjYWxlbmRhciUyMGJvb2t8ZW58MHx8fHwxNzY5MDkyNzgxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "calendar book"
+    }
+  ]
 }
