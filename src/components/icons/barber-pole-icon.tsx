@@ -11,22 +11,22 @@ export function BarberPoleIcon(props: SVGProps<SVGSVGElement>) {
     >
       <defs>
         <linearGradient id="stripeGradient" x1="0" x2="0" y1="0" y2="100%">
-          <stop offset="0%" stopColor="#8B0000" />
-          <stop offset="12.5%" stopColor="#8B0000" />
-          <stop offset="12.5%" stopColor="#ffffff" />
-          <stop offset="25%" stopColor="#ffffff" />
-          <stop offset="25%" stopColor="#A67B5B" />
-          <stop offset="37.5%" stopColor="#A67B5B" />
-          <stop offset="37.5%" stopColor="#8B0000" />
-          <stop offset="50%" stopColor="#8B0000" />
-          <stop offset="50%" stopColor="#ffffff" />
-          <stop offset="62.5%" stopColor="#ffffff" />
-          <stop offset="62.5%" stopColor="#A67B5B" />
-          <stop offset="75%" stopColor="#A67B5B" />
-          <stop offset="75%" stopColor="#8B0000" />
-          <stop offset="87.5%" stopColor="#8B0000" />
-          <stop offset="87.5%" stopColor="#ffffff" />
-          <stop offset="100%" stopColor="#ffffff" />
+          <stop offset="0%" stopColor="hsl(var(--primary))" />
+          <stop offset="12.5%" stopColor="hsl(var(--primary))" />
+          <stop offset="12.5%" stopColor="hsl(var(--card))" />
+          <stop offset="25%" stopColor="hsl(var(--card))" />
+          <stop offset="25%" stopColor="hsl(var(--secondary))" />
+          <stop offset="37.5%" stopColor="hsl(var(--secondary))" />
+          <stop offset="37.5%" stopColor="hsl(var(--primary))" />
+          <stop offset="50%" stopColor="hsl(var(--primary))" />
+          <stop offset="50%" stopColor="hsl(var(--card))" />
+          <stop offset="62.5%" stopColor="hsl(var(--card))" />
+          <stop offset="62.5%" stopColor="hsl(var(--secondary))" />
+          <stop offset="75%" stopColor="hsl(var(--secondary))" />
+          <stop offset="75%" stopColor="hsl(var(--primary))" />
+          <stop offset="87.5%" stopColor="hsl(var(--primary))" />
+          <stop offset="87.5%" stopColor="hsl(var(--card))" />
+          <stop offset="100%" stopColor="hsl(var(--card))" />
         </linearGradient>
         <mask id="stripeMask">
           <rect x="15" y="15" width="70" height="70" fill="white" />

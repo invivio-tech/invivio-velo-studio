@@ -4,6 +4,8 @@ import { cn } from '@/lib/utils';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import AppSidebar from '@/components/layout/sidebar';
 import { Toaster } from '@/components/ui/toaster';
+import { FirebaseClientProvider } from '@/firebase';
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 export const metadata: Metadata = {
   title: 'Barbearia Inteligente',
@@ -24,15 +26,18 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Playfair+Display&display=swap" rel="stylesheet" />
       </head>
       <body className={cn('font-body antialiased min-h-screen')}>
-        <SidebarProvider>
-          <div className="flex">
-            <AppSidebar />
-            <main className="flex-1">
-              {children}
-            </main>
-          </div>
-        </SidebarProvider>
-        <Toaster />
+        <FirebaseClientProvider>
+          <SidebarProvider>
+            <div className="flex">
+              <AppSidebar />
+              <main className="flex-1">
+                {children}
+              </main>
+            </div>
+          </SidebarProvider>
+          <Toaster />
+          <FirebaseErrorListener />
+        </FirebaseClientProvider>
       </body>
     </html>
   );
