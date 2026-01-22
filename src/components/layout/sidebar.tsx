@@ -32,16 +32,16 @@ const menuItems = [
 
 export default function AppSidebar() {
   const pathname = usePathname();
-  const { open, setOpen } = useSidebar();
+  const { toggleSidebar } = useSidebar();
 
   return (
     <>
       <div className="md:hidden p-2 absolute top-2 left-2 z-50">
-        <Button size="icon" variant="ghost" onClick={() => setOpen(!open)}>
+        <Button size="icon" variant="ghost" onClick={toggleSidebar}>
           <PanelLeft className="h-6 w-6" />
         </Button>
       </div>
-      <Sidebar collapsible="icon" open={open} onOpenChange={setOpen}>
+      <Sidebar collapsible="icon">
         <SidebarContent>
           <SidebarHeader className="h-20 flex items-center justify-center">
             <Link href="/" className="flex items-center gap-2">
