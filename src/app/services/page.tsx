@@ -12,29 +12,29 @@ import { Badge } from '@/components/ui/badge';
 
 const services = [
   {
-    title: 'Classic Haircut',
-    description: 'A timeless cut, tailored to your style. Includes a wash and style.',
+    title: 'Corte Clássico',
+    description: 'Um corte atemporal, adaptado ao seu estilo. Inclui lavagem e finalização.',
     price: 'R$50,00',
     duration: '45 min',
     imageId: 'service-classic-cut',
   },
   {
-    title: 'Beard Trim & Shape',
-    description: 'Expert trimming and shaping to perfect your beard. Includes hot towel finish.',
+    title: 'Aparo e Modelagem de Barba',
+    description: 'Aparo e modelagem de especialista para aperfeiçoar sua barba. Inclui acabamento com toalha quente.',
     price: 'R$35,00',
     duration: '30 min',
     imageId: 'service-beard-trim',
   },
   {
-    title: 'Hot Towel Shave',
-    description: 'A traditional straight-razor shave with hot towels and rich lather.',
+    title: 'Barba com Toalha Quente',
+    description: 'Uma barba tradicional com navalha, toalhas quentes e espuma rica.',
     price: 'R$40,00',
     duration: '40 min',
     imageId: 'service-hot-shave',
   },
   {
-    title: 'Kids Haircut',
-    description: 'A patient and fun haircut experience for children under 12.',
+    title: 'Corte Infantil',
+    description: 'Uma experiência de corte de cabelo paciente e divertida para crianças menores de 12 anos.',
     price: 'R$30,00',
     duration: '30 min',
     imageId: 'service-kids-cut',
@@ -45,9 +45,9 @@ export default function ServicesPage() {
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <h1 className="text-3xl font-headline font-bold tracking-tight">
-        Our Services
+        Nossos Serviços
       </h1>
-      <p className="text-muted-foreground">Explore our range of professional barbering services.</p>
+      <p className="text-muted-foreground">Explore nossa gama de serviços de barbearia profissional.</p>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
         {services.map((service) => {
           const image = PlaceHolderImages.find(p => p.id === service.imageId);

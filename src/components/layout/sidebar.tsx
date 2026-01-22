@@ -23,16 +23,20 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 
 const menuItems = [
-  { href: '/schedule', label: 'Scheduling', icon: Calendar },
-  { href: '/services', label: 'Services', icon: BookOpen },
-  { href: '/customers', label: 'Customers', icon: Users },
-  { href: '/invoices', label: 'Invoicing', icon: FileText },
-  { href: '/promotions', label: 'Promotions', icon: Sparkles },
+  { href: '/schedule', label: 'Agendamentos', icon: Calendar },
+  { href: '/services', label: 'Serviços', icon: BookOpen },
+  { href: '/customers', label: 'Clientes', icon: Users },
+  { href: '/invoices', label: 'Faturamento', icon: FileText },
+  { href: '/promotions', label: 'Promoções', icon: Sparkles },
 ];
 
 export default function AppSidebar() {
   const pathname = usePathname();
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, isMobile } = useSidebar();
+
+  if (isMobile === undefined) {
+    return null;
+  }
 
   return (
     <>

@@ -12,16 +12,16 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const PromotionalOfferInputSchema = z.object({
-  serviceCatalog: z.string().describe('A description of the services offered by the barbershop, including prices.'),
-  customerHistory: z.string().describe('A summary of past customer behavior and preferences.'),
-  currentPromotions: z.string().optional().describe('Any current promotions running at the barbershop.'),
+  serviceCatalog: z.string().describe('Uma descrição dos serviços oferecidos pela barbearia, incluindo preços.'),
+  customerHistory: z.string().describe('Um resumo do comportamento e preferências de clientes anteriores.'),
+  currentPromotions: z.string().optional().describe('Quaisquer promoções atuais em vigor na barbearia.'),
 });
 export type PromotionalOfferInput = z.infer<typeof PromotionalOfferInputSchema>;
 
 const PromotionalOfferOutputSchema = z.object({
-  offer: z.string().describe('The generated promotional offer.'),
-  launchTimeSuggestion: z.string().describe('A suggestion for the most effective time to launch the offer.'),
-  reasoning: z.string().describe('The AI reasoning behind the suggested promotion and launch time.'),
+  offer: z.string().describe('A oferta promocional gerada.'),
+  launchTimeSuggestion: z.string().describe('Uma sugestão para o momento mais eficaz de lançar a oferta.'),
+  reasoning: z.string().describe('O raciocínio da IA por trás da promoção e do horário de lançamento sugeridos.'),
 });
 export type PromotionalOfferOutput = z.infer<typeof PromotionalOfferOutputSchema>;
 
@@ -33,15 +33,15 @@ const prompt = ai.definePrompt({
   name: 'promotionalOfferPrompt',
   input: {schema: PromotionalOfferInputSchema},
   output: {schema: PromotionalOfferOutputSchema},
-  prompt: `You are a marketing expert for a barbershop.
-  Your goal is to generate effective promotional offers and suggest the best time to launch them to attract more customers and increase revenue.
+  prompt: `Você é um especialista em marketing para uma barbearia.
+  Seu objetivo é gerar ofertas promocionais eficazes e sugerir o melhor momento para lançá-las para atrair mais clientes e aumentar a receita.
 
-  Consider the following information:
-  Service Catalog: {{{serviceCatalog}}}
-  Customer History: {{{customerHistory}}}
-  Current Promotions: {{{currentPromotions}}}
+  Considere as seguintes informações:
+  Catálogo de Serviços: {{{serviceCatalog}}}
+  Histórico de Clientes: {{{customerHistory}}}
+  Promoções Atuais: {{{currentPromotions}}}
 
-  Generate a promotional offer and suggest the most effective time to launch it, explaining your reasoning.
+  Gere uma oferta promocional e sugira o momento mais eficaz para lançá-la, explicando seu raciocínio.
   `,
 });
 

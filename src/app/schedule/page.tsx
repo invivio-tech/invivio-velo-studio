@@ -13,29 +13,29 @@ export default function SchedulePage() {
 
   const stats = [
     {
-      title: 'Today\'s Revenue',
-      value: 'R$1,250.00',
+      title: 'Receita de Hoje',
+      value: 'R$1.250,00',
       icon: DollarSign,
-      change: '+15% from yesterday',
+      change: '+15% em relação a ontem',
     },
     {
-      title: 'Appointments Today',
+      title: 'Agendamentos de Hoje',
       value: '22',
       icon: CalendarCheck,
-      change: '+5 scheduled',
+      change: '+5 agendados',
     },
     {
-      title: 'New Customers',
+      title: 'Novos Clientes',
       value: '4',
       icon: Users,
-      change: '+1 this week',
+      change: '+1 esta semana',
     },
   ];
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <h1 className="text-3xl font-headline font-bold tracking-tight">
-        Dashboard
+        Painel
       </h1>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {stats.map((stat) => (
@@ -54,11 +54,11 @@ export default function SchedulePage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4">
           <CardHeader>
-            <CardTitle className='font-headline'>Appointment Calendar</CardTitle>
+            <CardTitle className='font-headline'>Calendário de Agendamentos</CardTitle>
           </CardHeader>
           <CardContent className="pl-2">
             <p className="text-muted-foreground mb-4">
-              Manage your appointments for the week.
+              Gerencie seus agendamentos para a semana.
             </p>
             <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg">
               {calendarImage && (
@@ -72,19 +72,19 @@ export default function SchedulePage() {
               )}
                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
                <div className="absolute bottom-4 left-4 text-white">
-                  <h3 className="font-headline text-xl">Coming Soon</h3>
-                  <p>Interactive calendar functionality.</p>
+                  <h3 className="font-headline text-xl">Em Breve</h3>
+                  <p>Funcionalidade de calendário interativo.</p>
                </div>
             </div>
           </CardContent>
         </Card>
         <Card className="col-span-4 md:col-span-3">
           <CardHeader>
-            <CardTitle className='font-headline'>Recent Activity</CardTitle>
+            <CardTitle className='font-headline'>Atividade Recente</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">
-              A log of recent appointments and actions will appear here.
+              Um registro de agendamentos e ações recentes aparecerá aqui.
             </p>
           </CardContent>
         </Card>

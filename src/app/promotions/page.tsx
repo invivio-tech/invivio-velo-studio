@@ -35,10 +35,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 const formSchema = z.object({
   serviceCatalog: z
     .string()
-    .min(50, { message: 'Please provide more detail on your services.' }),
+    .min(50, { message: 'Por favor, detalhe mais seus serviços.' }),
   customerHistory: z
     .string()
-    .min(50, { message: 'Please provide more detail on customer history.' }),
+    .min(50, { message: 'Por favor, detalhe mais o histórico de clientes.' }),
   currentPromotions: z.string().optional(),
 });
 
@@ -50,8 +50,8 @@ export default function PromotionsPage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      serviceCatalog: 'Classic Haircut - R$50, Beard Trim - R$35, Hot Towel Shave - R$40. We also sell hair pomade and beard oil.',
-      customerHistory: 'Most clients are regulars who come every 3-4 weeks for a haircut. Younger clients (20-30s) often get a beard trim as well. We see a drop in appointments mid-week (Tuesday, Wednesday).',
+      serviceCatalog: 'Corte Clássico - R$50, Aparo de Barba - R$35, Barba com Toalha Quente - R$40. Também vendemos pomada para cabelo e óleo para barba.',
+      customerHistory: 'A maioria dos clientes são regulares que vêm a cada 3-4 semanas para um corte. Clientes mais jovens (20-30 anos) frequentemente também aparam a barba. Vemos uma queda nos agendamentos no meio da semana (terça, quarta).',
       currentPromotions: '',
     },
   });
@@ -66,9 +66,9 @@ export default function PromotionsPage() {
       console.error('Error generating promotion:', error);
       toast({
         variant: 'destructive',
-        title: 'An error occurred',
+        title: 'Ocorreu um erro',
         description:
-          'Failed to generate promotional offer. Please try again later.',
+          'Falha ao gerar oferta promocional. Por favor, tente novamente mais tarde.',
       });
     } finally {
       setIsLoading(false);
@@ -80,19 +80,19 @@ export default function PromotionsPage() {
       <div className="flex items-center gap-4">
         <Sparkles className="h-8 w-8 text-secondary" />
         <h1 className="text-3xl font-headline font-bold tracking-tight">
-          AI Promotion Generator
+          Gerador de Promoções com IA
         </h1>
       </div>
       <p className="text-muted-foreground">
-        Let AI craft the perfect promotion to attract more customers. Fill in the details below.
+        Deixe a IA criar a promoção perfeita para atrair mais clientes. Preencha os detalhes abaixo.
       </p>
 
       <div className="grid gap-8 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="font-headline">Barbershop Details</CardTitle>
+            <CardTitle className="font-headline">Detalhes da Barbearia</CardTitle>
             <CardDescription>
-              Provide context for the AI to generate the best offer.
+              Forneça contexto para a IA gerar a melhor oferta.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -103,16 +103,16 @@ export default function PromotionsPage() {
                   name="serviceCatalog"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Service Catalog</FormLabel>
+                      <FormLabel>Catálogo de Serviços</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="e.g., Classic Haircut - R$50, Beard Trim - R$35..."
+                          placeholder="ex: Corte Clássico - R$50, Aparo de Barba - R$35..."
                           className="h-24"
                           {...field}
                         />
                       </FormControl>
                       <FormDescription>
-                        List your services and prices.
+                        Liste seus serviços e preços.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -123,16 +123,16 @@ export default function PromotionsPage() {
                   name="customerHistory"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Customer Behavior</FormLabel>
+                      <FormLabel>Comportamento do Cliente</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="e.g., Most clients are regulars... We are slow on Wednesdays..."
+                          placeholder="ex: A maioria dos clientes são regulares... Temos pouco movimento às quartas..."
                           className="h-24"
                           {...field}
                         />
                       </FormControl>
                       <FormDescription>
-                        Describe your typical customer and busy/slow periods.
+                        Descreva seu cliente típico e os períodos de maior/menor movimento.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -143,10 +143,10 @@ export default function PromotionsPage() {
                   name="currentPromotions"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Current Promotions (Optional)</FormLabel>
+                      <FormLabel>Promoções Atuais (Opcional)</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="e.g., 10% off for first-time customers."
+                          placeholder="ex: 10% de desconto para novos clientes."
                           {...field}
                         />
                       </FormControl>
@@ -158,10 +158,10 @@ export default function PromotionsPage() {
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Generating...
+                      Gerando...
                     </>
                   ) : (
-                    'Generate Offer'
+                    'Gerar Oferta'
                   )}
                 </Button>
               </form>
@@ -169,7 +169,7 @@ export default function PromotionsPage() {
           </CardContent>
         </Card>
         <div className="space-y-4">
-          <h2 className="text-2xl font-headline font-bold">AI Suggestion</h2>
+          <h2 className="text-2xl font-headline font-bold">Sugestão da IA</h2>
           {isLoading ? (
             <div className="space-y-4">
               <Card>
@@ -196,7 +196,7 @@ export default function PromotionsPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 font-headline">
                     <Gift className="text-primary" />
-                    Your New Promotional Offer
+                    Sua Nova Oferta Promocional
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -204,7 +204,7 @@ export default function PromotionsPage() {
                 </CardContent>
                 <CardFooter>
                   <p className="text-sm text-muted-foreground">
-                    Launch suggestion: <strong>{result.launchTimeSuggestion}</strong>
+                    Sugestão de lançamento: <strong>{result.launchTimeSuggestion}</strong>
                   </p>
                 </CardFooter>
               </Card>
@@ -212,7 +212,7 @@ export default function PromotionsPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 font-headline text-lg">
                     <Lightbulb className="text-secondary" />
-                    AI Reasoning
+                    Raciocínio da IA
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -226,9 +226,9 @@ export default function PromotionsPage() {
                 <div className="mx-auto bg-secondary/20 p-4 rounded-full w-fit">
                     <Sparkles className="h-8 w-8 text-secondary" />
                 </div>
-                <p className="text-lg font-semibold">Ready for a great idea?</p>
+                <p className="text-lg font-semibold">Pronto para uma ótima ideia?</p>
                 <p className="text-muted-foreground">
-                  Your generated promotion will appear here once you fill out the details.
+                  Sua promoção gerada aparecerá aqui assim que você preencher os detalhes.
                 </p>
               </CardContent>
             </Card>
