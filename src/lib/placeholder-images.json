@@ -29,6 +29,18 @@
       "description": "Uma visão do livro de agendamentos.",
       "imageUrl": "https://images.unsplash.com/photo-1599153015672-0854fa6301aa?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxjYWxlbmRhciUyMGJvb2t8ZW58MHx8fHwxNzY5MDkyNzgxfDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "calendar book"
+    },
+    {
+      "id": "landing-hero",
+      "description": "Interior de uma barbearia estilosa.",
+      "imageUrl": "https://images.unsplash.com/photo-1599351371683-220d998113f9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxiYXJiZXJzaG9wJTIwaW50ZXJpb3J8ZW58MHx8fHwxNzEwNTMwMzc4fDA&ixlib=rb-4.0.3&q=80&w=1080",
+      "imageHint": "barbershop interior"
+    },
+    {
+      "id": "landing-about",
+      "description": "Barbeiro talentoso trabalhando em um cliente.",
+      "imageUrl": "https://images.unsplash.com/photo-1536520002442-99b5a73c091f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxiYXJiZXIlMjB3b3JraW5nfGVufDB8fHx8MTcxMDUzMTA0MXww&ixlib=rb-4.0.3&q=80&w=1080",
+      "imageHint": "barber working"
     }
   ]
 }

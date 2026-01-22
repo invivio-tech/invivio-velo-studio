@@ -82,17 +82,15 @@ export default function AppSidebar() {
 
   return (
     <>
-      { !user && !pathname.includes('/login') && !pathname.includes('/signup') ? null : (
-        <div className="md:hidden p-2 absolute top-2 left-2 z-50">
-          <Button size="icon" variant="ghost" onClick={toggleSidebar}>
-            <PanelLeft className="h-6 w-6" />
-          </Button>
-        </div>
-      )}
+      <div className="md:hidden p-2 absolute top-2 left-2 z-50">
+        <Button size="icon" variant="ghost" onClick={toggleSidebar}>
+          <PanelLeft className="h-6 w-6" />
+        </Button>
+      </div>
       <Sidebar collapsible="icon">
         <SidebarContent>
           <SidebarHeader className="h-20 flex items-center justify-center">
-            <Link href="/" className="flex items-center gap-2">
+            <Link href="/schedule" className="flex items-center gap-2">
               <BarberPoleIcon className="w-8 h-8 text-primary" />
               <span className="font-headline text-xl font-semibold">
                 Barbearia Inteligente

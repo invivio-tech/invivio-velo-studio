@@ -1,11 +1,10 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { cn } from '@/lib/utils';
-import { SidebarProvider } from '@/components/ui/sidebar';
-import AppSidebar from '@/components/layout/sidebar';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
+import { AppShell } from '@/components/layout/AppShell';
 
 export const metadata: Metadata = {
   title: 'Barbearia Inteligente',
@@ -27,14 +26,7 @@ export default function RootLayout({
       </head>
       <body className={cn('font-body antialiased min-h-screen')}>
         <FirebaseClientProvider>
-          <SidebarProvider>
-            <div className="flex">
-              <AppSidebar />
-              <main className="flex-1">
-                {children}
-              </main>
-            </div>
-          </SidebarProvider>
+          <AppShell>{children}</AppShell>
           <Toaster />
           <FirebaseErrorListener />
         </FirebaseClientProvider>
