@@ -10,7 +10,12 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { Sheet, SheetContent } from "@/components/ui/sheet"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,
@@ -207,16 +212,20 @@ const Sidebar = React.forwardRef<
             className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
             style={
               {
-                "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
+                '--sidebar-width': SIDEBAR_WIDTH_MOBILE,
               } as React.CSSProperties
             }
             side={side}
             {...props}
           >
             <div className="flex h-full w-full flex-col">{children}</div>
+            <SheetTitle className="sr-only">Menu Lateral</SheetTitle>
+            <SheetDescription className="sr-only">
+              Navegue pelas diferentes seções do aplicativo.
+            </SheetDescription>
           </SheetContent>
         </Sheet>
-      )
+      );
     }
 
     return (
