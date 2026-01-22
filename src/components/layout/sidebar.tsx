@@ -22,22 +22,26 @@ import {
   LogIn,
   UserPlus,
   LogOut,
-  User,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { useUser, logout } from '@/firebase';
+import { useUser, logout, useUserProfile } from '@/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Skeleton } from '../ui/skeleton';
 import { useRouter } from 'next/navigation';
 
-const mainMenuItems = [
+const adminMenuItems = [
   { href: '/schedule', label: 'Painel', icon: Calendar },
   { href: '/services', label: 'Serviços', icon: BookOpen },
   { href: '/customers', label: 'Clientes', icon: Users },
   { href: '/invoices', label: 'Faturas', icon: FileText },
   { href: '/promotions', label: 'Marketing com IA', icon: Sparkles },
+];
+
+const clientMenuItems = [
+  { href: '/schedule', label: 'Painel', icon: Calendar },
+  { href: '/services', label: 'Serviços', icon: BookOpen },
 ];
 
 const unauthenticatedMenuItems = [
@@ -51,6 +55,7 @@ export default function AppSidebar() {
   const router = useRouter();
   const { toggleSidebar, isMobile } = useSidebar();
   const { user, isLoading } = useUser();
+  const { userProfile, isLoading: isProfileLoading } = useUserProfile();
 
   const handleLogout = async () => {
     await logout();
@@ -60,6 +65,8 @@ export default function AppSidebar() {
   if (isMobile === undefined) {
     return null;
   }
+
+  const menuItems = userProfile?.role === 'admin' ? adminMenuItems : clientMenuItems;
 
   return (
     <>
@@ -81,15 +88,15 @@ export default function AppSidebar() {
             </Link>
           </SidebarHeader>
 
-          {isLoading ? (
+          {(isLoading || isProfileLoading) ? (
             <div className='p-2 flex flex-col gap-2'>
               <Skeleton className="h-8 w-full" />
               <Skeleton className="h-8 w-full" />
               <Skeleton className="h-8 w-full" />
             </div>
-          ) : user ? (
+          ) : user && userProfile ? (
             <SidebarMenu className="flex-1">
-              {mainMenuItems.map((item) => (
+              {menuItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     asChild
@@ -127,7 +134,7 @@ export default function AppSidebar() {
         </SidebarContent>
         <SidebarFooter>
           <SidebarSeparator />
-           {isLoading ? (
+           {(isLoading || isProfileLoading) ? (
              <div className="flex items-center gap-2 p-2">
                 <Skeleton className="h-8 w-8 rounded-full" />
                 <Skeleton className="h-4 w-24" />
