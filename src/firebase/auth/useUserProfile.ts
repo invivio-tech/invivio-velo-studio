@@ -9,7 +9,7 @@ export interface UserProfile {
   name: string;
   email: string;
   photoURL?: string;
-  role: 'admin' | 'client';
+  role: 'admin' | 'client' | 'professional';
 }
 
 export function useUserProfile() {

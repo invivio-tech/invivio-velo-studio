@@ -39,6 +39,12 @@ const adminMenuItems = [
   { href: '/promotions', label: 'Marketing com IA', icon: Sparkles },
 ];
 
+const professionalMenuItems = [
+  { href: '/schedule', label: 'Painel', icon: Calendar },
+  { href: '/services', label: 'Serviços', icon: BookOpen },
+  { href: '/customers', label: 'Clientes', icon: Users },
+];
+
 const clientMenuItems = [
   { href: '/schedule', label: 'Painel', icon: Calendar },
   { href: '/services', label: 'Serviços', icon: BookOpen },
@@ -65,8 +71,14 @@ export default function AppSidebar() {
   if (isMobile === undefined) {
     return null;
   }
+  
+  let menuItems = clientMenuItems;
+  if (userProfile?.role === 'admin') {
+    menuItems = adminMenuItems;
+  } else if (userProfile?.role === 'professional') {
+    menuItems = professionalMenuItems;
+  }
 
-  const menuItems = userProfile?.role === 'admin' ? adminMenuItems : clientMenuItems;
 
   return (
     <>

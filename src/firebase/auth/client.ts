@@ -29,11 +29,14 @@ export async function createAccount(name: string, email: string, pass: string) {
 
     const userRef = doc(db, 'users', user.uid);
     const isAdmin = email === 'admin@barbearia.com';
+    const isProfessional = email.endsWith('@barbearia.com') && !isAdmin;
+    const role = isAdmin ? 'admin' : isProfessional ? 'professional' : 'client';
+
     const userData = {
       name: name,
       email: user.email,
       photoURL: user.photoURL,
-      role: isAdmin ? 'admin' : 'client',
+      role: role,
     };
 
     setDoc(userRef, userData, { merge: true }).catch((serverError) => {
@@ -78,11 +81,14 @@ export async function signInWithGoogle() {
 
         const userRef = doc(db, 'users', user.uid);
         const isAdmin = user.email === 'admin@barbearia.com';
+        const isProfessional = user.email?.endsWith('@barbearia.com') && !isAdmin;
+        const role = isAdmin ? 'admin' : isProfessional ? 'professional' : 'client';
+
         const userData = {
             name: user.displayName,
             email: user.email,
             photoURL: user.photoURL,
-            role: isAdmin ? 'admin' : 'client',
+            role: role,
         };
 
         setDoc(userRef, userData, { merge: true }).catch((serverError) => {
