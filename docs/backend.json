@@ -4,36 +4,38 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Customer",
       "type": "object",
-      "description": "Represents a customer of the barber shop, who is also a user.",
+      "description": "Represents a customer of the barber shop.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the customer (matches Firebase Auth UID)."
+          "description": "Unique identifier for the customer."
         },
-        "name": {
+        "firstName": {
           "type": "string",
-          "description": "Full name of the customer."
+          "description": "First name of the customer."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of the customer."
         },
         "email": {
           "type": "string",
           "description": "Email address of the customer.",
           "format": "email"
         },
-        "photoURL": {
+        "phone": {
           "type": "string",
-          "description": "URL of the customer's profile picture."
+          "description": "Phone number of the customer."
         },
-        "role": {
+        "notes": {
           "type": "string",
-          "description": "The user role in the system.",
-          "enum": ["admin", "professional", "client"]
+          "description": "Any notes about the customer."
         }
       },
       "required": [
         "id",
-        "name",
-        "email",
-        "role"
+        "firstName",
+        "lastName"
       ]
     },
     "Service": {
@@ -79,12 +81,9 @@
           "type": "string",
           "description": "Reference to Customer. (Relationship: Customer 1:N Appointment)"
         },
-        "serviceIds": {
-          "type": "array",
-          "description": "References to Services. (Relationship: Appointment N:N Service)",
-          "items": {
-            "type": "string"
-          }
+        "serviceId": {
+          "type": "string",
+          "description": "Reference to Service. (Relationship: Service 1:N Appointment)"
         },
         "startTime": {
           "type": "string",
@@ -104,7 +103,7 @@
       "required": [
         "id",
         "customerId",
-        "serviceIds",
+        "serviceId",
         "startTime",
         "endTime"
       ]
@@ -127,9 +126,9 @@
           "type": "string",
           "description": "Reference to Appointment. (Relationship: Appointment 1:1 Invoice)"
         },
-        "date": {
+        "invoiceDate": {
           "type": "string",
-          "description": "Date of the invoice.",
+          "description": "Date the invoice was issued.",
           "format": "date-time"
         },
         "totalAmount": {
@@ -145,7 +144,7 @@
         "id",
         "customerId",
         "appointmentId",
-        "date",
+        "invoiceDate",
         "totalAmount",
         "paymentStatus"
       ]
@@ -168,6 +167,10 @@
           "type": "string",
           "description": "Description of the promotion."
         },
+        "discountPercentage": {
+          "type": "number",
+          "description": "Discount percentage offered by the promotion."
+        },
         "startDate": {
           "type": "string",
           "description": "Start date of the promotion.",
@@ -177,10 +180,6 @@
           "type": "string",
           "description": "End date of the promotion.",
           "format": "date-time"
-        },
-        "discount": {
-          "type": "number",
-          "description": "Discount amount or percentage."
         },
         "serviceIds": {
           "type": "array",
@@ -194,17 +193,16 @@
         "id",
         "name",
         "description",
+        "discountPercentage",
         "startDate",
-        "endDate",
-        "discount"
+        "endDate"
       ]
     }
   },
   "auth": {
     "providers": [
       "password",
-      "anonymous",
-      "google.com"
+      "anonymous"
     ]
   },
   "firestore": {
@@ -216,7 +214,7 @@
           "schema": {
             "$ref": "#/backend/entities/Customer"
           },
-          "description": "Stores customer information. Each document represents a customer.",
+          "description": "Stores customer information. The 'customerId' is used to identify the customer.",
           "params": [
             {
               "name": "customerId",
@@ -232,7 +230,7 @@
           "schema": {
             "$ref": "#/backend/entities/Appointment"
           },
-          "description": "Stores appointments for a specific customer.  Path-based ownership: Each appointment is owned by a customer.",
+          "description": "Stores appointments scheduled for a customer.  Authorization Independence: Path-based ownership ensures that only the customer (or authorized personnel) can access these appointments.",
           "params": [
             {
               "name": "customerId",
@@ -246,29 +244,13 @@
         }
       },
       {
-        "path": "/services/{serviceId}",
-        "definition": {
-          "entityName": "Service",
-          "schema": {
-            "$ref": "#/backend/entities/Service"
-          },
-          "description": "Stores information about the services offered.  Accessible to all authenticated users.",
-          "params": [
-            {
-              "name": "serviceId",
-              "description": "The unique identifier for the service."
-            }
-          ]
-        }
-      },
-      {
         "path": "/customers/{customerId}/invoices/{invoiceId}",
         "definition": {
           "entityName": "Invoice",
           "schema": {
             "$ref": "#/backend/entities/Invoice"
           },
-          "description": "Stores invoices for a specific customer. Path-based ownership: Each invoice is owned by a customer.",
+          "description": "Stores invoices for a customer. Authorization Independence: Path-based ownership ensures that only the customer (or authorized personnel) can access these invoices.",
           "params": [
             {
               "name": "customerId",
@@ -282,13 +264,29 @@
         }
       },
       {
+        "path": "/services/{serviceId}",
+        "definition": {
+          "entityName": "Service",
+          "schema": {
+            "$ref": "#/backend/entities/Service"
+          },
+          "description": "Stores services offered by the barber shop.",
+          "params": [
+            {
+              "name": "serviceId",
+              "description": "The unique identifier for the service."
+            }
+          ]
+        }
+      },
+      {
         "path": "/promotions/{promotionId}",
         "definition": {
           "entityName": "Promotion",
           "schema": {
             "$ref": "#/backend/entities/Promotion"
           },
-          "description": "Stores information about promotions. Accessible to all authenticated users.",
+          "description": "Stores promotional offers.",
           "params": [
             {
               "name": "promotionId",
@@ -298,6 +296,6 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to manage data for a barber shop, focusing on customers, services, appointments, invoices, and promotions. It follows the principles of Authorization Independence, Structural Segregation, and Access Modeling to ensure security and scalability. Authorization Independence is achieved by structuring data in a way that avoids the need for `get()` calls in security rules, using path-based ownership and denormalization where necessary.\n\nCustomers are stored under `/customers/{customerId}`, allowing for easy management of individual customer data. Appointments are stored under `/customers/{customerId}/appointments/{appointmentId}`, creating a clear ownership structure where appointments belong to customers. Services are stored in a top-level collection `/services/{serviceId}`, accessible to all authenticated users. Invoices are stored under `/customers/{customerId}/invoices/{invoiceId}`, maintaining the customer-invoice relationship. Promotions are stored under `/promotions/{promotionId}`, accessible to all authenticated users. This structure enables secure `list` operations by segregating data based on access needs and using path-based ownership.\n\nThis design ensures data integrity and simplifies security rules by making authorization context explicit and avoiding hierarchical dependencies."
+    "reasoning": "The Firestore structure is designed to ensure data security, scalability, and ease of debugging, adhering to the core design principles of Authorization Independence, Clarity of Intent, DBAC (Database-Based Access Control), and QAPs (Rules are not Filters). It uses denormalization where necessary to avoid complex security rules involving `get()` calls, which are difficult to maintain and can break atomic operations. The structure also segregates data based on access requirements, simplifying security rule design and enabling secure list operations.  \\n\\nThe structure leverages path-based ownership for user-specific data. Appointments and Invoices are stored as subcollections of customers, ensuring that only the user (or authorized personnel) can access this data. Promotions are stored in a top-level collection, as it is not directly tied to any user and presumably managed by admins.  \\n\\nThis design ensures Authorization Independence by avoiding `get()` calls in security rules. Path-based ownership (`/users/{userId}/...`) inherently grants access based on the authenticated user ID.  To support QAPs, data is segregated based on access requirements. Data that needs to be listed securely (e.g., user-specific appointments) resides under the user's document, allowing simple rules to filter by `request.auth.uid == userId`. Public or admin-managed data (e.g., Promotions) are stored in separate collections with appropriate security rules."
   }
 }

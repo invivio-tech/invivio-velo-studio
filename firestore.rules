@@ -1,187 +1,155 @@
 /**
- * This ruleset enforces a strict, user-centric security model for a barber shop application.
+ * Core Philosophy: This ruleset implements a strict user-ownership security model.
+ * All customer-specific data, such as appointments and invoices, is protected
+ * and can only be accessed by the authenticated user who owns that data. Data
+ * that is considered public, like the services and promotions offered by the
+ * business, is readable by anyone but write access is restricted.
  *
- * Core Philosophy:
- * The security model is built on the principle of user ownership. A user, represented as a
- * 'customer' in the database, has exclusive control over their own data tree. This prevents
- * users from accessing or modifying the data of other users.
- *
- * Data Structure:
- * All user-specific data, such as appointments and invoices, is nested within a top-level
- * 'customers' collection, under a document whose ID matches the user's authentication UID.
- * This creates a clear hierarchical ownership model (e.g., /customers/{userId}/appointments/{appointmentId}).
- * Publicly accessible data, like services and promotions, resides in separate top-level collections.
+ * Data Structure: Customer data is organized hierarchically. Each customer has
+ * their own document root at `/customers/{customerId}`, where the `customerId` must
+ * match the authenticated user's UID. All related private data, such as
+ * `/appointments` and `/invoices`, are stored in subcollections under this path.
+ * This structure enables simple, performant, path-based security rules. Global
+ * data like `/services` and `/promotions` are in top-level collections.
  *
  * Key Security Decisions:
- * - User Data Isolation: A user can only read and write data within their own document tree
- *   (i.e., under /customers/{their-own-userId}).
- * - No User Listing: To protect user privacy, it is not possible for any client to list all
- *   documents in the top-level 'customers' collection.
- * - Read-Only Public Data: Collections like 'services' and 'promotions' are readable by any
- *   authenticated user but are not writable from the client-side. This assumes they are managed
- *   by backend processes or administrators with elevated privileges.
- * - Relational Integrity: On creation, we validate that internal ID fields (like 'customerId')
- *   match the document's path to ensure data consistency. These fields are immutable on update.
- *
- * Denormalization for Authorization:
- * This ruleset leverages a path-based security model. By nesting a user's private data
- * under `/customers/{userId}`, we can write fast and simple rules that check the user's
- * UID against the `userId` in the path, avoiding costly and slow `get()` calls to other documents.
- *
- * Structural Segregation:
- * Private user data (customers, appointments) is structurally separated from public application
- * data (services, promotions) by placing them in different top-level collections. This makes it
- * easy to apply broad read permissions to public data without exposing private information.
+ * - Customer Listing Disabled: To protect user privacy, it is not possible to
+ *   list all documents in the top-level `/customers` collection.
+ * - Read-Only Public Data: The `/services` and `/promotions` collections are
+ *   publicly readable by any user, but are not writable. This is because the
+ *   data models lack an 'ownerId' or 'admin' field, so the most secure default
+ *   is to prevent all client-side modifications. An admin role or Cloud Function
+ *   would be required to manage this data.
+ * - Path-Based Ownership: Security for customer-related data relies on the
+ *   document path. The `{customerId}` wildcard is always matched against the
+ *   `request.auth.uid` to grant access, which is a highly secure and performant
+ *   pattern that avoids costly database lookups.
+ * - Prototyping Flexibility: These rules strictly enforce *who* can access
+ *   data but do not enforce the specific *shape* of the data. This allows for
+ *   rapid application development and schema iteration. Validation is limited to
+ *   fields critical for maintaining authorization and relational integrity (e.g., owner IDs).
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions for concise and readable rules.
+    // ----------------------------------------------------------------------
+    // Helper Functions
+    // ----------------------------------------------------------------------
 
     /**
-     * Checks if the user is authenticated.
+     * Checks if a user is authenticated.
      */
     function isSignedIn() {
       return request.auth != null;
     }
 
     /**
-     * Checks if the currently signed-in user's UID matches the provided userId.
-     * This is the core function for verifying ownership.
-     * @param userId The user ID to check against the authenticated user.
+     * Checks if the currently authenticated user's UID matches the provided userId.
+     * This is the core function for enforcing document ownership.
      */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
     /**
-     * Checks if a document currently exists in Firestore.
-     * Used to prevent updates or deletes on non-existent documents.
+     * Checks for ownership on an existing document. Used for update/delete
+     * to ensure the document exists before the operation is attempted.
      */
-    function isExistingDoc() {
-      return resource != null;
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
     }
 
-    /**
-     * Combines ownership and existence checks for state-changing operations.
-     * Ensures an authenticated user can only modify or delete their own documents that already exist.
-     * @param userId The owner's user ID.
-     */
-    function isOwnerOfExistingDoc(userId) {
-      return isOwner(userId) && isExistingDoc();
-    }
+    // ----------------------------------------------------------------------
+    // Collection Rules
+    // ----------------------------------------------------------------------
 
     /**
-     * Validates that an incoming document's ID field matches its path ID on creation.
-     * Enforces relational integrity.
-     * @param pathId The document ID from the Firestore path.
-     */
-    function newCustomerHasMatchingId(pathId) {
-      return request.resource.data.id == pathId;
-    }
-
-    /**
-     * Validates that a customer's ID field is immutable on update.
-     * Prevents re-assigning ownership of a customer document.
-     */
-    function customerIdIsImmutable() {
-      return request.resource.data.id == resource.data.id;
-    }
-
-    /**
-     * Validates that a subcollection document's customerId field matches its path on creation.
-     * Enforces that appointments and invoices are linked to the correct parent customer.
-     * @param customerId The customerId from the Firestore path.
-     */
-    function newSubdocumentHasMatchingCustomerId(customerId) {
-      return request.resource.data.customerId == customerId;
-    }
-
-    /**
-     * Validates that a subcollection document's customerId field is immutable on update.
-     * Prevents re-assigning ownership of appointments or invoices.
-     */
-    function subdocumentCustomerIdIsImmutable() {
-      return request.resource.data.customerId == resource.data.customerId;
-    }
-
-    /**
-     * @description Rules for a customer's own profile document.
+     * @description Manages a customer's own profile information.
      * @path /customers/{customerId}
-     * @allow (create) An authenticated user creating their own customer document. `auth.uid == customerId`.
-     * @deny (get) A user trying to read another user's customer document. `auth.uid != customerId`.
-     * @deny (list) Any user trying to list all customers.
-     * @principle Restricts access to a user's own data tree and validates relational integrity.
+     * @allow (create) A new user creating their own customer profile: `create /customers/user_abc` where auth.uid is 'user_abc'.
+     * @deny (list) An attacker trying to list all customers in the database: `list /customers`.
+     * @deny (get) A user trying to read another user's profile: `get /customers/user_xyz` where auth.uid is 'user_abc'.
+     * @principle Restricts access to a user's own data tree and prevents enumeration of other users.
      */
     match /customers/{customerId} {
       allow get: if isOwner(customerId);
-      allow list: if false; // Disallow listing all customers for privacy.
-      allow create: if isOwner(customerId) && newCustomerHasMatchingId(customerId);
-      allow update: if isOwnerOfExistingDoc(customerId) && customerIdIsImmutable();
-      allow delete: if isOwnerOfExistingDoc(customerId);
-
-      /**
-       * @description Rules for a customer's appointments subcollection.
-       * @path /customers/{customerId}/appointments/{appointmentId}
-       * @allow (create) A user creating an appointment for themselves. `auth.uid == customerId`.
-       * @allow (list) A user listing their own appointments.
-       * @deny (get) A user trying to read another user's appointment.
-       * @principle Enforces inherited ownership from the parent customer document.
-       */
-      match /appointments/{appointmentId} {
-        allow get: if isOwner(customerId);
-        allow list: if isOwner(customerId);
-        allow create: if isOwner(customerId) && newSubdocumentHasMatchingCustomerId(customerId);
-        allow update: if isOwnerOfExistingDoc(customerId) && subdocumentCustomerIdIsImmutable();
-        allow delete: if isOwnerOfExistingDoc(customerId);
-      }
-
-      /**
-       * @description Rules for a customer's invoices subcollection.
-       * @path /customers/{customerId}/invoices/{invoiceId}
-       * @allow (create) A user creating an invoice for themselves. `auth.uid == customerId`.
-       * @allow (list) A user listing their own invoices.
-       * @deny (update) A user trying to modify another user's invoice.
-       * @principle Enforces inherited ownership from the parent customer document.
-       */
-      match /invoices/{invoiceId} {
-        allow get: if isOwner(customerId);
-        allow list: if isOwner(customerId);
-        allow create: if isOwner(customerId) && newSubdocumentHasMatchingCustomerId(customerId);
-        allow update: if isOwnerOfExistingDoc(customerId) && subdocumentCustomerIdIsImmutable();
-        allow delete: if isOwnerOfExistingDoc(customerId);
-      }
+      allow list: if false; // Explicitly deny listing all customers for privacy.
+      allow create: if isOwner(customerId)
+                      && request.resource.data.id == customerId; // Enforce relational integrity on create.
+      allow update: if isExistingOwner(customerId)
+                      && request.resource.data.id == resource.data.id; // Enforce ID immutability.
+      allow delete: if isExistingOwner(customerId);
     }
 
     /**
-     * @description Rules for publicly readable service listings.
+     * @description Manages appointments for a specific customer.
+     * @path /customers/{customerId}/appointments/{appointmentId}
+     * @allow (create) A user creating an appointment for themselves: `create /customers/user_abc/appointments/appt_123` where auth.uid is 'user_abc'.
+     * @allow (list) A user listing their own appointments: `list /customers/user_abc/appointments` where auth.uid is 'user_abc'.
+     * @deny (get) A user trying to view someone else's appointment: `get /customers/user_xyz/appointments/appt_456` where auth.uid is 'user_abc'.
+     * @principle Enforces document ownership via path hierarchy. Access is inherited from the parent customer document.
+     */
+    match /customers/{customerId}/appointments/{appointmentId} {
+      allow get: if isOwner(customerId);
+      allow list: if isOwner(customerId);
+      allow create: if isOwner(customerId)
+                      && request.resource.data.customerId == customerId; // Ensure appointment links to the correct customer.
+      allow update: if isExistingOwner(customerId)
+                      && request.resource.data.customerId == resource.data.customerId; // Enforce owner immutability.
+      allow delete: if isExistingOwner(customerId);
+    }
+
+    /**
+     * @description Manages invoices for a specific customer.
+     * @path /customers/{customerId}/invoices/{invoiceId}
+     * @allow (list) A user listing their own invoices: `list /customers/user_abc/invoices` where auth.uid is 'user_abc'.
+     * @allow (get) A user reading one of their invoices: `get /customers/user_abc/invoices/inv_123` where auth.uid is 'user_abc'.
+     * @deny (update) A user trying to modify someone else's invoice: `update /customers/user_xyz/invoices/inv_456` where auth.uid is 'user_abc'.
+     * @principle Enforces document ownership via path hierarchy. Access is inherited from the parent customer document.
+     */
+    match /customers/{customerId}/invoices/{invoiceId} {
+      allow get: if isOwner(customerId);
+      allow list: if isOwner(customerId);
+      allow create: if isOwner(customerId)
+                      && request.resource.data.customerId == customerId; // Ensure invoice links to the correct customer.
+      allow update: if isExistingOwner(customerId)
+                      && request.resource.data.customerId == resource.data.customerId; // Enforce owner immutability.
+      allow delete: if isExistingOwner(customerId);
+    }
+
+    /**
+     * @description Publicly lists the services offered by the business.
      * @path /services/{serviceId}
-     * @allow (get, list) Any authenticated user can read service information.
-     * @deny (create, update, delete) All write operations are disallowed from the client.
-     * @principle Segregates public read-only data from private user data.
+     * @allow (get, list) Any user, signed in or not, can read the list of services.
+     * @deny (create, update, delete) All write operations are denied because there is no admin role defined.
+     * @principle Provides public read access for global data while securing it against unauthorized modification.
      */
     match /services/{serviceId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get: if true;
+      allow list: if true;
+      // CRITICAL: Cannot implement owner-only or admin-only writes. The 'Service' entity is missing an 'ownerId' or similar field for authorization.
+      // Writes are disabled for security. Use the Firebase Console or Admin SDK to manage this data.
+      allow create: if false; // TODO: Add admin role validation once an admin system is implemented.
+      allow update: if false; // TODO: Add admin role validation once an admin system is implemented.
+      allow delete: if false; // TODO: Add admin role validation once an admin system is implemented.
     }
 
     /**
-     * @description Rules for publicly readable promotion listings.
+     * @description Publicly lists the promotions offered by the business.
      * @path /promotions/{promotionId}
-     * @allow (get, list) Any authenticated user can read promotion information.
-     * @deny (create, update, delete) All write operations are disallowed from the client.
-     * @principle Segregates public read-only data from private user data.
+     * @allow (get, list) Any user, signed in or not, can view promotional offers.
+     * @deny (create, update, delete) All write operations are denied because there is no admin role defined.
+     * @principle Provides public read access for global data while securing it against unauthorized modification.
      */
     match /promotions/{promotionId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get: if true;
+      allow list: if true;
+      // CRITICAL: Cannot implement owner-only or admin-only writes. The 'Promotion' entity is missing an 'ownerId' or similar field for authorization.
+      // Writes are disabled for security. Use the Firebase Console or Admin SDK to manage this data.
+      allow create: if false; // TODO: Add admin role validation once an admin system is implemented.
+      allow update: if false; // TODO: Add admin role validation once an admin system is implemented.
+      allow delete: if false; // TODO: Add admin role validation once an admin system is implemented.
     }
   }
 }
