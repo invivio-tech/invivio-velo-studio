@@ -36,7 +36,7 @@ const prompt = ai.definePrompt({
 
   Detalhes do Serviço:
   - Nome: {{{name}}}
-  - Preço: R${{{price}}}
+  - Preço: R$ {{{price}}}
   - Duração: {{{duration}}}
 
   Gere apenas a descrição do serviço.
