@@ -1,6 +1,6 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import {
   useFirestore,
   useDoc,
@@ -28,10 +28,16 @@ import { Skeleton } from '../ui/skeleton';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
+const breakSchema = z.object({
+    startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato inválido (ex: 12:00)").or(z.literal("")),
+    endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato inválido (ex: 13:00)").or(z.literal("")),
+});
+
 const daySchema = z.object({
   isOpen: z.boolean(),
   startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato inválido (ex: 09:00)").or(z.literal("")),
   endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato inválido (ex: 18:00)").or(z.literal("")),
+  breaks: z.array(breakSchema).optional(),
 });
 
 const formSchema = z.object({
@@ -49,11 +55,19 @@ const formSchema = z.object({
         if (day.isOpen) {
             if (!day.startTime || !day.endTime) return false;
             if (day.startTime >= day.endTime) return false;
+            if (day.breaks) {
+                for (const breakTime of day.breaks) {
+                    if (!breakTime.startTime || !breakTime.endTime) return false;
+                    if (breakTime.startTime >= breakTime.endTime) return false;
+                    // Breaks must be within working hours
+                    if (breakTime.startTime < day.startTime || breakTime.endTime > day.endTime) return false;
+                }
+            }
         }
     }
     return true;
 }, {
-    message: 'Para dias abertos, o horário de início deve ser anterior ao de término.',
+    message: 'Horários inválidos. Verifique se o início é antes do fim e se as pausas estão dentro do horário de funcionamento.',
     path: ['workingHours']
 });
 
@@ -81,15 +95,15 @@ export default function ScheduleSettingsForm() {
   );
   const { data: settings, isLoading } = useDoc<ScheduleSettings>(settingsRef);
   
-  const defaultValues = {
+  const defaultValues: ScheduleSettings = {
     workingHours: {
-      sunday: { isOpen: false, startTime: '09:00', endTime: '13:00' },
-      monday: { isOpen: true, startTime: '09:00', endTime: '18:00' },
-      tuesday: { isOpen: true, startTime: '09:00', endTime: '18:00' },
-      wednesday: { isOpen: true, startTime: '09:00', endTime: '18:00' },
-      thursday: { isOpen: true, startTime: '09:00', endTime: '18:00' },
-      friday: { isOpen: true, startTime: '09:00', endTime: '18:00' },
-      saturday: { isOpen: true, startTime: '09:00', endTime: '17:00' },
+      sunday: { isOpen: false, startTime: '09:00', endTime: '13:00', breaks: [] },
+      monday: { isOpen: true, startTime: '09:00', endTime: '18:00', breaks: [{ startTime: '12:00', endTime: '13:00' }] },
+      tuesday: { isOpen: true, startTime: '09:00', endTime: '18:00', breaks: [{ startTime: '12:00', endTime: '13:00' }] },
+      wednesday: { isOpen: true, startTime: '09:00', endTime: '18:00', breaks: [{ startTime: '12:00', endTime: '13:00' }] },
+      thursday: { isOpen: true, startTime: '09:00', endTime: '18:00', breaks: [{ startTime: '12:00', endTime: '13:00' }] },
+      friday: { isOpen: true, startTime: '09:00', endTime: '18:00', breaks: [{ startTime: '12:00', endTime: '13:00' }] },
+      saturday: { isOpen: true, startTime: '09:00', endTime: '17:00', breaks: [{ startTime: '12:00', endTime: '13:00' }] },
     }
   };
 
@@ -156,15 +170,35 @@ export default function ScheduleSettingsForm() {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         {daysOfWeek.map((dayInfo, index) => (
-          <FormField
-            key={dayInfo.key}
-            control={form.control}
+          <DayRow key={dayInfo.key} dayInfo={dayInfo} control={form.control} index={index}/>
+        ))}
+        <div className="flex justify-end pt-4">
+            <Button type="submit" disabled={isSaving}>
+            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Salvar Alterações
+            </Button>
+        </div>
+      </form>
+    </Form>
+  );
+}
+
+
+function DayRow({ dayInfo, control, index }: { dayInfo: typeof daysOfWeek[number], control: any, index: number }) {
+    const { fields: breaksFields, append: breaksAppend, remove: breaksRemove } = useFieldArray({
+        control,
+        name: `workingHours.${dayInfo.key}.breaks`
+    });
+
+    return (
+        <FormField
+            control={control}
             name={`workingHours.${dayInfo.key}`}
             render={({ field }) => (
-              <FormItem>
+            <FormItem>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-                  <FormLabel className="text-base font-medium">{dayInfo.label}</FormLabel>
-                  <div className="flex items-center space-x-4">
+                <FormLabel className="text-base font-medium">{dayInfo.label}</FormLabel>
+                <div className="flex items-center space-x-4">
                     <div className="flex items-center space-x-2">
                         <label htmlFor={`${dayInfo.key}-switch`} className="text-sm font-medium text-muted-foreground">Fechado</label>
                         <Switch
@@ -180,34 +214,71 @@ export default function ScheduleSettingsForm() {
                                 type="time"
                                 className="w-32"
                                 disabled={!field.value.isOpen}
-                                value={field.value.startTime}
+                                value={field.value.startTime || ''}
                                 onChange={(e) => field.onChange({ ...field.value, startTime: e.target.value })}
                             />
-                             <span>-</span>
+                            <span>-</span>
                             <Input
                                 type="time"
                                 className="w-32"
                                 disabled={!field.value.isOpen}
-                                value={field.value.endTime}
+                                value={field.value.endTime || ''}
                                 onChange={(e) => field.onChange({ ...field.value, endTime: e.target.value })}
                             />
                         </div>
                     </FormControl>
-                  </div>
+                </div>
                 </div>
                 <FormMessage />
+
+                {field.value.isOpen && (
+                    <div className="pl-6 sm:pl-12 pt-4 space-y-4 border-l-2 ml-2 mt-4">
+                         <h4 className="text-sm font-medium text-muted-foreground -ml-2">Pausas Recorrentes (ex: Almoço)</h4>
+                         {breaksFields.map((item, breakIndex) => (
+                             <div key={item.id} className="flex items-end gap-2">
+                                <FormField
+                                    control={control}
+                                    name={`workingHours.${dayInfo.key}.breaks.${breakIndex}.startTime`}
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-xs">Início</FormLabel>
+                                            <FormControl>
+                                                <Input type="time" className="w-32" {...field} />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                                 <FormField
+                                    control={control}
+                                    name={`workingHours.${dayInfo.key}.breaks.${breakIndex}.endTime`}
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-xs">Fim</FormLabel>
+                                            <FormControl>
+                                                <Input type="time" className="w-32" {...field} />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                                <Button type="button" variant="ghost" size="icon" onClick={() => breaksRemove(breakIndex)}>
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                             </div>
+                         ))}
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => breaksAppend({ startTime: '12:00', endTime: '13:00' })}
+                            >
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Adicionar Pausa
+                        </Button>
+                    </div>
+                )}
                 {index < daysOfWeek.length -1 && <Separator className="!mt-6"/>}
-              </FormItem>
+            </FormItem>
             )}
-          />
-        ))}
-        <div className="flex justify-end pt-4">
-            <Button type="submit" disabled={isSaving}>
-            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Salvar Alterações
-            </Button>
-        </div>
-      </form>
-    </Form>
-  );
+        />
+    )
 }

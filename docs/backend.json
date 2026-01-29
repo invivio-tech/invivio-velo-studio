@@ -255,10 +255,37 @@
         "endTime": {
           "type": "string",
           "description": "The closing time, e.g., '18:00'."
+        },
+        "breaks": {
+          "type": "array",
+          "description": "A list of recurring break times for this day.",
+          "items": {
+            "$ref": "#/backend/entities/BreakTime"
+          }
         }
       },
       "required": [
         "isOpen"
+      ]
+    },
+    "BreakTime": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Break Time",
+      "type": "object",
+      "description": "Represents a recurring break time within a working day (e.g., lunch).",
+      "properties": {
+        "startTime": {
+          "type": "string",
+          "description": "The start time of the break, e.g., '12:00'."
+        },
+        "endTime": {
+          "type": "string",
+          "description": "The end time of the break, e.g., '13:00'."
+        }
+      },
+      "required": [
+        "startTime",
+        "endTime"
       ]
     },
     "BlockedTime": {
