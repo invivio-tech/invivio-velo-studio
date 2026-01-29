@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -7,41 +9,33 @@ import {
   CardFooter,
   CardDescription,
   CardTitle,
+  CardHeader,
 } from '@/components/ui/card';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Badge } from '@/components/ui/badge';
 import { BarberPoleIcon } from '@/components/icons/barber-pole-icon';
 
-const services = [
-  {
-    title: 'Corte Clássico',
-    description:
-      'Um corte atemporal, adaptado ao seu estilo. Inclui lavagem e finalização.',
-    price: 'R$50,00',
-    duration: '45 min',
-    imageId: 'service-classic-cut',
-  },
-  {
-    title: 'Aparo e Modelagem de Barba',
-    description:
-      'Aparo e modelagem de especialista para aperfeiçoar sua barba. Inclui acabamento com toalha quente.',
-    price: 'R$35,00',
-    duration: '30 min',
-    imageId: 'service-beard-trim',
-  },
-  {
-    title: 'Barba com Toalha Quente',
-    description:
-      'Uma barba tradicional com navalha, toalhas quentes e espuma rica.',
-    price: 'R$40,00',
-    duration: '40 min',
-    imageId: 'service-hot-shave',
-  },
-];
+import { collection } from 'firebase/firestore';
+import {
+  useFirestore,
+  useCollection,
+  useMemoFirebase,
+} from '@/firebase';
+import type { Service } from '@/app/services/page';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function LandingPage() {
   const heroImage = PlaceHolderImages.find((p) => p.id === 'landing-hero');
   const aboutImage = PlaceHolderImages.find((p) => p.id === 'landing-about');
+
+  const firestore = useFirestore();
+  const servicesCollection = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'services') : null),
+    [firestore]
+  );
+  const { data: services, isLoading } = useCollection<Service>(
+    servicesCollection
+  );
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -123,29 +117,48 @@ export default function LandingPage() {
             Do clássico ao contemporâneo, temos o serviço perfeito para você.
           </p>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {services.map((service) => {
+            {isLoading &&
+              [...Array(3)].map((_, i) => (
+                <Card key={i}>
+                  <CardHeader className="p-0">
+                    <Skeleton className="aspect-[16/9] w-full" />
+                  </CardHeader>
+                  <div className="p-6">
+                    <Skeleton className="h-6 w-1/2 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <CardFooter>
+                    <Skeleton className="h-6 w-1/4" />
+                  </CardFooter>
+                </Card>
+              ))}
+            {services?.map((service) => {
               const image = PlaceHolderImages.find(
                 (p) => p.id === service.imageId
               );
               return (
                 <Card
-                  key={service.title}
+                  key={service.id}
                   className="flex flex-col overflow-hidden hover:shadow-lg transition-shadow duration-300"
                 >
-                  {image && (
-                    <div className="relative aspect-[16/9] w-full overflow-hidden">
-                      <Image
-                        src={image.imageUrl}
-                        alt={image.description}
-                        fill
-                        className="object-cover"
-                        data-ai-hint={image.imageHint}
-                      />
-                    </div>
-                  )}
+                  <CardHeader className="p-0">
+                    {image ? (
+                      <div className="relative aspect-[16/9] w-full overflow-hidden">
+                        <Image
+                          src={image.imageUrl}
+                          alt={image.description}
+                          fill
+                          className="object-cover"
+                          data-ai-hint={image.imageHint}
+                        />
+                      </div>
+                    ) : (
+                      <div className="aspect-[16/9] w-full bg-muted" />
+                    )}
+                  </CardHeader>
                   <div className="flex flex-col flex-grow p-6">
                     <CardTitle className="font-headline text-2xl mb-2">
-                      {service.title}
+                      {service.name}
                     </CardTitle>
                     <CardDescription className="flex-grow">
                       {service.description}
@@ -153,7 +166,7 @@ export default function LandingPage() {
                   </div>
                   <CardFooter className="flex justify-between items-center bg-muted/50 p-6 pt-4">
                     <span className="text-xl font-bold font-headline text-primary">
-                      {service.price}
+                      {`R$${service.price.toFixed(2).replace('.', ',')}`}
                     </span>
                     <Badge variant="secondary">{service.duration}</Badge>
                   </CardFooter>
