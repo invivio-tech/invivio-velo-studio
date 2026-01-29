@@ -11,6 +11,7 @@ export interface UserProfile {
   email: string;
   photoURL?: string;
   role: 'admin' | 'client' | 'professional';
+  serviceIds?: string[];
 }
 
 export function useUserProfile() {
@@ -30,7 +31,7 @@ export function useUserProfile() {
       return;
     }
 
-    const userRef = doc(firestore, 'customers', user.uid);
+    const userRef = doc(firestore, 'users', user.uid);
     const unsubscribe = onSnapshot(userRef, 
       (docSnap) => {
         if (docSnap.exists()) {

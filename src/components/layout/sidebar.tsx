@@ -29,8 +29,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/firebase';
-import { logout } from '@/firebase/auth/client';
 import { useUserProfile } from '@/firebase/auth/useUserProfile';
+import { logout } from '@/firebase/auth/client';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Skeleton } from '../ui/skeleton';
 import { useRouter } from 'next/navigation';
@@ -38,7 +38,7 @@ import { useRouter } from 'next/navigation';
 const adminMenuItems = [
   { href: '/schedule', label: 'Painel', icon: Calendar },
   { href: '/services', label: 'Serviços', icon: BookOpen },
-  { href: '/customers', label: 'Clientes', icon: Users },
+  { href: '/customers', label: 'Usuários', icon: Users },
   { href: '/invoices', label: 'Faturas', icon: FileText },
   { href: '/promotions', label: 'Marketing com IA', icon: Sparkles },
   { href: '/schedule/settings', label: 'Configurações', icon: Settings },
@@ -48,7 +48,7 @@ const adminMenuItems = [
 const professionalMenuItems = [
   { href: '/schedule', label: 'Painel', icon: Calendar },
   { href: '/services', label: 'Serviços', icon: BookOpen },
-  { href: '/customers', label: 'Clientes', icon: Users },
+  { href: '/customers', label: 'Usuários', icon: Users },
 ];
 
 const clientMenuItems = [
@@ -66,7 +66,7 @@ export default function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { toggleSidebar, isMobile } = useSidebar();
-  const { user, isLoading } = useUser();
+  const { user, isUserLoading } = useUser();
   const { userProfile, isLoading: isProfileLoading } = useUserProfile();
 
   const handleLogout = async () => {
@@ -104,7 +104,7 @@ export default function AppSidebar() {
             </Link>
           </SidebarHeader>
 
-          {(isLoading || isProfileLoading) ? (
+          {(isUserLoading || isProfileLoading) ? (
             <div className='p-2 flex flex-col gap-2'>
               <Skeleton className="h-8 w-full" />
               <Skeleton className="h-8 w-full" />
@@ -150,7 +150,7 @@ export default function AppSidebar() {
         </SidebarContent>
         <SidebarFooter>
           <SidebarSeparator />
-           {(isLoading || isProfileLoading) ? (
+           {(isUserLoading || isProfileLoading) ? (
              <div className="flex items-center gap-2 p-2">
                 <Skeleton className="h-8 w-8 rounded-full" />
                 <Skeleton className="h-4 w-24" />

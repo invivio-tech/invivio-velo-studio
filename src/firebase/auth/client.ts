@@ -25,7 +25,7 @@ export async function createAccount(name: string, email: string, pass: string) {
     
     await updateProfile(user, { displayName: name });
 
-    const userRef = doc(db, 'customers', user.uid);
+    const userRef = doc(db, 'users', user.uid);
     const isAdmin = email === 'admin@barbearia.com';
     const isProfessional = email.endsWith('@barbearia.com') && !isAdmin;
     const role = isAdmin ? 'admin' : isProfessional ? 'professional' : 'client';
@@ -78,7 +78,7 @@ export async function signInWithGoogle() {
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
 
-        const userRef = doc(db, 'customers', user.uid);
+        const userRef = doc(db, 'users', user.uid);
         const isAdmin = user.email === 'admin@barbearia.com';
         const isProfessional = user.email?.endsWith('@barbearia.com') && !isAdmin;
         const role = isAdmin ? 'admin' : isProfessional ? 'professional' : 'client';

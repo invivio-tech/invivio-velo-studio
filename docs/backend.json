@@ -1,42 +1,43 @@
 {
   "entities": {
-    "Customer": {
+    "UserProfile": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Customer",
+      "title": "User Profile",
       "type": "object",
-      "description": "Represents a customer of the barber shop.",
+      "description": "Represents a user of the application, who can be a customer, a professional, or an admin.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the customer."
+          "description": "Unique identifier for the user, matches Firebase Auth UID."
         },
-        "firstName": {
+        "name": {
           "type": "string",
-          "description": "First name of the customer."
-        },
-        "lastName": {
-          "type": "string",
-          "description": "Last name of the customer."
+          "description": "Full name of the user."
         },
         "email": {
           "type": "string",
-          "description": "Email address of the customer.",
+          "description": "Email address of the user.",
           "format": "email"
         },
-        "phone": {
+        "photoURL": {
           "type": "string",
-          "description": "Phone number of the customer."
+          "description": "URL of the user's profile picture.",
+          "format": "uri"
         },
-        "notes": {
+        "role": {
           "type": "string",
-          "description": "Any notes about the customer."
+          "description": "The role of the user within the application.",
+          "enum": ["client", "professional", "admin"]
+        },
+        "serviceIds": {
+          "type": "array",
+          "description": "For professionals, a list of service IDs they can perform.",
+          "items": {
+            "type": "string"
+          }
         }
       },
-      "required": [
-        "id",
-        "firstName",
-        "lastName"
-      ]
+      "required": ["id", "name", "email", "role"]
     },
     "Service": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -76,7 +77,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Appointment",
       "type": "object",
-      "description": "Represents an appointment scheduled with a customer.",
+      "description": "Represents an appointment scheduled with a customer for a specific professional.",
       "properties": {
         "id": {
           "type": "string",
@@ -84,7 +85,11 @@
         },
         "customerId": {
           "type": "string",
-          "description": "Reference to Customer. (Relationship: Customer 1:N Appointment)"
+          "description": "Reference to UserProfile (client). (Relationship: UserProfile 1:N Appointment)"
+        },
+        "professionalId": {
+          "type": "string",
+          "description": "Reference to UserProfile (professional). (Relationship: UserProfile 1:N Appointment)"
         },
         "serviceId": {
           "type": "string",
@@ -108,6 +113,7 @@
       "required": [
         "id",
         "customerId",
+        "professionalId",
         "serviceId",
         "startTime",
         "endTime"
@@ -125,7 +131,7 @@
         },
         "customerId": {
           "type": "string",
-          "description": "Reference to Customer. (Relationship: Customer 1:N Invoice)"
+          "description": "Reference to UserProfile (client). (Relationship: UserProfile 1:N Invoice)"
         },
         "appointmentId": {
           "type": "string",
@@ -331,34 +337,30 @@
   "firestore": {
     "structure": [
       {
-        "path": "/customers/{customerId}",
+        "path": "/users/{userId}",
         "definition": {
-          "entityName": "Customer",
+          "entityName": "UserProfile",
           "schema": {
-            "$ref": "#/backend/entities/Customer"
+            "$ref": "#/backend/entities/UserProfile"
           },
-          "description": "Stores customer information. The 'customerId' is used to identify the customer.",
+          "description": "Stores user profile information, including their role (client, professional, admin).",
           "params": [
             {
-              "name": "customerId",
-              "description": "The unique identifier for the customer."
+              "name": "userId",
+              "description": "The unique identifier for the user."
             }
           ]
         }
       },
-      {
-        "path": "/customers/{customerId}/appointments/{appointmentId}",
+       {
+        "path": "/appointments/{appointmentId}",
         "definition": {
           "entityName": "Appointment",
           "schema": {
             "$ref": "#/backend/entities/Appointment"
           },
-          "description": "Stores appointments scheduled for a customer.  Authorization Independence: Path-based ownership ensures that only the customer (or authorized personnel) can access these appointments.",
+          "description": "Stores all appointments. Access is controlled by security rules based on user role (client, professional, admin).",
           "params": [
-            {
-              "name": "customerId",
-              "description": "The unique identifier for the customer."
-            },
             {
               "name": "appointmentId",
               "description": "The unique identifier for the appointment."
@@ -367,18 +369,14 @@
         }
       },
       {
-        "path": "/customers/{customerId}/invoices/{invoiceId}",
+        "path": "/invoices/{invoiceId}",
         "definition": {
           "entityName": "Invoice",
           "schema": {
             "$ref": "#/backend/entities/Invoice"
           },
-          "description": "Stores invoices for a customer. Authorization Independence: Path-based ownership ensures that only the customer (or authorized personnel) can access these invoices.",
+          "description": "Stores all invoices. Access is controlled by security rules.",
           "params": [
-            {
-              "name": "customerId",
-              "description": "The unique identifier for the customer."
-            },
             {
               "name": "invoiceId",
               "description": "The unique identifier for the invoice."
@@ -446,6 +444,6 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to ensure data security, scalability, and ease of debugging. It uses path-based ownership for user-specific data like appointments and invoices, storing them under `/customers/{customerId}`. Global data like services, promotions, and schedule settings are stored in top-level collections with appropriate access controls. This segregation simplifies security rules and aligns with best practices by avoiding insecure `get()` calls in rules, ensuring that data access is determined by the query path itself. Schedule settings are stored in a singleton document (`/scheduleSettings/main`) for easy retrieval of global configuration."
+    "reasoning": "The Firestore structure has been updated to be more role-oriented. The 'customers' collection is now 'users', reflecting that a user can be a client, professional, or admin. Appointments and invoices have been moved to top-level collections to decouple them from a single user's data tree, preparing the system for more complex relationships, such as a professional's view of their own schedule. This flat structure simplifies queries and security rules, especially for features involving multiple user roles."
   }
 }

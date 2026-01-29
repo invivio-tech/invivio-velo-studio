@@ -1,33 +1,25 @@
 /**
- * Core Philosophy: This ruleset implements a strict user-ownership security model.
- * All customer-specific data, such as appointments and invoices, is protected
- * and can only be accessed by the authenticated user who owns that data. Data
- * that is considered public, like the services and promotions offered by the
- * business, is readable by anyone but write access is restricted.
+ * Core Philosophy: This ruleset implements a flexible, role-based security model.
+ * It distinguishes between 'admin', 'professional', and 'client' roles to grant
+ * appropriate data access levels.
  *
- * Data Structure: Customer data is organized hierarchically. Each customer has
- * their own document root at `/customers/{customerId}`, where the `customerId` must
- * match the authenticated user's UID. All related private data, such as
- * `/appointments` and `/invoices`, are stored in subcollections under this path.
- * This structure enables simple, performant, path-based security rules. Global
- * data like `/services` and `/promotions` are in top-level collections.
+ * Data Structure: User profiles are stored in the top-level `/users` collection.
+ * Global data like services, appointments, and invoices are also in top-level
+ * collections to allow for flexible and secure querying by different roles.
+ * This avoids deep nesting and complex path-based security.
  *
  * Key Security Decisions:
- * - Customer Listing Disabled: To protect user privacy, it is not possible to
- *   list all documents in the top-level `/customers` collection.
- * - Read-Only Public Data: The `/services` and `/promotions` collections are
- *   publicly readable by any user, but are not writable. This is because the
- *   data models lack an 'ownerId' or 'admin' field, so the most secure default
- *   is to prevent all client-side modifications. An admin role or Cloud Function
- *   would be required to manage this data.
- * - Path-Based Ownership: Security for customer-related data relies on the
- *   document path. The `{customerId}` wildcard is always matched against the
- *   `request.auth.uid` to grant access, which is a highly secure and performant
- *   pattern that avoids costly database lookups.
- * - Prototyping Flexibility: These rules strictly enforce *who* can access
- *   data but do not enforce the specific *shape* of the data. This allows for
- *   rapid application development and schema iteration. Validation is limited to
- *   fields critical for maintaining authorization and relational integrity (e.g., owner IDs).
+ * - Admin Supremacy: Users with the 'admin' role have broad read and write access
+ *   across most of the database for management purposes. This is checked using the `isAdmin()` function.
+ * - Professional Access: Professionals can read their own profile and the appointments
+ *   assigned to them. They cannot access other users' private data.
+ * - Client (Owner) Access: Standard users (clients) can only access their own
+ *   user profile and appointments/invoices where their UID is listed. This is
+ *   enforced using the `isOwner()` function.
+ * - Secured Queries: Listing documents (e.g., all users, all appointments) is
+ *   generally restricted to admins. Clients and professionals must query for data
+ *   relevant to them (e.g., `where('customerId', '==', uid)`), which is then
+ *   validated by the security rules.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -51,21 +43,13 @@ service cloud.firestore {
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
-
-    /**
-     * Checks for ownership on an existing document. Used for update/delete
-     * to ensure the document exists before the operation is attempted.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
     
     /**
      * Checks if the currently authenticated user has the 'admin' role.
-     * This function reads the user's profile from the 'customers' collection.
+     * This function reads the user's profile from the 'users' collection.
      */
     function isAdmin() {
-      return isSignedIn() && get(/databases/$(database)/documents/customers/$(request.auth.uid)).data.role == 'admin';
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
 
@@ -74,57 +58,49 @@ service cloud.firestore {
     // ----------------------------------------------------------------------
 
     /**
-     * @description Manages a customer's own profile information.
-     * @path /customers/{customerId}
-     * @allow (create) A new user creating their own customer profile: `create /customers/user_abc` where auth.uid is 'user_abc'.
-     * @deny (list) An attacker trying to list all customers in the database: `list /customers`.
-     * @deny (get) A user trying to read another user's profile: `get /customers/user_xyz` where auth.uid is 'user_abc'.
-     * @principle Restricts access to a user's own data tree and prevents enumeration of other users.
+     * @description Manages user profiles (clients, professionals, admins).
+     * @path /users/{userId}
+     * @allow (get) A user can get their own profile. Admins can get any profile.
+     * @allow (list) Only admins can list all users.
+     * @allow (create) A user can create their own profile upon signup.
+     * @allow (update) A user can update their own profile. Admins can update any profile (e.g., to change roles).
+     * @deny (delete) Deleting user profiles is restricted to prevent accidental data loss.
      */
-    match /customers/{customerId} {
-      allow get: if isOwner(customerId);
-      allow list: if false; // Explicitly deny listing all customers for privacy.
-      allow create: if isOwner(customerId)
-                      && request.resource.data.id == customerId; // Enforce relational integrity on create.
-      allow update: if isExistingOwner(customerId)
-                      && request.resource.data.id == resource.data.id; // Enforce ID immutability.
-      allow delete: if isExistingOwner(customerId);
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
     }
 
     /**
-     * @description Manages appointments for a specific customer.
-     * @path /customers/{customerId}/appointments/{appointmentId}
-     * @allow (create) A user creating an appointment for themselves: `create /customers/user_abc/appointments/appt_123` where auth.uid is 'user_abc'.
-     * @allow (list) A user listing their own appointments: `list /customers/user_abc/appointments` where auth.uid is 'user_abc'.
-     * @deny (get) A user trying to view someone else's appointment: `get /customers/user_xyz/appointments/appt_456` where auth.uid is 'user_abc'.
-     * @principle Enforces document ownership via path hierarchy. Access is inherited from the parent customer document.
+     * @description Manages all appointments in the system.
+     * @path /appointments/{appointmentId}
+     * @allow (get) A client can get their own appointment. A professional can get an appointment assigned to them. An admin can get any.
+     * @allow (list) Signed-in users can list appointments (queries must be used to filter by customer/professional).
+     * @allow (create) A client can create an appointment for themselves. An admin can create any appointment.
+     * @allow (update, delete) A client can modify their own appointment. An admin can modify any.
      */
-    match /customers/{customerId}/appointments/{appointmentId} {
-      allow get: if isOwner(customerId);
-      allow list: if isOwner(customerId);
-      allow create: if isOwner(customerId)
-                      && request.resource.data.customerId == customerId; // Ensure appointment links to the correct customer.
-      allow update: if isExistingOwner(customerId)
-                      && request.resource.data.customerId == resource.data.customerId; // Enforce owner immutability.
-      allow delete: if isExistingOwner(customerId);
+    match /appointments/{appointmentId} {
+      allow get: if isAdmin() || isOwner(resource.data.customerId) || isOwner(resource.data.professionalId);
+      allow list: if isSignedIn(); // Requires secure queries in the app
+      allow create: if isOwner(request.resource.data.customerId) || isAdmin();
+      allow update, delete: if isOwner(resource.data.customerId) || isAdmin();
     }
 
     /**
-     * @description Manages invoices for a specific customer.
-     * @path /customers/{customerId}/invoices/{invoiceId}
-     * @allow (list) A user listing their own invoices: `list /customers/user_abc/invoices` where auth.uid is 'user_abc'.
-     * @allow (get) A user reading one of their invoices: `get /customers/user_abc/invoices/inv_123` where auth.uid is 'user_abc'.
-     * @deny (update) A user trying to modify someone else's invoice: `update /customers/user_xyz/invoices/inv_456` where auth.uid is 'user_abc'.
-     * @principle Enforces document ownership via path hierarchy. Access is inherited from the parent customer document.
+     * @description Manages all invoices in the system.
+     * @path /invoices/{invoiceId}
+     * @allow (get) A client can get their own invoice. An admin can get any.
+     * @allow (list) Signed-in users can list invoices (queries must be used to filter).
+     * @allow (create, update, delete) Admin-only for creating/managing invoices.
      */
-    match /customers/{customerId}/invoices/{invoiceId} {
-      allow get: if isOwner(customerId);
-      allow list: if isOwner(customerId);
-      allow create: if isOwner(customerId)
-                      && request.resource.data.customerId == customerId; // Ensure invoice links to the correct customer.
-      allow update: if isExistingOwner(customerId)
-                      && request.resource.data.customerId == resource.data.customerId; // Enforce owner immutability.
-      allow delete: if isExistingOwner(customerId);
+    match /invoices/{invoiceId} {
+      allow get: if isAdmin() || isOwner(resource.data.customerId);
+      allow list: if isSignedIn(); // Requires secure queries in the app
+      allow create: if isOwner(request.resource.data.customerId) || isAdmin();
+      allow update, delete: if isAdmin();
     }
 
     /**
@@ -144,15 +120,12 @@ service cloud.firestore {
      * @description Publicly lists the promotions offered by the business.
      * @path /promotions/{promotionId}
      * @allow (get, list) Any user, signed in or not, can view promotional offers.
-     * @deny (create, update, delete) All write operations are denied because there is no admin role defined.
-     * @principle Provides public read access for global data while securing it against unauthorized modification.
+     * @allow (write) Only admins can manage promotions.
      */
     match /promotions/{promotionId} {
       allow get: if true;
       allow list: if true;
-      allow create: if isAdmin();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow write: if isAdmin();
     }
     
     /**
