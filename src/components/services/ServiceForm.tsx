@@ -25,7 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { type Service, type ServiceWithId } from '@/app/services/page';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import {
@@ -35,6 +35,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { generateServiceDescription } from '@/ai/flows/generate-service-description';
+import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'O nome do serviço deve ter pelo menos 2 caracteres.' }),
@@ -53,6 +55,8 @@ type ServiceFormProps = {
 
 export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: ServiceFormProps) {
   const [isSaving, setIsSaving] = useState(false);
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -91,6 +95,34 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
         setIsSaving(false);
     }
   }
+
+  const handleSuggestDescription = async () => {
+    const { name, price, duration } = form.getValues();
+    if (!name) {
+        toast({
+            variant: 'destructive',
+            title: 'Nome do serviço necessário',
+            description: 'Por favor, preencha o nome do serviço para obter uma sugestão.'
+        });
+        return;
+    }
+    setIsSuggesting(true);
+    try {
+        const result = await generateServiceDescription({ name, price: String(price), duration });
+        if (result.description) {
+            form.setValue('description', result.description, { shouldValidate: true });
+        }
+    } catch (error) {
+        console.error('Error suggesting description:', error);
+        toast({
+            variant: 'destructive',
+            title: 'Erro ao sugerir',
+            description: 'Não foi possível gerar uma sugestão. Tente novamente.'
+        });
+    } finally {
+        setIsSuggesting(false);
+    }
+  }
   
   const servicePlaceholders = PlaceHolderImages.filter(p => p.id.startsWith('service-'));
 
@@ -123,7 +155,17 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Descrição</FormLabel>
+                  <div className="flex items-center justify-between">
+                    <FormLabel>Descrição</FormLabel>
+                    <Button type="button" variant="ghost" size="sm" onClick={handleSuggestDescription} disabled={isSuggesting}>
+                        {isSuggesting ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                            <Sparkles className="h-4 w-4" />
+                        )}
+                        <span className="ml-2 hidden sm:inline">Sugerir com IA</span>
+                    </Button>
+                  </div>
                   <FormControl>
                     <Textarea placeholder="Descreva o serviço em detalhes" {...field} />
                   </FormControl>
