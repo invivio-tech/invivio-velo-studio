@@ -1,40 +1,304 @@
 {
   "entities": {
-    "UserProfile": {
-      "title": "User Profile",
-      "description": "Represents a user's profile in the system.",
+    "Customer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Customer",
       "type": "object",
+      "description": "Represents a customer of the barber shop.",
       "properties": {
-        "name": {
+        "id": {
           "type": "string",
-          "description": "The user's full name."
+          "description": "Unique identifier for the customer."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "First name of the customer."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of the customer."
         },
         "email": {
           "type": "string",
-          "format": "email",
-          "description": "The user's email address."
+          "description": "Email address of the customer.",
+          "format": "email"
         },
-        "photoURL": {
+        "phone": {
           "type": "string",
-          "format": "uri",
-          "description": "URL of the user's profile picture."
+          "description": "Phone number of the customer."
         },
-        "role": {
+        "notes": {
           "type": "string",
-          "description": "The user's role.",
-          "enum": ["admin", "client", "professional"]
+          "description": "Any notes about the customer."
         }
       },
-      "required": ["name", "email", "role"]
+      "required": [
+        "id",
+        "firstName",
+        "lastName"
+      ]
+    },
+    "Service": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Service",
+      "type": "object",
+      "description": "Represents a service offered by the barber shop.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the service."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the service."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the service."
+        },
+        "price": {
+          "type": "number",
+          "description": "Price of the service."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "price"
+      ]
+    },
+    "Appointment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Appointment",
+      "type": "object",
+      "description": "Represents an appointment scheduled with a customer.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the appointment."
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Reference to Customer. (Relationship: Customer 1:N Appointment)"
+        },
+        "serviceIds": {
+          "type": "array",
+          "description": "References to Services. (Relationship: Appointment N:N Service)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "startTime": {
+          "type": "string",
+          "description": "Start time of the appointment.",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "description": "End time of the appointment.",
+          "format": "date-time"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Any notes about the appointment."
+        }
+      },
+      "required": [
+        "id",
+        "customerId",
+        "serviceIds",
+        "startTime",
+        "endTime"
+      ]
+    },
+    "Invoice": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Invoice",
+      "type": "object",
+      "description": "Represents an invoice for services rendered.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the invoice."
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Reference to Customer. (Relationship: Customer 1:N Invoice)"
+        },
+        "appointmentId": {
+          "type": "string",
+          "description": "Reference to Appointment. (Relationship: Appointment 1:1 Invoice)"
+        },
+        "date": {
+          "type": "string",
+          "description": "Date of the invoice.",
+          "format": "date-time"
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "Total amount of the invoice."
+        },
+        "paymentStatus": {
+          "type": "string",
+          "description": "Payment status of the invoice (e.g., paid, unpaid, partially paid)."
+        }
+      },
+      "required": [
+        "id",
+        "customerId",
+        "appointmentId",
+        "date",
+        "totalAmount",
+        "paymentStatus"
+      ]
+    },
+    "Promotion": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Promotion",
+      "type": "object",
+      "description": "Represents a promotional offer.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the promotion."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the promotion."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the promotion."
+        },
+        "startDate": {
+          "type": "string",
+          "description": "Start date of the promotion.",
+          "format": "date-time"
+        },
+        "endDate": {
+          "type": "string",
+          "description": "End date of the promotion.",
+          "format": "date-time"
+        },
+        "discount": {
+          "type": "number",
+          "description": "Discount amount or percentage."
+        },
+        "serviceIds": {
+          "type": "array",
+          "description": "References to Services. (Relationship: Promotion N:N Service)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "startDate",
+        "endDate",
+        "discount"
+      ]
     }
   },
   "auth": {
-    "providers": ["email", "google.com"]
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": { "$ref": "#/backend/entities/UserProfile" },
-      "description": "Stores public profile information for each user."
-    }
+    "structure": [
+      {
+        "path": "/customers/{customerId}",
+        "definition": {
+          "entityName": "Customer",
+          "schema": {
+            "$ref": "#/backend/entities/Customer"
+          },
+          "description": "Stores customer information. Each document represents a customer.",
+          "params": [
+            {
+              "name": "customerId",
+              "description": "The unique identifier for the customer."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/customers/{customerId}/appointments/{appointmentId}",
+        "definition": {
+          "entityName": "Appointment",
+          "schema": {
+            "$ref": "#/backend/entities/Appointment"
+          },
+          "description": "Stores appointments for a specific customer.  Path-based ownership: Each appointment is owned by a customer.",
+          "params": [
+            {
+              "name": "customerId",
+              "description": "The unique identifier for the customer."
+            },
+            {
+              "name": "appointmentId",
+              "description": "The unique identifier for the appointment."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/services/{serviceId}",
+        "definition": {
+          "entityName": "Service",
+          "schema": {
+            "$ref": "#/backend/entities/Service"
+          },
+          "description": "Stores information about the services offered.  Accessible to all authenticated users.",
+          "params": [
+            {
+              "name": "serviceId",
+              "description": "The unique identifier for the service."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/customers/{customerId}/invoices/{invoiceId}",
+        "definition": {
+          "entityName": "Invoice",
+          "schema": {
+            "$ref": "#/backend/entities/Invoice"
+          },
+          "description": "Stores invoices for a specific customer. Path-based ownership: Each invoice is owned by a customer.",
+          "params": [
+            {
+              "name": "customerId",
+              "description": "The unique identifier for the customer."
+            },
+            {
+              "name": "invoiceId",
+              "description": "The unique identifier for the invoice."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/promotions/{promotionId}",
+        "definition": {
+          "entityName": "Promotion",
+          "schema": {
+            "$ref": "#/backend/entities/Promotion"
+          },
+          "description": "Stores information about promotions. Accessible to all authenticated users.",
+          "params": [
+            {
+              "name": "promotionId",
+              "description": "The unique identifier for the promotion."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to manage data for a barber shop, focusing on customers, services, appointments, invoices, and promotions. It follows the principles of Authorization Independence, Structural Segregation, and Access Modeling to ensure security and scalability. Authorization Independence is achieved by structuring data in a way that avoids the need for `get()` calls in security rules, using path-based ownership and denormalization where necessary.\n\nCustomers are stored under `/customers/{customerId}`, allowing for easy management of individual customer data. Appointments are stored under `/customers/{customerId}/appointments/{appointmentId}`, creating a clear ownership structure where appointments belong to customers. Services are stored in a top-level collection `/services/{serviceId}`, accessible to all authenticated users. Invoices are stored under `/customers/{customerId}/invoices/{invoiceId}`, maintaining the customer-invoice relationship. Promotions are stored under `/promotions/{promotionId}`, accessible to all authenticated users. This structure enables secure `list` operations by segregating data based on access needs and using path-based ownership.\n\nThis design ensures data integrity and simplifies security rules by making authorization context explicit and avoiding hierarchical dependencies."
   }
 }
