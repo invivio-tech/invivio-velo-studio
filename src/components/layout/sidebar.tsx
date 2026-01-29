@@ -26,7 +26,9 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { useUser, logout, useUserProfile } from '@/firebase';
+import { useUser } from '@/firebase';
+import { logout } from '@/firebase/auth/client';
+import { useUserProfile } from '@/firebase/auth/useUserProfile';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Skeleton } from '../ui/skeleton';
 import { useRouter } from 'next/navigation';

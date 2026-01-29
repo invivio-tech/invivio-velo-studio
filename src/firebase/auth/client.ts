@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  getAuth,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
@@ -11,13 +10,12 @@ import {
   signInWithPopup,
   type User,
 } from 'firebase/auth';
-import { getFirestore, doc, setDoc } from 'firebase/firestore';
-import { app } from '../config';
+import { doc, setDoc } from 'firebase/firestore';
+import { initializeFirebase } from '..';
 import { errorEmitter } from '../error-emitter';
 import { FirestorePermissionError } from '../errors';
 
-const auth = getAuth(app);
-const db = getFirestore(app);
+const { auth, firestore: db } = initializeFirebase();
 
 // --- Create account ---
 export async function createAccount(name: string, email: string, pass: string) {
@@ -27,12 +25,13 @@ export async function createAccount(name: string, email: string, pass: string) {
     
     await updateProfile(user, { displayName: name });
 
-    const userRef = doc(db, 'users', user.uid);
+    const userRef = doc(db, 'customers', user.uid);
     const isAdmin = email === 'admin@barbearia.com';
     const isProfessional = email.endsWith('@barbearia.com') && !isAdmin;
     const role = isAdmin ? 'admin' : isProfessional ? 'professional' : 'client';
 
     const userData = {
+      id: user.uid,
       name: name,
       email: user.email,
       photoURL: user.photoURL,
@@ -79,12 +78,13 @@ export async function signInWithGoogle() {
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
 
-        const userRef = doc(db, 'users', user.uid);
+        const userRef = doc(db, 'customers', user.uid);
         const isAdmin = user.email === 'admin@barbearia.com';
         const isProfessional = user.email?.endsWith('@barbearia.com') && !isAdmin;
         const role = isAdmin ? 'admin' : isProfessional ? 'professional' : 'client';
 
         const userData = {
+            id: user.uid,
             name: user.displayName,
             email: user.email,
             photoURL: user.photoURL,

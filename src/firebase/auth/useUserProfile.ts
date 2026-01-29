@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { useUser } from './use-user';
+import { useUser } from '../provider';
 import { useFirestore } from '../provider';
 
 export interface UserProfile {
+  id: string;
   name: string;
   email: string;
   photoURL?: string;
@@ -13,7 +14,7 @@ export interface UserProfile {
 }
 
 export function useUserProfile() {
-  const { user, isLoading: isUserLoading } = useUser();
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -29,7 +30,7 @@ export function useUserProfile() {
       return;
     }
 
-    const userRef = doc(firestore, 'users', user.uid);
+    const userRef = doc(firestore, 'customers', user.uid);
     const unsubscribe = onSnapshot(userRef, 
       (docSnap) => {
         if (docSnap.exists()) {

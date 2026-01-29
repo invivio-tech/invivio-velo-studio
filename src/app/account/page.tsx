@@ -1,6 +1,7 @@
 'use client';
 
-import { useUser, logout } from '@/firebase';
+import { useUser } from '@/firebase';
+import { logout } from '@/firebase/auth/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
