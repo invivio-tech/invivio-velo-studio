@@ -44,10 +44,6 @@
       "type": "object",
       "description": "Represents a service offered by the barber shop.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the service."
-        },
         "name": {
           "type": "string",
           "description": "Name of the service."
@@ -59,12 +55,20 @@
         "price": {
           "type": "number",
           "description": "Price of the service."
+        },
+        "duration": {
+          "type": "string",
+          "description": "Duration of the service (e.g., '45 min')."
+        },
+        "imageId": {
+          "type": "string",
+          "description": "ID for the placeholder image for the service."
         }
       },
       "required": [
-        "id",
         "name",
-        "price"
+        "price",
+        "duration"
       ]
     },
     "Appointment": {

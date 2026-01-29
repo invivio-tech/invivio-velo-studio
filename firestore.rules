@@ -59,6 +59,15 @@ service cloud.firestore {
     function isExistingOwner(userId) {
       return isOwner(userId) && resource != null;
     }
+    
+    /**
+     * Checks if the currently authenticated user has the 'admin' role.
+     * This function reads the user's profile from the 'customers' collection.
+     */
+    function isAdmin() {
+      return isSignedIn() && get(/databases/$(database)/documents/customers/$(request.auth.uid)).data.role == 'admin';
+    }
+
 
     // ----------------------------------------------------------------------
     // Collection Rules
@@ -122,17 +131,13 @@ service cloud.firestore {
      * @description Publicly lists the services offered by the business.
      * @path /services/{serviceId}
      * @allow (get, list) Any user, signed in or not, can read the list of services.
-     * @deny (create, update, delete) All write operations are denied because there is no admin role defined.
-     * @principle Provides public read access for global data while securing it against unauthorized modification.
+     * @allow (write) Only authenticated admins can create, update, or delete services.
+     * @principle Provides public read access for global data while securing modifications to admins only.
      */
     match /services/{serviceId} {
       allow get: if true;
       allow list: if true;
-      // CRITICAL: Cannot implement owner-only or admin-only writes. The 'Service' entity is missing an 'ownerId' or similar field for authorization.
-      // Writes are disabled for security. Use the Firebase Console or Admin SDK to manage this data.
-      allow create: if false; // TODO: Add admin role validation once an admin system is implemented.
-      allow update: if false; // TODO: Add admin role validation once an admin system is implemented.
-      allow delete: if false; // TODO: Add admin role validation once an admin system is implemented.
+      allow write: if isAdmin();
     }
 
     /**
@@ -147,9 +152,9 @@ service cloud.firestore {
       allow list: if true;
       // CRITICAL: Cannot implement owner-only or admin-only writes. The 'Promotion' entity is missing an 'ownerId' or similar field for authorization.
       // Writes are disabled for security. Use the Firebase Console or Admin SDK to manage this data.
-      allow create: if false; // TODO: Add admin role validation once an admin system is implemented.
-      allow update: if false; // TODO: Add admin role validation once an admin system is implemented.
-      allow delete: if false; // TODO: Add admin role validation once an admin system is implemented.
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
   }
 }
