@@ -12,9 +12,9 @@ import {
 import {
   useFirestore,
   useCollection,
-  useUserProfile,
   useMemoFirebase,
 } from '@/firebase';
+import { useUserProfile } from '@/firebase/auth/useUserProfile';
 import {
   Card,
   CardContent,
