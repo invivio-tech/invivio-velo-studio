@@ -22,6 +22,7 @@ import {
   LogIn,
   UserPlus,
   LogOut,
+  Settings,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -39,6 +40,7 @@ const adminMenuItems = [
   { href: '/customers', label: 'Clientes', icon: Users },
   { href: '/invoices', label: 'Faturas', icon: FileText },
   { href: '/promotions', label: 'Marketing com IA', icon: Sparkles },
+  { href: '/schedule/settings', label: 'Configurações', icon: Settings },
 ];
 
 const professionalMenuItems = [
@@ -112,7 +114,7 @@ export default function AppSidebar() {
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     asChild
-                    isActive={pathname === item.href}
+                    isActive={pathname.startsWith(item.href)}
                     tooltip={item.label}
                   >
                     <Link href={item.href}>

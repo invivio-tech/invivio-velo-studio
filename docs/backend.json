@@ -202,6 +202,64 @@
         "startDate",
         "endDate"
       ]
+    },
+    "ScheduleSettings": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Schedule Settings",
+      "type": "object",
+      "description": "Represents the barbershop's opening hours and schedule configuration.",
+      "properties": {
+        "workingHours": {
+          "type": "object",
+          "description": "Defines the standard working hours for each day of the week.",
+          "properties": {
+            "sunday": {
+              "$ref": "#/backend/entities/DaySetting"
+            },
+            "monday": {
+              "$ref": "#/backend/entities/DaySetting"
+            },
+            "tuesday": {
+              "$ref": "#/backend/entities/DaySetting"
+            },
+            "wednesday": {
+              "$ref": "#/backend/entities/DaySetting"
+            },
+            "thursday": {
+              "$ref": "#/backend/entities/DaySetting"
+            },
+            "friday": {
+              "$ref": "#/backend/entities/DaySetting"
+            },
+            "saturday": {
+              "$ref": "#/backend/entities/DaySetting"
+            }
+          }
+        }
+      }
+    },
+    "DaySetting": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Day Setting",
+      "type": "object",
+      "description": "Represents the settings for a single day of the week.",
+      "properties": {
+        "isOpen": {
+          "type": "boolean",
+          "description": "Whether the shop is open on this day."
+        },
+        "startTime": {
+          "type": "string",
+          "description": "The opening time, e.g., '09:00'."
+        },
+        "endTime": {
+          "type": "string",
+          "description": "The closing time, e.g., '18:00'."
+        }
+      },
+      "required": [
+        "isOpen"
+      ]
     }
   },
   "auth": {
@@ -300,10 +358,19 @@
             }
           ]
         }
+      },
+      {
+        "path": "/scheduleSettings/main",
+        "definition": {
+          "entityName": "ScheduleSettings",
+          "schema": {
+            "$ref": "#/backend/entities/ScheduleSettings"
+          },
+          "description": "Stores the main schedule settings for the barbershop as a singleton document.",
+          "params": []
+        }
       }
     ],
-    "reasoning": "The Firestore structure is designed to ensure data security, scalability, and ease of debugging, adhering to the core design principles of Authorization Independence, Clarity of Intent, DBAC (Database-Based Access Control), and QAPs (Rules are not Filters). It uses denormalization where necessary to avoid complex security rules involving `get()` calls, which are difficult to maintain and can break atomic operations. The structure also segregates data based on access requirements, simplifying security rule design and enabling secure list operations.  \n\nThe structure leverages path-based ownership for user-specific data. Appointments and Invoices are stored as subcollections of customers, ensuring that only the user (or authorized personnel) can access this data. Promotions are stored in a top-level collection, as it is not directly tied to any user and presumably managed by admins.  \n\nThis design ensures Authorization Independence by avoiding `get()` calls in security rules. Path-based ownership (`/users/{userId}/...`) inherently grants access based on the authenticated user ID.  To support QAPs, data is segregated based on access requirements. Data that needs to be listed securely (e.g., user-specific appointments) resides under the user's document, allowing simple rules to filter by `request.auth.uid == userId`. Public or admin-managed data (e.g., Promotions) are stored in separate collections with appropriate security rules."
+    "reasoning": "The Firestore structure is designed to ensure data security, scalability, and ease of debugging. It uses path-based ownership for user-specific data like appointments and invoices, storing them under `/customers/{customerId}`. Global data like services, promotions, and schedule settings are stored in top-level collections with appropriate access controls. This segregation simplifies security rules and aligns with best practices by avoiding insecure `get()` calls in rules, ensuring that data access is determined by the query path itself. Schedule settings are stored in a singleton document (`/scheduleSettings/main`) for easy retrieval of global configuration."
   }
 }
-
-    

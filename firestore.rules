@@ -150,11 +150,22 @@ service cloud.firestore {
     match /promotions/{promotionId} {
       allow get: if true;
       allow list: if true;
-      // CRITICAL: Cannot implement owner-only or admin-only writes. The 'Promotion' entity is missing an 'ownerId' or similar field for authorization.
-      // Writes are disabled for security. Use the Firebase Console or Admin SDK to manage this data.
       allow create: if isAdmin();
       allow update: if isAdmin();
       allow delete: if isAdmin();
+    }
+    
+    /**
+     * @description Manages the barbershop's operating schedule.
+     * @path /scheduleSettings/{docId}
+     * @allow (get, list) Any user can read the schedule settings to check for availability.
+     * @allow (write) Only authenticated admins can create, update, or delete schedule settings.
+     * @principle Provides public read access for global configuration while securing modifications to admins only.
+     */
+    match /scheduleSettings/{docId} {
+      allow get: if true;
+      allow list: if true;
+      allow write: if isAdmin();
     }
   }
 }
