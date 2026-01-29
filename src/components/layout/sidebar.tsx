@@ -23,6 +23,7 @@ import {
   UserPlus,
   LogOut,
   Settings,
+  Lock,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -41,6 +42,7 @@ const adminMenuItems = [
   { href: '/invoices', label: 'Faturas', icon: FileText },
   { href: '/promotions', label: 'Marketing com IA', icon: Sparkles },
   { href: '/schedule/settings', label: 'Configurações', icon: Settings },
+  { href: '/schedule/block', label: 'Bloquear Agenda', icon: Lock },
 ];
 
 const professionalMenuItems = [

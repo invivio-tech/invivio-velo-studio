@@ -5,18 +5,29 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from '@/components/ui/card';
-import { DollarSign, Users, CalendarCheck } from 'lucide-react';
+import { DollarSign, Users, CalendarCheck, Lock } from 'lucide-react';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { collection, query, where, orderBy, Timestamp } from 'firebase/firestore';
+import { format } from 'date-fns';
+
+interface BlockedTime {
+  id: string;
+  startTime: Timestamp;
+  endTime: Timestamp;
+  reason: string;
+}
 
 export default function SchedulePage() {
   const { user, isLoading } = useUser();
   const router = useRouter();
+  const firestore = useFirestore();
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -24,6 +35,16 @@ export default function SchedulePage() {
     }
   }, [user, isLoading, router]);
 
+  const blockedTimesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(
+      collection(firestore, 'blockedTimes'),
+      where('startTime', '>=', new Date()),
+      orderBy('startTime', 'asc')
+    );
+  }, [firestore]);
+
+  const { data: blockedTimes, isLoading: areBlocksLoading } = useCollection<BlockedTime>(blockedTimesQuery);
 
   const calendarImage = PlaceHolderImages.find(p => p.id === 'dashboard-appointments');
 
@@ -113,12 +134,35 @@ export default function SchedulePage() {
         </Card>
         <Card className="col-span-4 md:col-span-3">
           <CardHeader>
-            <CardTitle className='font-headline'>Atividade Recente</CardTitle>
+            <CardTitle className='font-headline'>Próximos Bloqueios</CardTitle>
+            <CardDescription>Períodos em que a agenda está indisponível.</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">
-              Um registro de agendamentos e ações recentes aparecerá aqui.
-            </p>
+            {areBlocksLoading ? (
+                <div className="space-y-4">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                </div>
+            ) : blockedTimes && blockedTimes.length > 0 ? (
+                <div className="space-y-4">
+                    {blockedTimes.map(block => (
+                        <div key={block.id} className="flex items-center p-2 rounded-lg bg-muted/50">
+                            <Lock className="h-5 w-5 mr-4 text-muted-foreground" />
+                            <div className="flex-1">
+                                <p className="font-semibold">{block.reason}</p>
+                                <p className="text-sm text-muted-foreground">
+                                    {format(block.startTime.toDate(), "dd/MM/yy 'às' HH:mm")} - {format(block.endTime.toDate(), "HH:mm")}
+                                </p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                 <p className="text-muted-foreground text-sm text-center py-4">
+                    Nenhum bloqueio de agenda futuro.
+                </p>
+            )}
           </CardContent>
         </Card>
       </div>

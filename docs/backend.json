@@ -260,6 +260,38 @@
       "required": [
         "isOpen"
       ]
+    },
+    "BlockedTime": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Blocked Time",
+      "type": "object",
+      "description": "Represents a time slot blocked by an admin, making it unavailable for appointments.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the blocked time slot."
+        },
+        "startTime": {
+          "type": "string",
+          "description": "Start time of the block.",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "description": "End time of the block.",
+          "format": "date-time"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Reason for blocking the time slot (e.g., 'Lunch', 'Holiday')."
+        }
+      },
+      "required": [
+        "id",
+        "startTime",
+        "endTime",
+        "reason"
+      ]
     }
   },
   "auth": {
@@ -368,6 +400,22 @@
           },
           "description": "Stores the main schedule settings for the barbershop as a singleton document.",
           "params": []
+        }
+      },
+      {
+        "path": "/blockedTimes/{blockedTimeId}",
+        "definition": {
+          "entityName": "BlockedTime",
+          "schema": {
+            "$ref": "#/backend/entities/BlockedTime"
+          },
+          "description": "Stores time slots that are manually blocked by administrators and are unavailable for appointments.",
+          "params": [
+            {
+              "name": "blockedTimeId",
+              "description": "The unique identifier for the blocked time entry."
+            }
+          ]
         }
       }
     ],

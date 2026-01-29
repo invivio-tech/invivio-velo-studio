@@ -167,5 +167,18 @@ service cloud.firestore {
       allow list: if true;
       allow write: if isAdmin();
     }
+
+    /**
+     * @description Manages blocked time slots on the schedule.
+     * @path /blockedTimes/{blockedTimeId}
+     * @allow (get, list) Any user can read blocked times to see availability.
+     * @allow (write) Only authenticated admins can create, update, or delete blocked time slots.
+     * @principle Provides public read access for global configuration while securing modifications to admins only.
+     */
+    match /blockedTimes/{blockedTimeId} {
+      allow get: if true;
+      allow list: if true;
+      allow write: if isAdmin();
+    }
   }
 }
