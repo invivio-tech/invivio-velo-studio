@@ -133,23 +133,19 @@ export default function LandingPage() {
                 </Card>
               ))}
             {services?.map((service) => {
-              const image = PlaceHolderImages.find(
-                (p) => p.id === service.imageId
-              );
               return (
                 <Card
                   key={service.id}
                   className="flex flex-col overflow-hidden hover:shadow-lg transition-shadow duration-300"
                 >
                   <CardHeader className="p-0">
-                    {image ? (
+                    {service.imageUrl ? (
                       <div className="relative aspect-[16/9] w-full overflow-hidden">
                         <Image
-                          src={image.imageUrl}
-                          alt={image.description}
+                          src={service.imageUrl}
+                          alt={service.name}
                           fill
                           className="object-cover"
-                          data-ai-hint={image.imageHint}
                         />
                       </div>
                     ) : (
@@ -228,3 +224,5 @@ export default function LandingPage() {
     </div>
   );
 }
+
+    

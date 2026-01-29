@@ -60,9 +60,10 @@
           "type": "string",
           "description": "Duration of the service (e.g., '45 min')."
         },
-        "imageId": {
+        "imageUrl": {
           "type": "string",
-          "description": "ID for the placeholder image for the service."
+          "description": "URL for the service's image.",
+          "format": "uri"
         }
       },
       "required": [
@@ -304,3 +305,5 @@
     "reasoning": "The Firestore structure is designed to ensure data security, scalability, and ease of debugging, adhering to the core design principles of Authorization Independence, Clarity of Intent, DBAC (Database-Based Access Control), and QAPs (Rules are not Filters). It uses denormalization where necessary to avoid complex security rules involving `get()` calls, which are difficult to maintain and can break atomic operations. The structure also segregates data based on access requirements, simplifying security rule design and enabling secure list operations.  \n\nThe structure leverages path-based ownership for user-specific data. Appointments and Invoices are stored as subcollections of customers, ensuring that only the user (or authorized personnel) can access this data. Promotions are stored in a top-level collection, as it is not directly tied to any user and presumably managed by admins.  \n\nThis design ensures Authorization Independence by avoiding `get()` calls in security rules. Path-based ownership (`/users/{userId}/...`) inherently grants access based on the authenticated user ID.  To support QAPs, data is segregated based on access requirements. Data that needs to be listed securely (e.g., user-specific appointments) resides under the user's document, allowing simple rules to filter by `request.auth.uid == userId`. Public or admin-managed data (e.g., Promotions) are stored in separate collections with appropriate security rules."
   }
 }
+
+    

@@ -16,6 +16,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -27,14 +28,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { type Service, type ServiceWithId } from '@/app/services/page';
 import { Loader2, Sparkles } from 'lucide-react';
 import { useState } from 'react';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { generateServiceDescription } from '@/ai/flows/generate-service-description';
 import { useToast } from '@/hooks/use-toast';
 
@@ -43,7 +36,7 @@ const formSchema = z.object({
   description: z.string().min(10, { message: 'A descrição deve ter pelo menos 10 caracteres.' }),
   price: z.coerce.number().positive({ message: 'O preço deve ser um número positivo.' }),
   duration: z.string().min(2, { message: 'A duração é obrigatória.' }),
-  imageId: z.string().optional(),
+  imageUrl: z.string().url({ message: 'Por favor, insira uma URL válida.' }).optional().or(z.literal('')),
 });
 
 type ServiceFormProps = {
@@ -67,18 +60,18 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
       description: '',
       price: 0,
       duration: '',
-      imageId: '',
+      imageUrl: '',
     },
   });
   
   React.useEffect(() => {
     if (isOpen) {
-        form.reset(service ? { ...service } : {
+        form.reset(service ? { ...service, imageUrl: service.imageUrl || '' } : {
         name: '',
         description: '',
         price: 0,
         duration: '',
-        imageId: '',
+        imageUrl: '',
         });
     }
   }, [service, isOpen, form]);
@@ -124,8 +117,6 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
     }
   }
   
-  const servicePlaceholders = PlaceHolderImages.filter(p => p.id.startsWith('service-'));
-
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-[425px]">
@@ -202,27 +193,21 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
               />
             </div>
             <FormField
-                control={form.control}
-                name="imageId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Imagem</FormLabel>
-                     <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione uma imagem" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                            {servicePlaceholders.map(p => (
-                                <SelectItem key={p.id} value={p.id}>{p.description}</SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              control={form.control}
+              name="imageUrl"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>URL da Imagem</FormLabel>
+                  <FormControl>
+                    <Input placeholder="https://exemplo.com/imagem.jpg" {...field} />
+                  </FormControl>
+                  <FormDescription>
+                    Cole a URL de uma imagem da web.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <DialogFooter>
               <DialogClose asChild>
                 <Button type="button" variant="ghost">Cancelar</Button>
@@ -238,3 +223,5 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
     </Dialog>
   );
 }
+
+    

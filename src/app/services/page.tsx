@@ -26,10 +26,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  PlaceHolderImages,
-  type ImagePlaceholder,
-} from '@/lib/placeholder-images';
-import {
   PlusCircle,
   Pencil,
   Trash2,
@@ -56,7 +52,7 @@ export interface Service {
   description: string;
   price: number;
   duration: string;
-  imageId?: string;
+  imageUrl?: string;
 }
 
 export type ServiceWithId = Service & { id: string };
@@ -165,9 +161,6 @@ export default function ServicesPage() {
     setIsFormOpen(true);
   };
 
-  const imagesMap = new Map<string, ImagePlaceholder>(
-    PlaceHolderImages.map((img) => [img.id, img])
-  );
   const isAdmin = userProfile?.role === 'admin';
   const isLoading = isProfileLoading || areServicesLoading;
 
@@ -228,22 +221,22 @@ export default function ServicesPage() {
           {services.length > 0 ? (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
               {services.map((service) => {
-                const image = service.imageId ? imagesMap.get(service.imageId) : null;
+                const image = service.imageUrl;
                 return (
                   <Card key={service.id} className="flex flex-col overflow-hidden">
                     <CardHeader className="p-0 relative">
-                      {image && (
+                      {image ? (
                         <div className="relative aspect-[16/9] w-full">
                           <Image
-                            src={image.imageUrl}
-                            alt={image.description}
+                            src={image}
+                            alt={service.name}
                             fill
                             className="object-cover"
-                            data-ai-hint={image.imageHint}
                           />
                         </div>
+                      ) : (
+                        <div className="aspect-[16/9] w-full bg-muted" />
                       )}
-                      {!image && <div className="aspect-[16/9] w-full bg-muted" />}
                       {isAdmin && (
                         <div className="absolute top-2 right-2 flex gap-2">
                           <Button size="icon" variant="secondary" onClick={() => openServiceForm(service)}>
@@ -304,3 +297,5 @@ export default function ServicesPage() {
     </div>
   );
 }
+
+    
