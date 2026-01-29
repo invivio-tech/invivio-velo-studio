@@ -25,6 +25,12 @@
       "imageHint": "child haircut"
     },
     {
+      "id": "service-styling",
+      "description": "Finalização e penteado profissional.",
+      "imageUrl": "https://images.unsplash.com/photo-1582095133179-bfd08e2fc6b3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxoYWlyJTIwc3R5bGluZ3xlbnwwfHx8fDE3Njk3MDA1NTV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "hair styling"
+    },
+    {
       "id": "dashboard-appointments",
       "description": "Uma visão do livro de agendamentos.",
       "imageUrl": "https://images.unsplash.com/photo-1599153015672-0854fa6301aa?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxjYWxlbmRhciUyMGJvb2t8ZW58MHx8fHwxNzY5MDkyNzgxfDA&ixlib=rb-4.1.0&q=80&w=1080",
