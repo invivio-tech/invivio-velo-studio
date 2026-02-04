@@ -202,17 +202,7 @@ export default function EstablishmentPage() {
               )} />
 
               <div className="border-t pt-6 space-y-4">
-                <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-medium">Textos da Página Inicial</h3>
-                    <Button type="button" variant="outline" size="sm" onClick={handleSuggestTexts} disabled={isSuggesting}>
-                        {isSuggesting ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                            <Sparkles className="mr-2 h-4 w-4" />
-                        )}
-                        Sugerir Textos com IA
-                    </Button>
-                </div>
+                <h3 className="text-lg font-medium">Textos da Página Inicial</h3>
                  <FormField control={form.control} name="context" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Comentários para a IA</FormLabel>
@@ -225,6 +215,14 @@ export default function EstablishmentPage() {
                         <FormMessage />
                     </FormItem>
                 )} />
+                <Button type="button" variant="outline" size="sm" onClick={handleSuggestTexts} disabled={isSuggesting}>
+                    {isSuggesting ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                        <Sparkles className="mr-2 h-4 w-4" />
+                    )}
+                    Sugerir Textos com IA
+                </Button>
               </div>
 
                <FormField control={form.control} name="heroTitle" render={({ field }) => (
