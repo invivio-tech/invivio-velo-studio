@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   useFirestore,
   useCollection,
@@ -43,6 +43,12 @@ export default function UsersPage() {
   const { userProfile, isLoading: isProfileLoading } = useUserProfile();
   const router = useRouter();
 
+  useEffect(() => {
+    if (!isProfileLoading && userProfile?.role !== 'admin') {
+      router.push('/schedule');
+    }
+  }, [isProfileLoading, userProfile, router]);
+
   const usersCollection = useMemoFirebase(
     () => (firestore && userProfile?.role === 'admin' ? collection(firestore, 'users') : null),
     [firestore, userProfile]
@@ -65,9 +71,51 @@ export default function UsersPage() {
   
   const isLoading = isProfileLoading || areUsersLoading || areServicesLoading;
 
-  if (!isProfileLoading && userProfile?.role !== 'admin') {
-    router.push('/schedule');
-    return null; 
+  if (isProfileLoading || !userProfile || userProfile.role !== 'admin') {
+    return (
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        <div className="flex items-center gap-4">
+          <Users className="w-8 h-8 text-secondary"/>
+          <h1 className="text-3xl font-headline font-bold tracking-tight">
+            Gestão de Usuários
+          </h1>
+        </div>
+        <Card>
+          <CardHeader>
+              <CardTitle className="font-headline">Usuários Cadastrados</CardTitle>
+              <CardDescription>Gerencie as funções e permissões de todos os usuários do sistema.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Usuário</TableHead>
+                  <TableHead>Função</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[...Array(3)].map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell>
+                      <div className="flex items-center gap-4">
+                        <Skeleton className="h-10 w-10 rounded-full" />
+                        <div className="space-y-1">
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-3 w-32" />
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
