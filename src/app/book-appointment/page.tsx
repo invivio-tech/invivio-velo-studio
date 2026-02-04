@@ -347,6 +347,11 @@ export default function BookAppointmentPage() {
                       </Card>
                   ))}
               </div>
+              <div className="mt-6 flex justify-start">
+                  <Button variant="ghost" onClick={() => { setStep(1); setSelectedService(null); }} className="flex items-center gap-1">
+                      <ArrowLeft className="w-4 h-4"/> Voltar para Serviços
+                  </Button>
+              </div>
             </StepHeader>
           )}
 
@@ -385,6 +390,11 @@ export default function BookAppointmentPage() {
                             )}
                         </div>
                     </div>
+                    <div className="mt-6 flex justify-start">
+                        <Button variant="ghost" onClick={() => { setStep(2); setSelectedProfessional(null); setSelectedTime(null); }} className="flex items-center gap-1">
+                            <ArrowLeft className="w-4 h-4"/> Voltar para Profissionais
+                        </Button>
+                    </div>
                 </StepHeader>
            )}
 
@@ -404,7 +414,7 @@ export default function BookAppointmentPage() {
                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                                 Confirmar Agendamento
                             </Button>
-                             <Button variant="ghost" onClick={() => { setStep(3); setSelectedTime(null); setFinalProfessional(null); }} className="flex items-center gap-1"><ArrowLeft className="w-4 h-4"/> Voltar</Button>
+                             <Button variant="ghost" onClick={() => { setStep(3); setSelectedTime(null); setFinalProfessional(null); }} className="flex items-center gap-1"><ArrowLeft className="w-4 h-4"/> Voltar para Data e Hora</Button>
                          </CardFooter>
                      </Card>
                  </StepHeader>
@@ -413,5 +423,3 @@ export default function BookAppointmentPage() {
     </div>
   );
 }
-
-    
