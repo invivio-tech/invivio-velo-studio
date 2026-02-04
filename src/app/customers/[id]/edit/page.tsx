@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useFirestore, useDoc, useCollection, useMemoFirebase, useUserProfile } from '@/firebase';
-import { doc, updateDoc, collection, deleteDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection } from 'firebase/firestore';
 import type { UserProfile } from '@/firebase';
 import type { ServiceWithId } from '@/app/services/page';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -21,8 +21,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Loader2, Users, Trash2 } from 'lucide-react';
+import { Loader2, Users } from 'lucide-react';
 import Link from 'next/link';
 
 const formSchema = z.object({
@@ -44,11 +43,8 @@ export default function EditUserPage() {
   
   const [isSaving, setIsSaving] = useState(false);
   const [isDisabling, setIsDisabling] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isAlertOpen, setIsAlertOpen] = useState(false);
 
   const userRef = useMemoFirebase(() => {
-    // Only create the reference if we know the current user is an admin
     if (firestore && userId && adminProfile?.role === 'admin') {
       return doc(firestore, 'users', userId);
     }
@@ -69,14 +65,12 @@ export default function EditUserPage() {
     },
   });
 
-  // Redirect if not admin
   useEffect(() => {
     if (!isAdminLoading && adminProfile?.role !== 'admin') {
       router.push('/customers');
     }
   }, [isAdminLoading, adminProfile, router]);
   
-  // Populate form with user data once loaded
   useEffect(() => {
     if (user) {
       form.reset({
@@ -155,40 +149,10 @@ export default function EditUserPage() {
         setIsDisabling(false);
       });
   };
-
-  const handleDeleteUser = async () => {
-    if (!firestore || !user) return;
-    setIsDeleting(true);
-
-    const userToDeleteRef = doc(firestore, 'users', user.id);
-    deleteDoc(userToDeleteRef)
-      .then(() => {
-        toast({
-          title: 'Usuário Excluído!',
-          description: `Os dados de ${user.name} foram removidos do sistema.`,
-        });
-        router.push('/customers');
-      })
-      .catch((serverError) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: userToDeleteRef.path,
-          operation: 'delete',
-        }));
-        toast({
-          variant: 'destructive',
-          title: 'Erro ao Excluir',
-          description: 'Você não tem permissão para excluir este usuário.',
-        });
-      })
-      .finally(() => {
-        setIsDeleting(false);
-        setIsAlertOpen(false);
-      });
-  };
   
   const isLoading = isAdminLoading || (adminProfile?.role === 'admin' && (isUserLoading || areServicesLoading));
 
-  if (isLoading || !adminProfile) {
+  if (isLoading || (adminProfile?.role === 'admin' && !user)) {
     return (
        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <Skeleton className="h-10 w-64" />
@@ -220,29 +184,8 @@ export default function EditUserPage() {
     return <div className="p-8 text-center text-destructive">Usuário não encontrado.</div>;
   }
   
-  // Need to make sure `user` is loaded before rendering the form
   if (!user) {
-     return (
-       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-        <Skeleton className="h-10 w-64" />
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-4 w-72" />
-          </CardHeader>
-          <CardContent className="space-y-8">
-            <div className="space-y-2">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-10 w-full" />
-            </div>
-            <div className="flex justify-end gap-2">
-                <Skeleton className="h-10 w-24" />
-                <Skeleton className="h-10 w-24" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
+     return null;
   }
 
 
@@ -349,18 +292,18 @@ export default function EditUserPage() {
         </CardContent>
       </Card>
 
-      <Card className="mt-6 border-destructive/50">
+      <Card className="mt-6">
         <CardHeader>
-          <CardTitle className="font-headline text-destructive">Zona de Perigo</CardTitle>
+          <CardTitle className="font-headline">Status da Conta</CardTitle>
           <CardDescription>
-            Estas ações são permanentes e devem ser usadas com cuidado.
+            Ative ou desative o acesso do usuário à plataforma.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent>
           <div className="flex items-center justify-between rounded-lg border border-dashed p-4">
             <div>
               <h3 className="font-semibold">
-                {user.disabled ? 'Reativar Usuário' : 'Desativar Usuário'}
+                {user.disabled ? 'Reativar Conta' : 'Desativar Conta'}
               </h3>
               <p className="text-sm text-muted-foreground">
                 {user.disabled ? 'Permitir que este usuário faça login novamente.' : 'Impedir que este usuário faça login.'}
@@ -371,39 +314,8 @@ export default function EditUserPage() {
               {user.disabled ? 'Reativar' : 'Desativar'}
             </Button>
           </div>
-          <div className="flex items-center justify-between rounded-lg border border-dashed border-destructive p-4">
-            <div>
-              <h3 className="font-semibold text-destructive">Excluir Usuário</h3>
-              <p className="text-sm text-muted-foreground">
-                Excluir permanentemente os dados deste usuário do aplicativo.
-              </p>
-            </div>
-            <Button variant="destructive" onClick={() => setIsAlertOpen(true)} disabled={isDeleting}>
-              {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-              Excluir
-            </Button>
-          </div>
         </CardContent>
       </Card>
-
-       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Você tem certeza absoluta?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Isso excluirá permanentemente os dados do usuário da aplicação (perfil, etc.), mas não removerá sua conta de autenticação. Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteUser} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
-              {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Sim, excluir usuário
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
     </div>
   );
 }
