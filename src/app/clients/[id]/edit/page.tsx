@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useFirestore, useDoc, useMemoFirebase, useUserProfile } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import type { UserProfile } from '@/firebase';
@@ -10,11 +13,23 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { useToast } from '@/hooks/use-toast';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
+const formSchema = z.object({
+  name: z.string().min(2, { message: 'O nome é obrigatório.' }),
+  phoneNumber: z.string().optional(),
+  birthDate: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+type ClientFormValues = z.infer<typeof formSchema>;
+
 
 export default function EditClientPage() {
   const router = useRouter();
@@ -25,6 +40,7 @@ export default function EditClientPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   
+  const [isSaving, setIsSaving] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
 
   const userRef = useMemoFirebase(() => {
@@ -36,16 +52,73 @@ export default function EditClientPage() {
   
   const { data: client, isLoading: isClientLoading, error: clientError } = useDoc<UserProfile>(userRef);
 
+  const form = useForm<ClientFormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: '',
+      phoneNumber: '',
+      birthDate: '',
+      notes: '',
+    },
+  });
+  
   useEffect(() => {
     if (!isAdminLoading && adminProfile?.role !== 'admin') {
       router.push('/schedule');
     }
      if (!isClientLoading && client && client.role !== 'client') {
-      // If the user ID does not belong to a client, redirect
       router.push('/clients');
     }
   }, [isAdminLoading, adminProfile, router, isClientLoading, client]);
   
+  useEffect(() => {
+    if (client) {
+      form.reset({
+        name: client.name || '',
+        phoneNumber: client.phoneNumber || '',
+        birthDate: client.birthDate || '',
+        notes: client.notes || '',
+      });
+    }
+  }, [client, form]);
+  
+  async function onSubmit(values: ClientFormValues) {
+    if (!firestore || !client) return;
+    setIsSaving(true);
+
+    const clientToUpdateRef = doc(firestore, 'users', client.id);
+    const updatedData: Partial<UserProfile> = {
+      name: values.name,
+      phoneNumber: values.phoneNumber,
+      birthDate: values.birthDate,
+      notes: values.notes,
+    };
+
+    updateDoc(clientToUpdateRef, updatedData)
+      .then(() => {
+        toast({
+          title: 'Cliente atualizado!',
+          description: `Os dados de ${client.name} foram atualizados.`,
+        });
+      })
+      .catch((serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: clientToUpdateRef.path,
+          operation: 'update',
+          requestResourceData: updatedData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        toast({
+          variant: 'destructive',
+          title: 'Erro ao atualizar',
+          description: 'Você não tem permissão para alterar este cliente.',
+        });
+      })
+      .finally(() => {
+        setIsSaving(false);
+      });
+  }
+
   const handleToggleDisable = async () => {
     if (!firestore || !client) return;
     setIsToggling(true);
@@ -111,7 +184,7 @@ export default function EditClientPage() {
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-        <div className="flex items-center gap-4 mb-4">
+        <div className="flex items-center gap-4 mb-6">
              <Button variant="outline" size="icon" asChild>
                 <Link href="/clients">
                     <ArrowLeft className="h-4 w-4" />
@@ -124,20 +197,78 @@ export default function EditClientPage() {
 
       <Card className="w-full max-w-2xl">
         <CardHeader>
-          <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16">
-              <AvatarImage src={client.photoURL ?? ''} alt={client.name} />
-              <AvatarFallback>{client.name ? client.name.charAt(0).toUpperCase() : 'C'}</AvatarFallback>
-            </Avatar>
-            <div>
-              <CardTitle className="font-headline text-2xl">{client.name}</CardTitle>
-              <CardDescription>{client.email}</CardDescription>
-            </div>
-          </div>
+            <CardTitle className="font-headline">Editar Dados do Cliente</CardTitle>
+            <CardDescription>
+                Atualize as informações de {client.name}. O e-mail não pode ser alterado.
+            </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Future content like points, recent activity can go here */}
-          <p className="text-sm text-muted-foreground">Em breve: histórico de agendamentos, pontos de fidelidade e mais.</p>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" value={client.email || ''} readOnly disabled />
+                </div>
+                <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Nome Completo</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Nome completo do cliente" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="phoneNumber"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Telefone</FormLabel>
+                            <FormControl>
+                                <Input placeholder="(99) 99999-9999" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="birthDate"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Data de Nascimento</FormLabel>
+                            <FormControl>
+                                <Input type="date" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Notas Internas</FormLabel>
+                            <FormControl>
+                                <Textarea placeholder="Preferências, alergias, ou outras anotações sobre o cliente." {...field} />
+                            </FormControl>
+                             <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <div className="flex justify-end gap-2 pt-4">
+                    <Button type="submit" disabled={isSaving}>
+                        {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Salvar Alterações
+                    </Button>
+                </div>
+            </form>
+          </Form>
         </CardContent>
       </Card>
 

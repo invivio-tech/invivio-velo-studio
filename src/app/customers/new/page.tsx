@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, UserPlus } from 'lucide-react';
 import Link from 'next/link';
+import { Textarea } from '@/components/ui/textarea';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'O nome é obrigatório e deve ter pelo menos 2 caracteres.' }),
@@ -28,6 +29,9 @@ const formSchema = z.object({
   password: z.string().min(6, { message: 'A senha deve ter no mínimo 6 caracteres.' }),
   role: z.enum(['client', 'professional', 'admin']),
   serviceIds: z.array(z.string()).optional(),
+  phoneNumber: z.string().optional(),
+  birthDate: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 type NewUserFormValues = z.infer<typeof formSchema>;
@@ -50,6 +54,9 @@ export default function NewUserPage() {
       password: '',
       role: 'professional',
       serviceIds: [],
+      phoneNumber: '',
+      birthDate: '',
+      notes: '',
     },
   });
 
@@ -70,6 +77,9 @@ export default function NewUserPage() {
         pass: values.password,
         role: values.role as 'professional' | 'admin' | 'client',
         serviceIds: values.role === 'professional' ? values.serviceIds : [],
+        phoneNumber: values.phoneNumber,
+        birthDate: values.birthDate,
+        notes: values.notes,
     });
     
     setIsSaving(false);
@@ -189,6 +199,50 @@ export default function NewUserPage() {
                   </FormItem>
                 )}
               />
+
+              {watchedRole === 'client' && (
+                <div className="space-y-6 rounded-md border p-4">
+                     <FormField
+                        control={form.control}
+                        name="phoneNumber"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Telefone (Opcional)</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="(99) 99999-9999" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="birthDate"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Data de Nascimento (Opcional)</FormLabel>
+                                <FormControl>
+                                    <Input type="date" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="notes"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Notas Internas (Opcional)</FormLabel>
+                                <FormControl>
+                                    <Textarea placeholder="Preferências, alergias, ou outras anotações sobre o cliente." {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
+              )}
 
               {watchedRole === 'professional' && (
                 <FormField

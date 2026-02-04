@@ -13,6 +13,9 @@ export interface UserProfile {
   role: 'admin' | 'client' | 'professional';
   serviceIds?: string[];
   disabled?: boolean;
+  phoneNumber?: string;
+  birthDate?: string;
+  notes?: string;
 }
 
 export function useUserProfile() {
@@ -55,5 +58,3 @@ export function useUserProfile() {
 
   return { userProfile, isLoading };
 }
-
-    

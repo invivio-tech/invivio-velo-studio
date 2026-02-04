@@ -173,8 +173,8 @@ export async function signInWithGoogle() {
 }
 
 // --- Create account by Admin ---
-export async function createAccountByAdmin(data: { name: string, email: string, pass: string, role: 'professional' | 'admin' | 'client', serviceIds?: string[] }) {
-  const { name, email, pass, role, serviceIds } = data;
+export async function createAccountByAdmin(data: { name: string, email: string, pass: string, role: 'professional' | 'admin' | 'client', serviceIds?: string[], phoneNumber?: string, birthDate?: string, notes?: string }) {
+  const { name, email, pass, role, serviceIds, phoneNumber, birthDate, notes } = data;
   
   const tempAppName = `temp-user-creation-${Date.now()}`;
   const tempApp = initializeApp(firebaseConfig, tempAppName);
@@ -193,6 +193,9 @@ export async function createAccountByAdmin(data: { name: string, email: string, 
           role: role,
           serviceIds: role === 'professional' ? serviceIds || [] : [],
           disabled: false,
+          phoneNumber: phoneNumber || '',
+          birthDate: birthDate || '',
+          notes: notes || '',
       };
       
       await setDoc(userRef, userData);
@@ -228,5 +231,3 @@ export async function resetPassword(email: string) {
     };
   }
 }
-
-    

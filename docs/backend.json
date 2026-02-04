@@ -39,6 +39,19 @@
         "disabled": {
           "type": "boolean",
           "description": "Whether the user account is disabled."
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "The user's phone number."
+        },
+        "birthDate": {
+          "type": "string",
+          "description": "The user's date of birth.",
+          "format": "date"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Internal notes about the user (e.g., preferences, allergies)."
         }
       },
       "required": ["id", "name", "email", "role"]
