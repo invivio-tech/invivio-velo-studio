@@ -55,6 +55,11 @@ export default function EditUserPage() {
 
   const form = useForm<UserManagementFormValues>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: '',
+      role: 'client',
+      serviceIds: [],
+    },
   });
 
   // Redirect if not admin
@@ -365,5 +370,3 @@ export default function EditUserPage() {
     </div>
   );
 }
-
-    
