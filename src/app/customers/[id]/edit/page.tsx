@@ -23,11 +23,15 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, Users } from 'lucide-react';
 import Link from 'next/link';
+import { Label } from '@/components/ui/label';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'O nome é obrigatório.' }),
   role: z.enum(['client', 'professional', 'admin']),
   serviceIds: z.array(z.string()).optional(),
+  phoneNumber: z.string().optional(),
+  birthDate: z.string().optional(),
+  address: z.string().optional(),
 });
 
 type UserManagementFormValues = z.infer<typeof formSchema>;
@@ -62,6 +66,9 @@ export default function EditUserPage() {
       name: '',
       role: 'client',
       serviceIds: [],
+      phoneNumber: '',
+      birthDate: '',
+      address: '',
     },
   });
 
@@ -77,6 +84,9 @@ export default function EditUserPage() {
         name: user.name,
         role: user.role,
         serviceIds: user.serviceIds || [],
+        phoneNumber: user.phoneNumber || '',
+        birthDate: user.birthDate || '',
+        address: user.address || '',
       });
     }
   }, [user, form]);
@@ -92,6 +102,9 @@ export default function EditUserPage() {
       name: values.name,
       role: values.role,
       serviceIds: values.role === 'professional' ? values.serviceIds : [],
+      phoneNumber: values.phoneNumber,
+      birthDate: values.birthDate,
+      address: values.address,
     };
     
     updateDoc(userToUpdateRef, updatedData)
@@ -205,6 +218,10 @@ export default function EditUserPage() {
         <CardContent>
            <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input id="email" value={user.email || ''} readOnly disabled />
+              </div>
                <FormField control={form.control} name="name" render={({ field }) => (
                   <FormItem>
                       <FormLabel>Nome Completo</FormLabel>
@@ -214,6 +231,45 @@ export default function EditUserPage() {
                       <FormMessage />
                   </FormItem>
               )} />
+                <FormField
+                    control={form.control}
+                    name="phoneNumber"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Telefone</FormLabel>
+                            <FormControl>
+                                <Input placeholder="(99) 99999-9999" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="birthDate"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Data de Nascimento</FormLabel>
+                            <FormControl>
+                                <Input type="date" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Endereço</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Endereço completo" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
               <FormField
                 control={form.control}
                 name="role"

@@ -203,14 +203,15 @@ export default function NewUserPage() {
                 )}
               />
 
-              {watchedRole === 'client' && (
+              {(watchedRole === 'client' || watchedRole === 'professional') && (
                 <div className="space-y-6 rounded-md border p-4">
+                     <h3 className="text-sm font-medium text-muted-foreground">Dados Pessoais (Opcional)</h3>
                      <FormField
                         control={form.control}
                         name="phoneNumber"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Telefone (Opcional)</FormLabel>
+                                <FormLabel>Telefone</FormLabel>
                                 <FormControl>
                                     <Input placeholder="(99) 99999-9999" {...field} />
                                 </FormControl>
@@ -223,7 +224,7 @@ export default function NewUserPage() {
                         name="birthDate"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Data de Nascimento (Opcional)</FormLabel>
+                                <FormLabel>Data de Nascimento</FormLabel>
                                 <FormControl>
                                     <Input type="date" {...field} />
                                 </FormControl>
@@ -236,27 +237,29 @@ export default function NewUserPage() {
                         name="address"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Endereço (Opcional)</FormLabel>
+                                <FormLabel>Endereço</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="Endereço do cliente" {...field} />
+                                    <Input placeholder="Endereço completo" {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}
                     />
-                    <FormField
-                        control={form.control}
-                        name="notes"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Notas Internas (Opcional)</FormLabel>
-                                <FormControl>
-                                    <Textarea placeholder="Preferências, alergias, ou outras anotações sobre o cliente." {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+                    {watchedRole === 'client' && (
+                        <FormField
+                            control={form.control}
+                            name="notes"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Notas Internas sobre o Cliente</FormLabel>
+                                    <FormControl>
+                                        <Textarea placeholder="Preferências, alergias, ou outras anotações sobre o cliente." {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    )}
                 </div>
               )}
 
