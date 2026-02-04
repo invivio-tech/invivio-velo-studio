@@ -16,6 +16,8 @@ import { useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { collection, query, where, orderBy, Timestamp } from 'firebase/firestore';
 import { format } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 interface BlockedTime {
   id: string;
@@ -88,9 +90,16 @@ export default function SchedulePage() {
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <h1 className="text-3xl font-headline font-bold tracking-tight">
-        Painel
-      </h1>
+       <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-headline font-bold tracking-tight">
+          Painel
+        </h1>
+        {user && (
+          <Button asChild>
+            <Link href="/book-appointment">Novo Agendamento</Link>
+          </Button>
+        )}
+      </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {stats.map((stat) => (
           <Card key={stat.title}>

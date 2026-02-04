@@ -26,6 +26,7 @@ import {
   Lock,
   ContactRound,
   Building,
+  PlusCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -52,11 +53,13 @@ const adminMenuItems = [
 
 const professionalMenuItems = [
   { href: '/schedule', label: 'Painel', icon: Calendar },
+  { href: '/book-appointment', label: 'Agendar', icon: PlusCircle },
   { href: '/services', label: 'Serviços', icon: BookOpen },
 ];
 
 const clientMenuItems = [
   { href: '/schedule', label: 'Painel', icon: Calendar },
+  { href: '/book-appointment', label: 'Agendar', icon: PlusCircle },
   { href: '/services', label: 'Serviços', icon: BookOpen },
 ];
 
