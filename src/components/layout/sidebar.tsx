@@ -40,7 +40,7 @@ const adminMenuItems = [
   { href: '/customers', label: 'Usuários', icon: Users },
   { href: '/invoices', label: 'Faturas', icon: FileText },
   { href: '/promotions', label: 'Marketing com IA', icon: Sparkles },
-  { href: '/schedule/settings', label: 'Configurações', icon: Settings },
+  { href: '/schedule/settings', label: 'Horário de Funcionamento', icon: Settings },
   { href: '/schedule/block', label: 'Bloquear Agenda', icon: Lock },
 ];
 
