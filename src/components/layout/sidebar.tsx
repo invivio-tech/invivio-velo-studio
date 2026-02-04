@@ -25,6 +25,7 @@ import {
   Settings,
   Lock,
   ContactRound,
+  Building,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -42,6 +43,7 @@ const adminMenuItems = [
   { href: '/clients', label: 'Clientes', icon: ContactRound },
   { href: '/invoices', label: 'Faturas', icon: FileText },
   { href: '/promotions', label: 'Marketing com IA', icon: Sparkles },
+  { href: '/establishment', label: 'Estabelecimento', icon: Building },
   { href: '/schedule/settings', label: 'Horário de Funcionamento', icon: Settings },
   { href: '/schedule/block', label: 'Bloquear Agenda', icon: Lock },
 ];

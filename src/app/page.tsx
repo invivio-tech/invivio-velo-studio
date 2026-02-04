@@ -15,27 +15,52 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Badge } from '@/components/ui/badge';
 import { BarberPoleIcon } from '@/components/icons/barber-pole-icon';
 
-import { collection } from 'firebase/firestore';
+import { collection, doc } from 'firebase/firestore';
 import {
   useFirestore,
   useCollection,
+  useDoc,
   useMemoFirebase,
 } from '@/firebase';
 import type { Service } from '@/app/services/page';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { EstablishmentSettings } from '@/app/establishment/page';
 
 export default function LandingPage() {
   const heroImage = PlaceHolderImages.find((p) => p.id === 'landing-hero');
   const aboutImage = PlaceHolderImages.find((p) => p.id === 'landing-about');
 
   const firestore = useFirestore();
-  const servicesCollection = useMemoFirebase(
+  
+  // Fetch Services
+  const servicesCollectionRef = useMemoFirebase(
     () => (firestore ? collection(firestore, 'services') : null),
     [firestore]
   );
-  const { data: services, isLoading } = useCollection<Service>(
-    servicesCollection
+  const { data: services, isLoading: areServicesLoading } = useCollection<Service>(
+    servicesCollectionRef
   );
+
+  // Fetch Establishment Settings
+  const settingsRef = useMemoFirebase(
+    () => (firestore ? doc(firestore, 'establishmentSettings', 'main') : null),
+    [firestore]
+  );
+  const { data: settings, isLoading: areSettingsLoading } = useDoc<EstablishmentSettings>(settingsRef);
+  
+  const isLoading = areServicesLoading || areSettingsLoading;
+  
+  const defaultSettings: EstablishmentSettings = {
+    name: 'Barbearia Inteligente',
+    about: 'Fundada em 2024, nossa barbearia nasceu com o propósito de resgatar a essência das barbearias clássicas, incorporando tecnologia para oferecer uma experiência única e conveniente. Nossos profissionais são artistas apaixonados, dedicados a entregar o melhor resultado para cada cliente. Utilizamos produtos de alta qualidade e as técnicas mais apuradas para garantir que seu cabelo e barba estejam sempre impecáveis. Venha nos visitar e descubra por que somos a escolha inteligente para o homem moderno.',
+    heroTitle: 'Estilo e Precisão em Cada Corte.',
+    heroSubtitle: 'Experimente a combinação perfeita de tradição e modernidade. Na Barbearia Inteligente, cuidamos do seu visual com a maestria que você merece.',
+  };
+  
+  const establishmentName = settings?.name || defaultSettings.name;
+  const establishmentAbout = settings?.about || defaultSettings.about;
+  const establishmentHeroTitle = settings?.heroTitle || defaultSettings.heroTitle;
+  const establishmentHeroSubtitle = settings?.heroSubtitle || defaultSettings.heroSubtitle;
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -44,7 +69,7 @@ export default function LandingPage() {
           <Link href="/" className="mr-6 flex items-center space-x-2">
             <BarberPoleIcon className="h-6 w-6 text-primary" />
             <span className="font-bold font-headline">
-              Barbearia Inteligente
+              {isLoading ? <Skeleton className="h-5 w-40" /> : establishmentName}
             </span>
           </Link>
           <nav className="flex-1 items-center space-x-6 text-sm font-medium hidden md:flex">
@@ -94,14 +119,22 @@ export default function LandingPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-r from-background via-background/30 to-transparent" />
           <div className="relative z-10 container text-left">
-            <h1 className="text-4xl font-extrabold tracking-tight font-headline lg:text-6xl max-w-2xl">
-              Estilo e Precisão em Cada Corte.
-            </h1>
-            <p className="mt-4 max-w-xl text-lg text-muted-foreground">
-              Experimente a combinação perfeita de tradição e modernidade. Na
-              Barbearia Inteligente, cuidamos do seu visual com a maestria que
-              você merece.
-            </p>
+            {isLoading ? (
+                <div className='space-y-4'>
+                    <Skeleton className="h-12 w-3/4 lg:h-16" />
+                    <Skeleton className="h-4 w-1/2" />
+                    <Skeleton className="h-4 w-2/3" />
+                </div>
+            ) : (
+                <>
+                    <h1 className="text-4xl font-extrabold tracking-tight font-headline lg:text-6xl max-w-2xl">
+                        {establishmentHeroTitle}
+                    </h1>
+                    <p className="mt-4 max-w-xl text-lg text-muted-foreground">
+                        {establishmentHeroSubtitle}
+                    </p>
+                </>
+            )}
             <Button size="lg" className="mt-6" asChild>
               <Link href="/signup">Agendar Meu Horário</Link>
             </Button>
@@ -117,7 +150,7 @@ export default function LandingPage() {
             Do clássico ao contemporâneo, temos o serviço perfeito para você.
           </p>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {isLoading &&
+            {areServicesLoading &&
               [...Array(3)].map((_, i) => (
                 <Card key={i}>
                   <CardHeader className="p-0">
@@ -182,21 +215,19 @@ export default function LandingPage() {
           <div className="container py-16 md:py-24 grid md:grid-cols-2 gap-12 items-center">
             <div>
               <h2 className="text-3xl font-headline font-bold">
-                A Barbearia Inteligente
+                {isLoading ? <Skeleton className="h-8 w-64 mb-4" /> : `Sobre ${establishmentName}`}
               </h2>
-              <p className="text-muted-foreground mt-4 leading-relaxed">
-                Fundada em 2024, nossa barbearia nasceu com o propósito de
-                resgatar a essência das barbearias clássicas, incorporando
-                tecnologia para oferecer uma experiência única e conveniente.
-                Nossos profissionais são artistas apaixonados, dedicados a
-                entregar o melhor resultado para cada cliente.
-              </p>
-              <p className="text-muted-foreground mt-4 leading-relaxed">
-                Utilizamos produtos de alta qualidade e as técnicas mais
-                apuradas para garantir que seu cabelo e barba estejam sempre
-                impecáveis. Venha nos visitar e descubra por que somos a
-                escolha inteligente para o homem moderno.
-              </p>
+              {isLoading ? (
+                  <div className='space-y-2'>
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-5/6" />
+                  </div>
+              ) : (
+                <p className="text-muted-foreground mt-4 leading-relaxed whitespace-pre-wrap">
+                    {establishmentAbout}
+                </p>
+              )}
             </div>
             <div className="relative aspect-square w-full max-w-md mx-auto">
               {aboutImage && (
@@ -216,7 +247,7 @@ export default function LandingPage() {
       <footer id="contact" className="bg-background">
         <div className="container py-8 text-center text-sm text-muted-foreground">
           <p>
-            &copy; 2024 Barbearia Inteligente. Todos os direitos reservados.
+            &copy; 2024 {establishmentName}. Todos os direitos reservados.
           </p>
           <p className="mt-2">Rua da Barbearia, 123 - Centro, Sua Cidade</p>
         </div>
@@ -224,5 +255,3 @@ export default function LandingPage() {
     </div>
   );
 }
-
-    

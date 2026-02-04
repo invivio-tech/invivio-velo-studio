@@ -8,7 +8,7 @@ import { AppShell } from '@/components/layout/AppShell';
 
 export const metadata: Metadata = {
   title: 'Barbearia Inteligente',
-  description: 'Sistema de gestão para barbearia',
+  description: 'Sistema de gestão para o seu estabelecimento',
 };
 
 export default function RootLayout({

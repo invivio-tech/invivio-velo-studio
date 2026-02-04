@@ -153,5 +153,17 @@ service cloud.firestore {
       allow list: if true;
       allow write: if isAdmin();
     }
+
+    /**
+     * @description Manages the establishment's public information (name, about text, etc.).
+     * @path /establishmentSettings/{docId}
+     * @allow (get, list) Any user can read the establishment settings for the landing page.
+     * @allow (write) Only authenticated admins can create, update, or delete settings.
+     */
+    match /establishmentSettings/{docId} {
+      allow get: if true;
+      allow list: if true;
+      allow write: if isAdmin();
+    }
   }
 }

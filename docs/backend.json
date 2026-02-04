@@ -329,6 +329,36 @@
         "endTime",
         "reason"
       ]
+    },
+    "EstablishmentSettings": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Establishment Settings",
+      "type": "object",
+      "description": "Represents the establishment's general information and branding.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the establishment."
+        },
+        "about": {
+          "type": "string",
+          "description": "The 'about' text for the landing page."
+        },
+        "heroTitle": {
+          "type": "string",
+          "description": "The main title for the hero section of the landing page."
+        },
+        "heroSubtitle": {
+          "type": "string",
+          "description": "The subtitle for the hero section of the landing page."
+        }
+      },
+      "required": [
+        "name",
+        "about",
+        "heroTitle",
+        "heroSubtitle"
+      ]
     }
   },
   "auth": {
@@ -446,10 +476,19 @@
             }
           ]
         }
+      },
+      {
+        "path": "/establishmentSettings/main",
+        "definition": {
+          "entityName": "EstablishmentSettings",
+          "schema": {
+            "$ref": "#/backend/entities/EstablishmentSettings"
+          },
+          "description": "Stores the main branding and text settings for the establishment as a singleton document.",
+          "params": []
+        }
       }
     ],
     "reasoning": "The Firestore structure has been updated to be more role-oriented. The 'customers' collection is now 'users', reflecting that a user can be a client, professional, or admin. Appointments and invoices have been moved to top-level collections to decouple them from a single user's data tree, preparing the system for more complex relationships, such as a professional's view of their own schedule. This flat structure simplifies queries and security rules, especially for features involving multiple user roles."
   }
 }
-
-    
