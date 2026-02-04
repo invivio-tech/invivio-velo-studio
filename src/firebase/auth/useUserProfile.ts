@@ -16,6 +16,7 @@ export interface UserProfile {
   phoneNumber?: string;
   birthDate?: string;
   notes?: string;
+  address?: string;
 }
 
 export function useUserProfile() {

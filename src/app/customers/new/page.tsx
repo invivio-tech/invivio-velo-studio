@@ -31,6 +31,7 @@ const formSchema = z.object({
   serviceIds: z.array(z.string()).optional(),
   phoneNumber: z.string().optional(),
   birthDate: z.string().optional(),
+  address: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -56,6 +57,7 @@ export default function NewUserPage() {
       serviceIds: [],
       phoneNumber: '',
       birthDate: '',
+      address: '',
       notes: '',
     },
   });
@@ -79,6 +81,7 @@ export default function NewUserPage() {
         serviceIds: values.role === 'professional' ? values.serviceIds : [],
         phoneNumber: values.phoneNumber,
         birthDate: values.birthDate,
+        address: values.address,
         notes: values.notes,
     });
     
@@ -223,6 +226,19 @@ export default function NewUserPage() {
                                 <FormLabel>Data de Nascimento (Opcional)</FormLabel>
                                 <FormControl>
                                     <Input type="date" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="address"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Endereço (Opcional)</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="Endereço do cliente" {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>

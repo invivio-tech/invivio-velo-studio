@@ -39,6 +39,7 @@ const formSchema = z.object({
   name: z.string().min(2, { message: 'O nome é obrigatório.' }),
   phoneNumber: z.string().optional(),
   birthDate: z.string().optional(),
+  address: z.string().optional(),
 });
 
 type ProfileFormValues = z.infer<typeof formSchema>;
@@ -57,6 +58,7 @@ export default function AccountPage() {
       name: '',
       phoneNumber: '',
       birthDate: '',
+      address: '',
     },
   });
 
@@ -66,6 +68,7 @@ export default function AccountPage() {
         name: userProfile.name || '',
         phoneNumber: userProfile.phoneNumber || '',
         birthDate: userProfile.birthDate || '',
+        address: userProfile.address || '',
       });
     }
   }, [userProfile, form]);
@@ -84,6 +87,7 @@ export default function AccountPage() {
       name: values.name,
       phoneNumber: values.phoneNumber,
       birthDate: values.birthDate,
+      address: values.address,
     };
     
     // Update Firestore document
@@ -213,6 +217,19 @@ export default function AccountPage() {
                         <FormLabel>Data de Nascimento</FormLabel>
                         <FormControl>
                           <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Endereço</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Seu endereço completo" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

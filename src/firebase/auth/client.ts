@@ -39,6 +39,7 @@ export async function createAccount(name: string, email: string, pass: string) {
       photoURL: user.photoURL,
       role: role,
       disabled: false,
+      address: '',
     };
 
     try {
@@ -93,6 +94,7 @@ export async function loginWithEmail(email: string, pass: string) {
         photoURL: user.photoURL,
         role: role,
         disabled: false,
+        address: '',
       };
 
       try {
@@ -148,6 +150,7 @@ export async function signInWithGoogle() {
             photoURL: user.photoURL,
             role: role,
             disabled: false,
+            address: '',
         };
 
         try {
@@ -173,8 +176,8 @@ export async function signInWithGoogle() {
 }
 
 // --- Create account by Admin ---
-export async function createAccountByAdmin(data: { name: string, email: string, pass: string, role: 'professional' | 'admin' | 'client', serviceIds?: string[], phoneNumber?: string, birthDate?: string, notes?: string }) {
-  const { name, email, pass, role, serviceIds, phoneNumber, birthDate, notes } = data;
+export async function createAccountByAdmin(data: { name: string, email: string, pass: string, role: 'professional' | 'admin' | 'client', serviceIds?: string[], phoneNumber?: string, birthDate?: string, notes?: string, address?: string }) {
+  const { name, email, pass, role, serviceIds, phoneNumber, birthDate, notes, address } = data;
   
   const tempAppName = `temp-user-creation-${Date.now()}`;
   const tempApp = initializeApp(firebaseConfig, tempAppName);
@@ -196,6 +199,7 @@ export async function createAccountByAdmin(data: { name: string, email: string, 
           phoneNumber: phoneNumber || '',
           birthDate: birthDate || '',
           notes: notes || '',
+          address: address || '',
       };
       
       await setDoc(userRef, userData);

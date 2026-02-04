@@ -52,6 +52,10 @@
         "notes": {
           "type": "string",
           "description": "Internal notes about the user (e.g., preferences, allergies)."
+        },
+        "address": {
+          "type": "string",
+          "description": "The user's address."
         }
       },
       "required": ["id", "name", "email", "role"]

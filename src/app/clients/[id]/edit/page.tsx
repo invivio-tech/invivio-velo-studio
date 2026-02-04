@@ -26,6 +26,7 @@ const formSchema = z.object({
   name: z.string().min(2, { message: 'O nome é obrigatório.' }),
   phoneNumber: z.string().optional(),
   birthDate: z.string().optional(),
+  address: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -59,6 +60,7 @@ export default function EditClientPage() {
       name: '',
       phoneNumber: '',
       birthDate: '',
+      address: '',
       notes: '',
     },
   });
@@ -78,6 +80,7 @@ export default function EditClientPage() {
         name: client.name || '',
         phoneNumber: client.phoneNumber || '',
         birthDate: client.birthDate || '',
+        address: client.address || '',
         notes: client.notes || '',
       });
     }
@@ -92,6 +95,7 @@ export default function EditClientPage() {
       name: values.name,
       phoneNumber: values.phoneNumber,
       birthDate: values.birthDate,
+      address: values.address,
       notes: values.notes,
     };
 
@@ -244,6 +248,19 @@ export default function EditClientPage() {
                             <FormLabel>Data de Nascimento</FormLabel>
                             <FormControl>
                                 <Input type="date" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Endereço</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Endereço do cliente" {...field} />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
