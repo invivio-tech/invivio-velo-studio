@@ -79,9 +79,13 @@ export default function LandingPage() {
         <div className="container flex h-14 items-center">
           <Link href="/" className="mr-6 flex items-center space-x-2">
             <BarberPoleIcon className="h-6 w-6 text-primary" />
-            <span className="font-bold font-headline">
-              {isLoading ? <Skeleton className="h-5 w-40" /> : establishmentName}
-            </span>
+            {isLoading ? (
+              <Skeleton className="h-5 w-40" />
+            ) : (
+              <span className="font-bold font-headline">
+                {establishmentName}
+              </span>
+            )}
           </Link>
           <nav className="flex-1 items-center space-x-6 text-sm font-medium hidden md:flex">
             <a
@@ -156,12 +160,21 @@ export default function LandingPage() {
 
         {/* Services Section */}
         <section id="services" className="container py-16 md:py-24">
-          <h2 className="text-3xl font-headline font-bold text-center">
-            {isLoading ? <Skeleton className="h-8 w-1/2 mx-auto" /> : establishmentServicesTitle}
-          </h2>
-          <p className="text-muted-foreground text-center mt-2 mb-12">
-            {isLoading ? <Skeleton className="h-4 w-3/4 mx-auto" /> : establishmentServicesSubtitle}
-          </p>
+          {isLoading ? (
+            <div className="text-center">
+              <Skeleton className="h-8 w-1/2 mx-auto" />
+              <Skeleton className="h-4 w-3/4 mx-auto mt-2 mb-12" />
+            </div>
+          ) : (
+            <>
+              <h2 className="text-3xl font-headline font-bold text-center">
+                {establishmentServicesTitle}
+              </h2>
+              <p className="text-muted-foreground text-center mt-2 mb-12">
+                {establishmentServicesSubtitle}
+              </p>
+            </>
+          )}
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {areServicesLoading &&
               [...Array(3)].map((_, i) => (
@@ -227,11 +240,15 @@ export default function LandingPage() {
         <section id="about" className="bg-card border-y">
           <div className="container py-16 md:py-24 grid md:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="text-3xl font-headline font-bold">
-                {isLoading ? <Skeleton className="h-8 w-64 mb-4" /> : `Sobre ${establishmentName}`}
-              </h2>
               {isLoading ? (
-                  <div className='space-y-2'>
+                <Skeleton className="h-8 w-64 mb-4" />
+              ) : (
+                <h2 className="text-3xl font-headline font-bold">
+                  {`Sobre ${establishmentName}`}
+                </h2>
+              )}
+              {isLoading ? (
+                  <div className='space-y-2 mt-4'>
                     <Skeleton className="h-4 w-full" />
                     <Skeleton className="h-4 w-full" />
                     <Skeleton className="h-4 w-5/6" />
@@ -270,9 +287,13 @@ export default function LandingPage() {
           <p>
             &copy; 2024 {establishmentName}. Todos os direitos reservados.
           </p>
-          <p className="mt-2">
-            {isLoading ? <Skeleton className="h-4 w-1/2 mx-auto" /> : establishmentAddress}
-          </p>
+          {isLoading ? (
+            <Skeleton className="h-4 w-1/2 mx-auto mt-2" />
+          ) : (
+            <p className="mt-2">
+              {establishmentAddress}
+            </p>
+          )}
         </div>
       </footer>
     </div>
