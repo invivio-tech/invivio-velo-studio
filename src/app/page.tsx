@@ -160,21 +160,24 @@ export default function LandingPage() {
 
         {/* Services Section */}
         <section id="services" className="container py-16 md:py-24">
-          {isLoading ? (
-            <div className="text-center">
-              <Skeleton className="h-8 w-1/2 mx-auto" />
-              <Skeleton className="h-4 w-3/4 mx-auto mt-2 mb-12" />
-            </div>
-          ) : (
-            <>
-              <h2 className="text-3xl font-headline font-bold text-center">
-                {establishmentServicesTitle}
-              </h2>
-              <p className="text-muted-foreground text-center mt-2 mb-12">
-                {establishmentServicesSubtitle}
-              </p>
-            </>
-          )}
+          <div className="text-center mb-12">
+            {isLoading ? (
+                <div className="space-y-2">
+                    <Skeleton className="h-8 w-1/2 mx-auto" />
+                    <Skeleton className="h-4 w-3/4 mx-auto" />
+                </div>
+            ) : (
+                <>
+                    <h2 className="text-3xl font-headline font-bold">
+                        {establishmentServicesTitle}
+                    </h2>
+                    <p className="text-muted-foreground mt-2">
+                        {establishmentServicesSubtitle}
+                    </p>
+                </>
+            )}
+          </div>
+
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {areServicesLoading &&
               [...Array(3)].map((_, i) => (
@@ -241,22 +244,21 @@ export default function LandingPage() {
           <div className="container py-16 md:py-24 grid md:grid-cols-2 gap-12 items-center">
             <div>
               {isLoading ? (
-                <Skeleton className="h-8 w-64 mb-4" />
-              ) : (
-                <h2 className="text-3xl font-headline font-bold">
-                  {`Sobre ${establishmentName}`}
-                </h2>
-              )}
-              {isLoading ? (
-                  <div className='space-y-2 mt-4'>
+                <div className="space-y-4">
+                    <Skeleton className="h-8 w-64" />
                     <Skeleton className="h-4 w-full" />
                     <Skeleton className="h-4 w-full" />
                     <Skeleton className="h-4 w-5/6" />
-                  </div>
+                </div>
               ) : (
-                <p className="text-muted-foreground mt-4 leading-relaxed whitespace-pre-wrap">
-                    {establishmentAbout}
-                </p>
+                <>
+                  <h2 className="text-3xl font-headline font-bold">
+                    {`Sobre ${establishmentName}`}
+                  </h2>
+                  <p className="text-muted-foreground mt-4 leading-relaxed whitespace-pre-wrap">
+                      {establishmentAbout}
+                  </p>
+                </>
               )}
             </div>
             <div className="relative aspect-square w-full max-w-md mx-auto">
@@ -284,15 +286,20 @@ export default function LandingPage() {
                  </a>
               </div>
           )}
-          <p>
-            &copy; 2024 {establishmentName}. Todos os direitos reservados.
-          </p>
           {isLoading ? (
-            <Skeleton className="h-4 w-1/2 mx-auto mt-2" />
+            <div className="space-y-2">
+                <Skeleton className="h-4 w-1/2 mx-auto" />
+                <Skeleton className="h-4 w-3/4 mx-auto" />
+            </div>
           ) : (
-            <p className="mt-2">
-              {establishmentAddress}
-            </p>
+            <>
+                <p>
+                    &copy; 2024 {establishmentName}. Todos os direitos reservados.
+                </p>
+                <p className="mt-2">
+                    {establishmentAddress}
+                </p>
+            </>
           )}
         </div>
       </footer>
