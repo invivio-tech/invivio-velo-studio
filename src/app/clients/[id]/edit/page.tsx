@@ -45,11 +45,11 @@ export default function EditClientPage() {
   const [isToggling, setIsToggling] = useState(false);
 
   const userRef = useMemoFirebase(() => {
-    if (firestore && userId) {
+    if (firestore && userId && adminProfile?.role === 'admin') {
       return doc(firestore, 'users', userId);
     }
     return null;
-  }, [firestore, userId]);
+  }, [firestore, userId, adminProfile]);
   
   const { data: client, isLoading: isClientLoading, error: clientError } = useDoc<UserProfile>(userRef);
 
