@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import {
   useFirestore,
   useCollection,
@@ -23,7 +23,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import UserManagementDialog from '@/components/users/UserManagementDialog';
 import { useRouter } from 'next/navigation';
 
 const roleDisplay: Record<UserProfile['role'], string> = {
@@ -49,15 +48,7 @@ export default function UsersPage() {
   );
   const { data: users, isLoading: areUsersLoading } = useCollection<UserProfile>(usersCollection);
 
-  const servicesCollection = useMemoFirebase(
-    () => (firestore ? collection(firestore, 'services') : null),
-    [firestore]
-  );
-  const { data: services, isLoading: areServicesLoading } = useCollection<ServiceWithId>(servicesCollection);
-
-  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
-
-  const isLoading = isProfileLoading || areUsersLoading || areServicesLoading;
+  const isLoading = isProfileLoading || areUsersLoading;
 
   useEffect(() => {
     if (!isProfileLoading && userProfile?.role !== 'admin') {
@@ -66,7 +57,7 @@ export default function UsersPage() {
   }, [isProfileLoading, userProfile, router]);
 
 
-  if (isProfileLoading || (userProfile && userProfile.role !== 'admin')) {
+  if (isProfileLoading || !userProfile || userProfile.role !== 'admin') {
     return (
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="flex items-center gap-4">
@@ -156,8 +147,8 @@ export default function UsersPage() {
                   <TableCell>
                     <div className="flex items-center gap-4">
                       <Avatar>
-                        <AvatarImage src={user.photoURL} alt={user.name} />
-                        <AvatarFallback>{user.name.charAt(0).toUpperCase()}</AvatarFallback>
+                        <AvatarImage src={user.photoURL ?? ''} alt={user.name} />
+                        <AvatarFallback>{user.name ? user.name.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
                       </Avatar>
                       <div>
                         <p className="font-medium">{user.name}</p>
@@ -176,7 +167,7 @@ export default function UsersPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        <DropdownMenuItem onSelect={() => setEditingUser(user)}>
+                        <DropdownMenuItem onSelect={() => router.push(`/customers/${user.id}/edit`)}>
                           Gerenciar
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -188,11 +179,6 @@ export default function UsersPage() {
           </Table>
         </CardContent>
       </Card>
-      <UserManagementDialog
-        user={editingUser}
-        onClose={() => setEditingUser(null)}
-        allServices={services || []}
-      />
     </div>
   );
 }
