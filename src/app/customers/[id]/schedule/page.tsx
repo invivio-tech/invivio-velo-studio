@@ -64,7 +64,7 @@ export default function ProfessionalSchedulePage() {
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   // Fetch professional's profile
-  const userRef = useMemoFirebase(() => (firestore && userId ? doc(firestore, 'users', userId) : null), [firestore, userId]);
+  const userRef = useMemoFirebase(() => (firestore && userId && adminProfile?.role === 'admin' ? doc(firestore, 'users', userId) : null), [firestore, userId, adminProfile]);
   const { data: professional, isLoading: isProfessionalLoading } = useDoc<UserProfile>(userRef);
 
   // Fetch establishment-wide settings
