@@ -27,6 +27,9 @@ export interface EstablishmentSettings {
   about: string;
   heroTitle: string;
   heroSubtitle: string;
+  servicesTitle: string;
+  servicesSubtitle: string;
+  address: string;
 }
 
 const formSchema = z.object({
@@ -35,6 +38,9 @@ const formSchema = z.object({
   about: z.string().min(10, { message: 'O texto sobre deve ter pelo menos 10 caracteres.' }),
   heroTitle: z.string().min(10, { message: 'O título principal é obrigatório.' }),
   heroSubtitle: z.string().min(10, { message: 'O subtítulo é obrigatório.' }),
+  servicesTitle: z.string().min(5, { message: 'O título dos serviços é obrigatório.' }),
+  servicesSubtitle: z.string().min(10, { message: 'O subtítulo dos serviços é obrigatório.' }),
+  address: z.string().min(10, { message: 'O endereço é obrigatório.' }),
 });
 
 type SettingsFormValues = z.infer<typeof formSchema>;
@@ -65,6 +71,9 @@ export default function EstablishmentPage() {
     about: 'Fundada em 2024, nossa barbearia nasceu com o propósito de resgatar a essência das barbearias clássicas, incorporando tecnologia para oferecer uma experiência única e conveniente. Nossos profissionais são artistas apaixonados, dedicados a entregar o melhor resultado para cada cliente. Utilizamos produtos de alta qualidade e as técnicas mais apuradas para garantir que seu cabelo e barba estejam sempre impecáveis. Venha nos visitar e descubra por que somos a escolha inteligente para o homem moderno.',
     heroTitle: 'Estilo e Precisão em Cada Corte.',
     heroSubtitle: 'Experimente a combinação perfeita de tradição e modernidade. Na Barbearia Inteligente, cuidamos do seu visual com a maestria que você merece.',
+    servicesTitle: 'Nossos Serviços Premium',
+    servicesSubtitle: 'Do clássico ao contemporâneo, temos o serviço perfeito para você.',
+    address: 'Rua da Barbearia, 123 - Centro, Sua Cidade',
     context: '',
   };
 
@@ -202,7 +211,7 @@ export default function EstablishmentPage() {
               )} />
 
               <div className="border-t pt-6 space-y-4">
-                <h3 className="text-lg font-medium">Textos da Página Inicial</h3>
+                <h3 className="text-lg font-medium">Textos da Página Inicial (Seção Principal)</h3>
                  <FormField control={form.control} name="context" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Comentários para a IA</FormLabel>
@@ -227,7 +236,7 @@ export default function EstablishmentPage() {
 
                <FormField control={form.control} name="heroTitle" render={({ field }) => (
                   <FormItem>
-                      <FormLabel>Título Principal da Página Inicial</FormLabel>
+                      <FormLabel>Título Principal</FormLabel>
                       <FormControl>
                           <Input placeholder="Sua chamada principal" {...field} />
                       </FormControl>
@@ -236,7 +245,7 @@ export default function EstablishmentPage() {
               )} />
                 <FormField control={form.control} name="heroSubtitle" render={({ field }) => (
                   <FormItem>
-                      <FormLabel>Subtítulo da Página Inicial</FormLabel>
+                      <FormLabel>Subtítulo</FormLabel>
                       <FormControl>
                           <Textarea placeholder="Um texto complementar para a chamada principal" {...field} />
                       </FormControl>
@@ -252,6 +261,46 @@ export default function EstablishmentPage() {
                       <FormMessage />
                   </FormItem>
               )} />
+              
+              <div className="border-t pt-6 space-y-4">
+                <h3 className="text-lg font-medium">Textos da Seção de Serviços</h3>
+                 <FormField control={form.control} name="servicesTitle" render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Título da Seção de Serviços</FormLabel>
+                        <FormControl>
+                            <Input placeholder="Ex: Nossos Serviços Premium" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )} />
+                 <FormField control={form.control} name="servicesSubtitle" render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Subtítulo da Seção de Serviços</FormLabel>
+                        <FormControl>
+                            <Textarea placeholder="Ex: Do clássico ao contemporâneo, temos o serviço perfeito para você." {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )} />
+              </div>
+
+                <div className="border-t pt-6 space-y-4">
+                    <h3 className="text-lg font-medium">Informações do Rodapé</h3>
+                    <FormField control={form.control} name="address" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Endereço</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Endereço completo do estabelecimento" {...field} />
+                            </FormControl>
+                            <FormDescription>
+                                Este endereço será exibido no rodapé da página inicial.
+                            </FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                </div>
+
+
               <div className="flex justify-end pt-4">
                   <Button type="submit" disabled={isSaving || isSuggesting}>
                       {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -265,3 +314,5 @@ export default function EstablishmentPage() {
     </div>
   );
 }
+
+    

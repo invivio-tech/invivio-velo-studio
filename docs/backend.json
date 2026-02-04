@@ -351,13 +351,28 @@
         "heroSubtitle": {
           "type": "string",
           "description": "The subtitle for the hero section of the landing page."
+        },
+        "servicesTitle": {
+            "type": "string",
+            "description": "The title for the services section on the landing page."
+        },
+        "servicesSubtitle": {
+            "type": "string",
+            "description": "The subtitle for the services section on the landing page."
+        },
+        "address": {
+            "type": "string",
+            "description": "The physical address of the establishment, shown in the footer."
         }
       },
       "required": [
         "name",
         "about",
         "heroTitle",
-        "heroSubtitle"
+        "heroSubtitle",
+        "servicesTitle",
+        "servicesSubtitle",
+        "address"
       ]
     }
   },
@@ -492,3 +507,5 @@
     "reasoning": "The Firestore structure has been updated to be more role-oriented. The 'customers' collection is now 'users', reflecting that a user can be a client, professional, or admin. Appointments and invoices have been moved to top-level collections to decouple them from a single user's data tree, preparing the system for more complex relationships, such as a professional's view of their own schedule. This flat structure simplifies queries and security rules, especially for features involving multiple user roles."
   }
 }
+
+    

@@ -55,12 +55,18 @@ export default function LandingPage() {
     about: 'Fundada em 2024, nossa barbearia nasceu com o propósito de resgatar a essência das barbearias clássicas, incorporando tecnologia para oferecer uma experiência única e conveniente. Nossos profissionais são artistas apaixonados, dedicados a entregar o melhor resultado para cada cliente. Utilizamos produtos de alta qualidade e as técnicas mais apuradas para garantir que seu cabelo e barba estejam sempre impecáveis. Venha nos visitar e descubra por que somos a escolha inteligente para o homem moderno.',
     heroTitle: 'Estilo e Precisão em Cada Corte.',
     heroSubtitle: 'Experimente a combinação perfeita de tradição e modernidade. Na Barbearia Inteligente, cuidamos do seu visual com a maestria que você merece.',
+    servicesTitle: 'Nossos Serviços Premium',
+    servicesSubtitle: 'Do clássico ao contemporâneo, temos o serviço perfeito para você.',
+    address: 'Rua da Barbearia, 123 - Centro, Sua Cidade',
   };
   
   const establishmentName = settings?.name || defaultSettings.name;
   const establishmentAbout = settings?.about || defaultSettings.about;
   const establishmentHeroTitle = settings?.heroTitle || defaultSettings.heroTitle;
   const establishmentHeroSubtitle = settings?.heroSubtitle || defaultSettings.heroSubtitle;
+  const establishmentServicesTitle = settings?.servicesTitle || defaultSettings.servicesTitle;
+  const establishmentServicesSubtitle = settings?.servicesSubtitle || defaultSettings.servicesSubtitle;
+  const establishmentAddress = settings?.address || defaultSettings.address;
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -144,10 +150,10 @@ export default function LandingPage() {
         {/* Services Section */}
         <section id="services" className="container py-16 md:py-24">
           <h2 className="text-3xl font-headline font-bold text-center">
-            Nossos Serviços Premium
+            {isLoading ? <Skeleton className="h-8 w-1/2 mx-auto" /> : establishmentServicesTitle}
           </h2>
           <p className="text-muted-foreground text-center mt-2 mb-12">
-            Do clássico ao contemporâneo, temos o serviço perfeito para você.
+            {isLoading ? <Skeleton className="h-4 w-3/4 mx-auto" /> : establishmentServicesSubtitle}
           </p>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {areServicesLoading &&
@@ -249,9 +255,13 @@ export default function LandingPage() {
           <p>
             &copy; 2024 {establishmentName}. Todos os direitos reservados.
           </p>
-          <p className="mt-2">Rua da Barbearia, 123 - Centro, Sua Cidade</p>
+          <p className="mt-2">
+            {isLoading ? <Skeleton className="h-4 w-1/2 mx-auto" /> : establishmentAddress}
+          </p>
         </div>
       </footer>
     </div>
   );
 }
+
+    
