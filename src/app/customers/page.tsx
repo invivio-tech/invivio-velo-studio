@@ -43,12 +43,6 @@ export default function UsersPage() {
   const { userProfile, isLoading: isProfileLoading } = useUserProfile();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!isProfileLoading && userProfile?.role !== 'admin') {
-      router.push('/schedule');
-    }
-  }, [isProfileLoading, userProfile, router]);
-
   const usersCollection = useMemoFirebase(
     () => (firestore && userProfile?.role === 'admin' ? collection(firestore, 'users') : null),
     [firestore, userProfile]
@@ -61,17 +55,24 @@ export default function UsersPage() {
   );
   const { data: services, isLoading: areServicesLoading } = useCollection<ServiceWithId>(servicesCollection);
 
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   
-  const handleManageUser = (user: UserProfile) => {
-    setSelectedUser(user);
-    setIsDialogOpen(true);
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      setEditingUser(null);
+    }
   };
-  
+
   const isLoading = isProfileLoading || areUsersLoading || areServicesLoading;
 
-  if (isProfileLoading || !userProfile || userProfile.role !== 'admin') {
+  useEffect(() => {
+    if (!isProfileLoading && userProfile?.role !== 'admin') {
+      router.push('/schedule');
+    }
+  }, [isProfileLoading, userProfile, router]);
+
+
+  if (isProfileLoading || userProfile?.role !== 'admin') {
     return (
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="flex items-center gap-4">
@@ -181,7 +182,7 @@ export default function UsersPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        <DropdownMenuItem onSelect={() => handleManageUser(user)}>
+                        <DropdownMenuItem onSelect={() => setEditingUser(user)}>
                           Gerenciar
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -193,11 +194,11 @@ export default function UsersPage() {
           </Table>
         </CardContent>
       </Card>
-      {selectedUser && (
+      {editingUser && (
         <UserManagementDialog
-          isOpen={isDialogOpen}
-          setIsOpen={setIsDialogOpen}
-          user={selectedUser}
+          isOpen={!!editingUser}
+          setIsOpen={handleOpenChange}
+          user={editingUser}
           allServices={services || []}
         />
       )}
