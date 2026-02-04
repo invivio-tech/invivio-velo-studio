@@ -8,8 +8,7 @@ import { z } from 'zod';
 import { addDoc, collection, Timestamp } from 'firebase/firestore';
 import { format } from 'date-fns';
 
-import { useUserProfile } from '@/firebase/auth/useUserProfile';
-import { useFirestore } from '@/firebase';
+import { useUserProfile, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';

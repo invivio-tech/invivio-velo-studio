@@ -1,6 +1,6 @@
 'use client';
 
-import { useUserProfile } from '@/firebase/auth/useUserProfile';
+import { useUserProfile } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import ScheduleSettingsForm from '@/components/schedule/ScheduleSettingsForm';

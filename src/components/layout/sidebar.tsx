@@ -28,8 +28,7 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { useUser } from '@/firebase';
-import { useUserProfile } from '@/firebase/auth/useUserProfile';
+import { useUser, useUserProfile } from '@/firebase';
 import { logout } from '@/firebase/auth/client';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Skeleton } from '../ui/skeleton';

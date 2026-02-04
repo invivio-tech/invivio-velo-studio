@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal, Users } from "lucide-react";
 import { Skeleton } from '@/components/ui/skeleton';
-import type { UserProfile } from '@/firebase/auth/useUserProfile';
+import type { UserProfile } from '@/firebase';
 import type { ServiceWithId } from '@/app/services/page';
 import {
   DropdownMenu,

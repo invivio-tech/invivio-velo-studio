@@ -36,7 +36,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import type { UserProfile } from '@/firebase/auth/useUserProfile';
+import type { UserProfile } from '@/firebase';
 import type { ServiceWithId } from '@/app/services/page';
 import { ScrollArea } from '../ui/scroll-area';
 

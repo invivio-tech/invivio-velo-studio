@@ -13,8 +13,8 @@ import {
   useFirestore,
   useCollection,
   useMemoFirebase,
+  useUserProfile,
 } from '@/firebase';
-import { useUserProfile } from '@/firebase/auth/useUserProfile';
 import {
   Card,
   CardContent,
@@ -297,5 +297,3 @@ export default function ServicesPage() {
     </div>
   );
 }
-
-    
