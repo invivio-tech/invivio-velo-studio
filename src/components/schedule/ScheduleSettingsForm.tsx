@@ -40,7 +40,7 @@ const daySchema = z.object({
   breaks: z.array(breakSchema).optional(),
 });
 
-const formSchema = z.object({
+export const scheduleSettingsSchema = z.object({
   workingHours: z.object({
     sunday: daySchema,
     monday: daySchema,
@@ -71,7 +71,7 @@ const formSchema = z.object({
     path: ['workingHours']
 });
 
-type ScheduleSettings = z.infer<typeof formSchema>;
+export type ScheduleSettings = z.infer<typeof scheduleSettingsSchema>;
 
 const daysOfWeek = [
   { key: 'sunday', label: 'Domingo' },
@@ -83,15 +83,18 @@ const daysOfWeek = [
   { key: 'saturday', label: 'Sábado' },
 ] as const;
 
+interface ScheduleSettingsFormProps {
+    settingsPath: string;
+}
 
-export default function ScheduleSettingsForm() {
+export default function ScheduleSettingsForm({ settingsPath }: ScheduleSettingsFormProps) {
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const firestore = useFirestore();
 
   const settingsRef = useMemoFirebase(
-    () => (firestore ? doc(firestore, 'scheduleSettings', 'main') : null),
-    [firestore]
+    () => (firestore && settingsPath ? doc(firestore, settingsPath) : null),
+    [firestore, settingsPath]
   );
   const { data: settings, isLoading } = useDoc<ScheduleSettings>(settingsRef);
   
@@ -108,7 +111,7 @@ export default function ScheduleSettingsForm() {
   };
 
   const form = useForm<ScheduleSettings>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(scheduleSettingsSchema),
     defaultValues: settings || defaultValues,
   });
 

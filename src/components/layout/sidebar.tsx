@@ -46,8 +46,8 @@ const adminMenuItems = [
   { href: '/invoices', label: 'Faturas', icon: FileText },
   { href: '/promotions', label: 'Marketing com IA', icon: Sparkles },
   { href: '/establishment', label: 'Estabelecimento', icon: Building },
-  { href: '/schedule/settings', label: 'Horário de Funcionamento', icon: Settings },
-  { href: '/schedule/block', label: 'Bloquear Agenda', icon: Lock },
+  { href: '/schedule/settings', label: 'Horário do Estabelecimento', icon: Settings },
+  { href: '/schedule/block', label: 'Bloquear Agenda (Geral)', icon: Lock },
 ];
 
 const professionalMenuItems = [

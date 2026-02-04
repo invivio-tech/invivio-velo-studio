@@ -20,6 +20,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useRouter } from 'next/navigation';
@@ -176,8 +177,16 @@ export default function UsersPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         <DropdownMenuItem onSelect={() => router.push(`/customers/${user.id}/edit`)}>
-                          Gerenciar
+                          Gerenciar Membro
                         </DropdownMenuItem>
+                        {user.role === 'professional' && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onSelect={() => router.push(`/customers/${user.id}/schedule`)}>
+                              Gerenciar Agenda
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

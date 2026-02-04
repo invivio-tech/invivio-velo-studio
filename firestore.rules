@@ -12,7 +12,7 @@
  * - Admin Supremacy: Users with the 'admin' role have broad read and write access
  *   across most of the database for management purposes. This is checked using the `isAdmin()` function.
  * - Professional Access: Professionals can read their own profile and the appointments
- *   assigned to them. They cannot access other users' private data.
+ *   assigned to them. They can also manage their own schedule settings and blocked times.
  * - Client (Owner) Access: Standard users (clients) can only access their own
  *   user profile and appointments/invoices where their UID is listed. This is
  *   enforced using the `isOwner()` function.
@@ -58,13 +58,8 @@ service cloud.firestore {
     // ----------------------------------------------------------------------
 
     /**
-     * @description Manages user profiles (clients, professionals, admins).
+     * @description Manages user profiles (clients, professionals, admins) and their individual settings.
      * @path /users/{userId}
-     * @allow (get) A user can get their own profile. Admins can get any profile.
-     * @allow (list) Only admins can list all users.
-     * @allow (create) A user can create their own profile upon signup.
-     * @allow (update) A user can update their own profile. Admins can update any profile (e.g., to change roles).
-     * @deny (delete) Deleting user profiles is restricted to prevent accidental data loss.
      */
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();
@@ -72,6 +67,28 @@ service cloud.firestore {
       allow create: if isOwner(userId);
       allow update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
+
+      /**
+       * @description Manages a professional's specific working hours.
+       * @path /users/{userId}/scheduleSettings/main
+       * @allow (read) Any signed-in user can see a professional's schedule.
+       * @allow (write) Only the professional themself or an admin can change the schedule.
+       */
+      match /scheduleSettings/main {
+        allow get, list: if isSignedIn();
+        allow write: if isAdmin() || isOwner(userId);
+      }
+
+      /**
+       * @description Manages a professional's specific blocked time slots.
+       * @path /users/{userId}/blockedTimes/{blockedTimeId}
+       * @allow (read) Any signed-in user can see a professional's blocks.
+       * @allow (write) Only the professional themself or an admin can manage blocks.
+       */
+      match /blockedTimes/{blockedTimeId} {
+        allow get, list: if isSignedIn();
+        allow write: if isAdmin() || isOwner(userId);
+      }
     }
 
     /**
@@ -129,7 +146,7 @@ service cloud.firestore {
     }
     
     /**
-     * @description Manages the barbershop's operating schedule.
+     * @description Manages the barbershop's general operating schedule.
      * @path /scheduleSettings/{docId}
      * @allow (get, list) Any user can read the schedule settings to check for availability.
      * @allow (write) Only authenticated admins can create, update, or delete schedule settings.
@@ -142,7 +159,7 @@ service cloud.firestore {
     }
 
     /**
-     * @description Manages blocked time slots on the schedule.
+     * @description Manages globally blocked time slots on the schedule (e.g., holidays).
      * @path /blockedTimes/{blockedTimeId}
      * @allow (get, list) Any user can read blocked times to see availability.
      * @allow (write) Only authenticated admins can create, update, or delete blocked time slots.

@@ -63,11 +63,11 @@ export default function ScheduleSettingsPage() {
         <CardHeader>
           <CardTitle className="font-headline">Horário de Funcionamento</CardTitle>
           <CardDescription>
-            Defina os dias e horários em que a barbearia está aberta para agendamentos.
+            Defina os dias e horários em que o estabelecimento está aberto para agendamentos.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ScheduleSettingsForm />
+          <ScheduleSettingsForm settingsPath="scheduleSettings/main" />
         </CardContent>
       </Card>
     </div>
