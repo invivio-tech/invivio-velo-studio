@@ -48,8 +48,6 @@ export default function UsersPage() {
   );
   const { data: users, isLoading: areUsersLoading } = useCollection<UserProfile>(usersCollection);
 
-  const isLoading = isProfileLoading || areUsersLoading;
-
   useEffect(() => {
     if (!isProfileLoading && userProfile?.role !== 'admin') {
       router.push('/schedule');
@@ -63,12 +61,12 @@ export default function UsersPage() {
         <div className="flex items-center gap-4">
           <Users className="w-8 h-8 text-secondary"/>
           <h1 className="text-3xl font-headline font-bold tracking-tight">
-            Gestão de Usuários
+            Gestão de Equipe
           </h1>
         </div>
         <Card>
           <CardHeader>
-              <CardTitle className="font-headline">Usuários Cadastrados</CardTitle>
+              <CardTitle className="font-headline">Todos os Usuários</CardTitle>
               <CardDescription>Gerencie as funções e permissões de todos os usuários do sistema.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -110,21 +108,21 @@ export default function UsersPage() {
         <div className="flex items-center gap-4">
           <Users className="w-8 h-8 text-secondary"/>
           <h1 className="text-3xl font-headline font-bold tracking-tight">
-            Gestão de Usuários
+            Gestão de Equipe
           </h1>
         </div>
         {userProfile?.role === 'admin' && (
             <Button asChild>
                 <Link href="/customers/new">
                     <PlusCircle className="mr-2 h-4 w-4" />
-                    Novo Usuário
+                    Novo Membro
                 </Link>
             </Button>
         )}
       </div>
       <Card>
         <CardHeader>
-            <CardTitle className="font-headline">Usuários Cadastrados</CardTitle>
+            <CardTitle className="font-headline">Todos os Usuários</CardTitle>
             <CardDescription>Gerencie as funções e permissões de todos os usuários do sistema.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -137,7 +135,7 @@ export default function UsersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && [...Array(3)].map((_, i) => (
+              {(isProfileLoading || areUsersLoading) && [...Array(3)].map((_, i) => (
                 <TableRow key={i}>
                   <TableCell>
                     <div className="flex items-center gap-4">
@@ -152,7 +150,7 @@ export default function UsersPage() {
                   <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                 </TableRow>
               ))}
-              {!isLoading && users?.map((user) => (
+              {!(isProfileLoading || areUsersLoading) && users?.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell>
                     <div className="flex items-center gap-4">

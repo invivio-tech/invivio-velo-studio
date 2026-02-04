@@ -37,7 +37,7 @@ import { useRouter } from 'next/navigation';
 const adminMenuItems = [
   { href: '/schedule', label: 'Painel', icon: Calendar },
   { href: '/services', label: 'Serviços', icon: BookOpen },
-  { href: '/customers', label: 'Usuários', icon: Users },
+  { href: '/customers', label: 'Equipe', icon: Users },
   { href: '/invoices', label: 'Faturas', icon: FileText },
   { href: '/promotions', label: 'Marketing com IA', icon: Sparkles },
   { href: '/schedule/settings', label: 'Horário de Funcionamento', icon: Settings },

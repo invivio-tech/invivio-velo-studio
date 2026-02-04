@@ -97,7 +97,7 @@ export default function EditUserPage() {
     updateDoc(userToUpdateRef, updatedData)
       .then(() => {
         toast({
-          title: 'Usuário atualizado!',
+          title: 'Membro atualizado!',
           description: `Os dados de ${user.name} foram atualizados.`,
         });
         router.push('/customers');
@@ -112,7 +112,7 @@ export default function EditUserPage() {
         toast({
           variant: 'destructive',
           title: 'Erro ao atualizar',
-          description: 'Você não tem permissão para alterar este usuário.',
+          description: 'Você não tem permissão para alterar este membro.',
         });
       })
       .finally(() => {
@@ -129,7 +129,7 @@ export default function EditUserPage() {
     updateDoc(userToUpdateRef, { disabled: newDisabledState })
       .then(() => {
         toast({
-          title: `Usuário ${newDisabledState ? 'Desativado' : 'Reativado'}`,
+          title: `Membro ${newDisabledState ? 'Desativado' : 'Reativado'}`,
           description: `${user.name} foi ${newDisabledState ? 'desativado' : 'reativado'} com sucesso.`,
         });
       })
@@ -142,7 +142,7 @@ export default function EditUserPage() {
         toast({
           variant: 'destructive',
           title: 'Erro na operação',
-          description: 'Você não tem permissão para alterar o status deste usuário.',
+          description: 'Você não tem permissão para alterar o status deste membro.',
         });
       })
       .finally(() => {
@@ -177,11 +177,11 @@ export default function EditUserPage() {
   }
   
   if (userError) {
-     return <div className="p-8 text-center text-destructive">Erro ao carregar os dados do usuário. Verifique suas permissões.</div>;
+     return <div className="p-8 text-center text-destructive">Erro ao carregar os dados do membro. Verifique suas permissões.</div>;
   }
   
   if (!user && adminProfile?.role === 'admin' && !isUserLoading) {
-    return <div className="p-8 text-center text-destructive">Usuário não encontrado.</div>;
+    return <div className="p-8 text-center text-destructive">Membro não encontrado.</div>;
   }
   
   if (!user) {
@@ -194,13 +194,13 @@ export default function EditUserPage() {
        <div className="flex items-center gap-4">
         <Users className="w-8 h-8 text-secondary"/>
         <h1 className="text-3xl font-headline font-bold tracking-tight">
-          Editar Usuário
+          Editar Membro
         </h1>
       </div>
       <Card className="w-full max-w-2xl">
         <CardHeader>
           <CardTitle className="font-headline">Gerenciar {user.name}</CardTitle>
-          <CardDescription>Altere o nome, função e as permissões do usuário.</CardDescription>
+          <CardDescription>Altere o nome, função e as permissões do membro.</CardDescription>
         </CardHeader>
         <CardContent>
            <Form {...form}>

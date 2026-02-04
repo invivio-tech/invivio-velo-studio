@@ -77,13 +77,13 @@ export default function NewUserPage() {
     if (error) {
         toast({
             variant: 'destructive',
-            title: 'Erro ao criar usuário',
-            description: error.code === 'auth/email-already-in-use' ? 'Este e-mail já está em uso.' : 'Não foi possível criar o usuário.',
+            title: 'Erro ao criar membro',
+            description: error.code === 'auth/email-already-in-use' ? 'Este e-mail já está em uso.' : 'Não foi possível criar o membro.',
         });
     } else {
         toast({
-            title: 'Usuário criado!',
-            description: `O usuário ${values.name} foi criado com sucesso.`,
+            title: 'Membro criado!',
+            description: `O membro ${values.name} foi criado com sucesso.`,
         });
         router.push('/customers');
     }
@@ -128,13 +128,13 @@ export default function NewUserPage() {
         <div className="flex items-center gap-4">
         <UserPlus className="w-8 h-8 text-secondary"/>
         <h1 className="text-3xl font-headline font-bold tracking-tight">
-          Criar Novo Usuário
+          Adicionar Novo Membro
         </h1>
       </div>
       <Card className="w-full max-w-2xl">
         <CardHeader>
-          <CardTitle className="font-headline">Dados do Usuário</CardTitle>
-          <CardDescription>Crie uma conta para um novo profissional ou administrador.</CardDescription>
+          <CardTitle className="font-headline">Dados do Membro</CardTitle>
+          <CardDescription>Crie uma conta para um novo profissional, administrador ou cliente.</CardDescription>
         </CardHeader>
         <CardContent>
             <Form {...form}>
@@ -237,7 +237,7 @@ export default function NewUserPage() {
                 </Button>
                 <Button type="submit" disabled={isSaving}>
                   {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Criar Usuário
+                  Criar Membro
                 </Button>
               </div>
             </form>
