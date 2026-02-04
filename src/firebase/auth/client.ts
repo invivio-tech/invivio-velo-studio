@@ -11,7 +11,7 @@ import {
   sendPasswordResetEmail,
   type User,
 } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { initializeFirebase } from '..';
 import { errorEmitter } from '../error-emitter';
 import { FirestorePermissionError } from '../errors';
@@ -39,14 +39,17 @@ export async function createAccount(name: string, email: string, pass: string) {
       role: role,
     };
 
-    setDoc(userRef, userData, { merge: true }).catch((serverError) => {
+    try {
+      await setDoc(userRef, userData, { merge: true });
+    } catch (serverError) {
       const permissionError = new FirestorePermissionError({
         path: userRef.path,
         operation: 'create',
         requestResourceData: userData,
       });
       errorEmitter.emit('permission-error', permissionError);
-    });
+      throw serverError; // Re-throw to be caught by the outer catch
+    }
 
     return null;
   } catch (e: any) {
@@ -61,7 +64,41 @@ export async function createAccount(name: string, email: string, pass: string) {
 // --- Login with email and password ---
 export async function loginWithEmail(email: string, pass: string) {
   try {
-    await signInWithEmailAndPassword(auth, email, pass);
+    const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+    const user = userCredential.user;
+
+    // Self-healing: Check for and create profile if it's missing.
+    const userRef = doc(db, 'users', user.uid);
+    const userDoc = await getDoc(userRef);
+
+    if (!userDoc.exists()) {
+      // Profile is missing, create it.
+      const isAdmin = user.email === 'admin@barbearia.com';
+      const isProfessional = user.email?.endsWith('@barbearia.com') && !isAdmin;
+      const role = isAdmin ? 'admin' : isProfessional ? 'professional' : 'client';
+
+      const userData = {
+        id: user.uid,
+        name: user.displayName || user.email, // Use email as fallback name
+        email: user.email,
+        photoURL: user.photoURL,
+        role: role,
+      };
+
+      try {
+        await setDoc(userRef, userData, { merge: true });
+      } catch (serverError: any) {
+          const permissionError = new FirestorePermissionError({
+              path: userRef.path,
+              operation: 'create',
+              requestResourceData: userData,
+          });
+          errorEmitter.emit('permission-error', permissionError);
+          // Don't block login if self-healing fails, just log it.
+          console.error("Failed to self-heal user profile:", serverError);
+      }
+    }
+    
     return null;
   } catch (e: any) {
     console.error(e);
@@ -92,14 +129,17 @@ export async function signInWithGoogle() {
             role: role,
         };
 
-        setDoc(userRef, userData, { merge: true }).catch((serverError) => {
+        try {
+          await setDoc(userRef, userData, { merge: true });
+        } catch (serverError) {
           const permissionError = new FirestorePermissionError({
             path: userRef.path,
-            operation: 'create', 
+            operation: 'create', // Using 'create' as it's an upsert
             requestResourceData: userData,
           });
           errorEmitter.emit('permission-error', permissionError);
-        });
+          throw serverError;
+        }
 
         return null;
     } catch (e: any) {
