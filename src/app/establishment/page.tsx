@@ -21,7 +21,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Building, Loader2, Sparkles } from 'lucide-react';
 
-// This interface can be shared if needed
 export interface EstablishmentSettings {
   name: string;
   about: string;
@@ -30,6 +29,7 @@ export interface EstablishmentSettings {
   servicesTitle: string;
   servicesSubtitle: string;
   address: string;
+  whatsapp?: string;
 }
 
 const formSchema = z.object({
@@ -41,6 +41,7 @@ const formSchema = z.object({
   servicesTitle: z.string().min(5, { message: 'O título dos serviços é obrigatório.' }),
   servicesSubtitle: z.string().min(10, { message: 'O subtítulo dos serviços é obrigatório.' }),
   address: z.string().min(10, { message: 'O endereço é obrigatório.' }),
+  whatsapp: z.string().optional(),
 });
 
 type SettingsFormValues = z.infer<typeof formSchema>;
@@ -74,6 +75,7 @@ export default function EstablishmentPage() {
     servicesTitle: 'Nossos Serviços Premium',
     servicesSubtitle: 'Do clássico ao contemporâneo, temos o serviço perfeito para você.',
     address: 'Rua da Barbearia, 123 - Centro, Sua Cidade',
+    whatsapp: '',
     context: '',
   };
 
@@ -88,6 +90,7 @@ export default function EstablishmentPage() {
       form.reset({
         ...defaultValues,
         ...settings,
+        whatsapp: settings.whatsapp || '',
       });
     }
   }, [settings, form]);
@@ -144,6 +147,7 @@ export default function EstablishmentPage() {
         form.setValue('servicesTitle', result.servicesTitle, { shouldValidate: true });
         form.setValue('servicesSubtitle', result.servicesSubtitle, { shouldValidate: true });
         form.setValue('address', result.address, { shouldValidate: true });
+        form.setValue('whatsapp', result.whatsapp, { shouldValidate: true });
         toast({
             title: 'Sugestões aplicadas!',
             description: 'Novos textos foram gerados e preenchidos no formulário.'
@@ -287,22 +291,33 @@ export default function EstablishmentPage() {
                 )} />
               </div>
 
-                <div className="border-t pt-6 space-y-4">
-                    <h3 className="text-lg font-medium">Informações do Rodapé</h3>
-                    <FormField control={form.control} name="address" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Endereço</FormLabel>
-                            <FormControl>
-                                <Input placeholder="Endereço completo do estabelecimento" {...field} />
-                            </FormControl>
-                            <FormDescription>
-                                Este endereço será exibido no rodapé da página inicial.
-                            </FormDescription>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
-                </div>
-
+              <div className="border-t pt-6 space-y-4">
+                <h3 className="text-lg font-medium">Informações de Contato</h3>
+                <FormField control={form.control} name="address" render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Endereço</FormLabel>
+                        <FormControl>
+                            <Input placeholder="Endereço completo do estabelecimento" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                            Este endereço será exibido no rodapé da página inicial.
+                        </FormDescription>
+                        <FormMessage />
+                    </FormItem>
+                )} />
+                 <FormField control={form.control} name="whatsapp" render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>WhatsApp</FormLabel>
+                        <FormControl>
+                            <Input placeholder="5511999998888" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                            Número para contato via WhatsApp. Será usado no link de contato. Insira apenas números.
+                        </FormDescription>
+                        <FormMessage />
+                    </FormItem>
+                )} />
+              </div>
 
               <div className="flex justify-end pt-4">
                   <Button type="submit" disabled={isSaving || isSuggesting}>

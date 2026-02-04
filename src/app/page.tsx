@@ -58,6 +58,7 @@ export default function LandingPage() {
     servicesTitle: 'Nossos Serviços Premium',
     servicesSubtitle: 'Do clássico ao contemporâneo, temos o serviço perfeito para você.',
     address: 'Rua da Barbearia, 123 - Centro, Sua Cidade',
+    whatsapp: '5511999998888',
   };
   
   const establishmentName = settings?.name || defaultSettings.name;
@@ -67,6 +68,7 @@ export default function LandingPage() {
   const establishmentServicesTitle = settings?.servicesTitle || defaultSettings.servicesTitle;
   const establishmentServicesSubtitle = settings?.servicesSubtitle || defaultSettings.servicesSubtitle;
   const establishmentAddress = settings?.address || defaultSettings.address;
+  const establishmentWhatsapp = settings?.whatsapp || defaultSettings.whatsapp;
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -92,7 +94,9 @@ export default function LandingPage() {
               Sobre
             </a>
             <a
-              href="#contact"
+              href={establishmentWhatsapp ? `https://wa.me/${establishmentWhatsapp.replace(/\D/g, '')}` : '#contact'}
+              target={establishmentWhatsapp ? '_blank' : '_self'}
+              rel="noopener noreferrer"
               className="text-foreground/60 transition-colors hover:text-foreground/80"
             >
               Contato
@@ -263,5 +267,3 @@ export default function LandingPage() {
     </div>
   );
 }
-
-    

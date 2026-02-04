@@ -23,6 +23,7 @@ const EstablishmentTextsOutputSchema = z.object({
   servicesTitle: z.string().describe('The generated title for the services section.'),
   servicesSubtitle: z.string().describe('The generated subtitle for the services section.'),
   address: z.string().describe('The generated physical address for the establishment.'),
+  whatsapp: z.string().describe('The generated WhatsApp contact number.'),
 });
 export type EstablishmentTextsOutput = z.infer<typeof EstablishmentTextsOutputSchema>;
 
@@ -50,6 +51,7 @@ const prompt = ai.definePrompt({
   4.  Um título para a seção de serviços (servicesTitle).
   5.  Um subtítulo para a seção de serviços (servicesSubtitle).
   6.  Um endereço fictício, mas realista, para o estabelecimento (address).
+  7.  Um número de WhatsApp fictício, mas realista, para o estabelecimento (whatsapp), contendo apenas números (ex: 5511999998888).
 
   Se o nome for genérico como "Barbearia" e não houver contexto adicional, assuma que é um estabelecimento moderno e de alta qualidade.
   Seja criativo e profissional.
