@@ -8,6 +8,7 @@ import {
   updateProfile,
   GoogleAuthProvider,
   signInWithPopup,
+  sendPasswordResetEmail,
   type User,
 } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
@@ -119,4 +120,18 @@ export function logout() {
 // --- Auth State Observer ---
 export function onAuthStateChange(callback: (user: User | null) => void) {
   return onAuthStateChanged(auth, callback);
+}
+
+// --- Password Reset ---
+export async function resetPassword(email: string) {
+  try {
+    await sendPasswordResetEmail(auth, email);
+    return null;
+  } catch (e: any) {
+    console.error(e);
+    return {
+      code: e.code,
+      message: e.message,
+    };
+  }
 }
