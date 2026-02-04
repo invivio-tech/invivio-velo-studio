@@ -13,7 +13,8 @@ const appRoutes = [
     '/promotions',
     '/account',
     '/establishment',
-    '/categories'
+    '/categories',
+    '/book-appointment'
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
