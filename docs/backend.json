@@ -371,6 +371,10 @@
         "instagram": {
             "type": "string",
             "description": "The Instagram profile handle for the establishment (without the '@')."
+        },
+        "context": {
+          "type": "string",
+          "description": "Additional context about the establishment to guide the AI in generating texts."
         }
       },
       "required": [

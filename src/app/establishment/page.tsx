@@ -31,6 +31,7 @@ export interface EstablishmentSettings {
   address: string;
   whatsapp?: string;
   instagram?: string;
+  context?: string;
 }
 
 const formSchema = z.object({
@@ -95,6 +96,7 @@ export default function EstablishmentPage() {
         ...settings,
         whatsapp: settings.whatsapp || '',
         instagram: settings.instagram || '',
+        context: settings.context || '',
       });
     }
   }, [settings, form]);
@@ -103,7 +105,7 @@ export default function EstablishmentPage() {
     if (!settingsRef) return;
     setIsSaving(true);
     
-    const { context, ...settingsData } = values;
+    const settingsData = values;
 
     setDoc(settingsRef, settingsData, { merge: true })
       .then(() => {
