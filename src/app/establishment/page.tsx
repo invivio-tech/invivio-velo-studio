@@ -11,6 +11,7 @@ import { useUserProfile, useFirestore, useDoc, useMemoFirebase } from '@/firebas
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { generateEstablishmentTexts } from '@/ai/flows/generate-establishment-texts';
 
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -18,7 +19,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Building, Loader2 } from 'lucide-react';
+import { Building, Loader2, Sparkles } from 'lucide-react';
 
 // This interface can be shared if needed
 export interface EstablishmentSettings {
@@ -43,6 +44,7 @@ export default function EstablishmentPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
+  const [isSuggesting, setIsSuggesting] = useState(false);
 
   // Redirect if not admin
   useEffect(() => {
@@ -104,6 +106,40 @@ export default function EstablishmentPage() {
         setIsSaving(false);
       });
   }
+  
+  const handleSuggestTexts = async () => {
+    const name = form.getValues('name');
+    if (!name || name.length < 2) {
+      toast({
+        variant: 'destructive',
+        title: 'Nome do estabelecimento necessário',
+        description: 'Por favor, preencha o nome do estabelecimento para obter uma sugestão.'
+      });
+      return;
+    }
+    setIsSuggesting(true);
+    try {
+      const result = await generateEstablishmentTexts({ name });
+      if (result) {
+        form.setValue('heroTitle', result.heroTitle, { shouldValidate: true });
+        form.setValue('heroSubtitle', result.heroSubtitle, { shouldValidate: true });
+        form.setValue('about', result.about, { shouldValidate: true });
+        toast({
+            title: 'Sugestões aplicadas!',
+            description: 'Novos textos foram gerados e preenchidos no formulário.'
+        });
+      }
+    } catch (error) {
+      console.error('Error suggesting texts:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao sugerir',
+        description: 'Não foi possível gerar uma sugestão. Tente novamente.'
+      });
+    } finally {
+      setIsSuggesting(false);
+    }
+  }
 
   const isLoading = isProfileLoading || areSettingsLoading;
   
@@ -156,6 +192,24 @@ export default function EstablishmentPage() {
                       <FormMessage />
                   </FormItem>
               )} />
+
+              <div className="border-t pt-6 space-y-2">
+                <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-medium">Textos da Página Inicial</h3>
+                    <Button type="button" variant="outline" size="sm" onClick={handleSuggestTexts} disabled={isSuggesting}>
+                        {isSuggesting ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <Sparkles className="mr-2 h-4 w-4" />
+                        )}
+                        Sugerir Textos com IA
+                    </Button>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                    Clique no botão para gerar sugestões para o título, subtítulo e seção "Sobre" com base no nome do estabelecimento.
+                </p>
+              </div>
+
                <FormField control={form.control} name="heroTitle" render={({ field }) => (
                   <FormItem>
                       <FormLabel>Título Principal da Página Inicial</FormLabel>
@@ -184,7 +238,7 @@ export default function EstablishmentPage() {
                   </FormItem>
               )} />
               <div className="flex justify-end pt-4">
-                  <Button type="submit" disabled={isSaving}>
+                  <Button type="submit" disabled={isSaving || isSuggesting}>
                       {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Salvar Alterações
                   </Button>
