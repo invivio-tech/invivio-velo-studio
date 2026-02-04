@@ -24,6 +24,7 @@ import {
   LogOut,
   Settings,
   Lock,
+  ContactRound,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -38,6 +39,7 @@ const adminMenuItems = [
   { href: '/schedule', label: 'Painel', icon: Calendar },
   { href: '/services', label: 'Serviços', icon: BookOpen },
   { href: '/customers', label: 'Equipe', icon: Users },
+  { href: '/clients', label: 'Clientes', icon: ContactRound },
   { href: '/invoices', label: 'Faturas', icon: FileText },
   { href: '/promotions', label: 'Marketing com IA', icon: Sparkles },
   { href: '/schedule/settings', label: 'Horário de Funcionamento', icon: Settings },

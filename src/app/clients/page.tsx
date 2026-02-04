@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Users, PlusCircle } from "lucide-react";
+import { MoreHorizontal, ContactRound } from "lucide-react";
 import { Skeleton } from '@/components/ui/skeleton';
 import type { UserProfile } from '@/firebase';
 import {
@@ -25,28 +25,19 @@ import {
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-const roleDisplay: Record<UserProfile['role'], string> = {
-  admin: 'Admin',
-  professional: 'Profissional',
-  client: 'Cliente',
-};
-
-const roleVariant: Record<UserProfile['role'], 'default' | 'secondary' | 'outline'> = {
-    admin: 'default',
-    professional: 'secondary',
-    client: 'outline',
-};
-
-export default function UsersPage() {
+export default function ClientsPage() {
   const firestore = useFirestore();
   const { userProfile, isLoading: isProfileLoading } = useUserProfile();
   const router = useRouter();
 
-  const usersQuery = useMemoFirebase(
-    () => (firestore && userProfile?.role === 'admin' ? query(collection(firestore, 'users'), where('role', 'in', ['admin', 'professional'])) : null),
+  const clientsQuery = useMemoFirebase(
+    () =>
+      firestore && userProfile?.role === 'admin'
+        ? query(collection(firestore, 'users'), where('role', '==', 'client'))
+        : null,
     [firestore, userProfile]
   );
-  const { data: users, isLoading: areUsersLoading } = useCollection<UserProfile>(usersQuery);
+  const { data: clients, isLoading: areClientsLoading } = useCollection<UserProfile>(clientsQuery);
 
   useEffect(() => {
     if (!isProfileLoading && userProfile?.role !== 'admin') {
@@ -59,22 +50,22 @@ export default function UsersPage() {
     return (
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="flex items-center gap-4">
-          <Users className="w-8 h-8 text-secondary"/>
+          <ContactRound className="w-8 h-8 text-secondary"/>
           <h1 className="text-3xl font-headline font-bold tracking-tight">
-            Gestão de Equipe
+            Gestão de Clientes
           </h1>
         </div>
         <Card>
           <CardHeader>
-              <CardTitle className="font-headline">Membros da Equipe</CardTitle>
-              <CardDescription>Gerencie as funções e permissões dos administradores e profissionais.</CardDescription>
+              <CardTitle className="font-headline">Todos os Clientes</CardTitle>
+              <CardDescription>Gerencie o acesso e visualize os detalhes dos seus clientes.</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Membro</TableHead>
-                  <TableHead>Função</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -106,36 +97,28 @@ export default function UsersPage() {
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Users className="w-8 h-8 text-secondary"/>
+          <ContactRound className="w-8 h-8 text-secondary"/>
           <h1 className="text-3xl font-headline font-bold tracking-tight">
-            Gestão de Equipe
+            Gestão de Clientes
           </h1>
         </div>
-        {userProfile?.role === 'admin' && (
-            <Button asChild>
-                <Link href="/customers/new">
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Novo Membro
-                </Link>
-            </Button>
-        )}
       </div>
       <Card>
         <CardHeader>
-            <CardTitle className="font-headline">Membros da Equipe</CardTitle>
-            <CardDescription>Gerencie as funções e permissões dos administradores e profissionais.</CardDescription>
+            <CardTitle className="font-headline">Todos os Clientes</CardTitle>
+            <CardDescription>Gerencie o acesso e visualize os detalhes dos seus clientes.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Membro</TableHead>
-                <TableHead>Função</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(isProfileLoading || areUsersLoading) && [...Array(3)].map((_, i) => (
+              {(isProfileLoading || areClientsLoading) && [...Array(3)].map((_, i) => (
                 <TableRow key={i}>
                   <TableCell>
                     <div className="flex items-center gap-4">
@@ -150,22 +133,22 @@ export default function UsersPage() {
                   <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                 </TableRow>
               ))}
-              {!(isProfileLoading || areUsersLoading) && users?.map((user) => (
-                <TableRow key={user.id}>
+              {!(isProfileLoading || areClientsLoading) && clients?.map((client) => (
+                <TableRow key={client.id}>
                   <TableCell>
                     <div className="flex items-center gap-4">
                       <Avatar>
-                        <AvatarImage src={user.photoURL ?? ''} alt={user.name} />
-                        <AvatarFallback>{user.name ? user.name.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
+                        <AvatarImage src={client.photoURL ?? ''} alt={client.name} />
+                        <AvatarFallback>{client.name ? client.name.charAt(0).toUpperCase() : 'C'}</AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-medium">{user.name}</p>
-                        <p className="text-sm text-muted-foreground">{user.email}</p>
+                        <p className="font-medium">{client.name}</p>
+                        <p className="text-sm text-muted-foreground">{client.email}</p>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={roleVariant[user.role] || 'outline'}>{roleDisplay[user.role] || 'N/A'}</Badge>
+                    <Badge variant={client.disabled ? 'outline' : 'secondary'}>{client.disabled ? 'Inativo' : 'Ativo'}</Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
@@ -175,7 +158,7 @@ export default function UsersPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        <DropdownMenuItem onSelect={() => router.push(`/customers/${user.id}/edit`)}>
+                        <DropdownMenuItem onSelect={() => router.push(`/clients/${client.id}/edit`)}>
                           Gerenciar
                         </DropdownMenuItem>
                       </DropdownMenuContent>

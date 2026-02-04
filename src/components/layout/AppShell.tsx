@@ -8,6 +8,7 @@ const appRoutes = [
     '/schedule',
     '/services',
     '/customers',
+    '/clients',
     '/invoices',
     '/promotions',
     '/account'
