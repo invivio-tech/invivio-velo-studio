@@ -30,6 +30,7 @@ export interface EstablishmentSettings {
   servicesSubtitle: string;
   address: string;
   whatsapp?: string;
+  instagram?: string;
 }
 
 const formSchema = z.object({
@@ -42,6 +43,7 @@ const formSchema = z.object({
   servicesSubtitle: z.string().min(10, { message: 'O subtítulo dos serviços é obrigatório.' }),
   address: z.string().min(10, { message: 'O endereço é obrigatório.' }),
   whatsapp: z.string().optional(),
+  instagram: z.string().optional(),
 });
 
 type SettingsFormValues = z.infer<typeof formSchema>;
@@ -76,6 +78,7 @@ export default function EstablishmentPage() {
     servicesSubtitle: 'Do clássico ao contemporâneo, temos o serviço perfeito para você.',
     address: 'Rua da Barbearia, 123 - Centro, Sua Cidade',
     whatsapp: '',
+    instagram: '',
     context: '',
   };
 
@@ -91,6 +94,7 @@ export default function EstablishmentPage() {
         ...defaultValues,
         ...settings,
         whatsapp: settings.whatsapp || '',
+        instagram: settings.instagram || '',
       });
     }
   }, [settings, form]);
@@ -148,6 +152,7 @@ export default function EstablishmentPage() {
         form.setValue('servicesSubtitle', result.servicesSubtitle, { shouldValidate: true });
         form.setValue('address', result.address, { shouldValidate: true });
         form.setValue('whatsapp', result.whatsapp, { shouldValidate: true });
+        form.setValue('instagram', result.instagram, { shouldValidate: true });
         toast({
             title: 'Sugestões aplicadas!',
             description: 'Novos textos foram gerados e preenchidos no formulário.'
@@ -313,6 +318,18 @@ export default function EstablishmentPage() {
                         </FormControl>
                         <FormDescription>
                             Número para contato via WhatsApp. Será usado no link de contato. Insira apenas números.
+                        </FormDescription>
+                        <FormMessage />
+                    </FormItem>
+                )} />
+                 <FormField control={form.control} name="instagram" render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Instagram</FormLabel>
+                        <FormControl>
+                            <Input placeholder="seu_negocio" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                            Nome de usuário do Instagram (sem o @). Será usado no link do rodapé.
                         </FormDescription>
                         <FormMessage />
                     </FormItem>

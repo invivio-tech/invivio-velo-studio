@@ -367,6 +367,10 @@
         "whatsapp": {
             "type": "string",
             "description": "The WhatsApp contact number for the establishment (only numbers)."
+        },
+        "instagram": {
+            "type": "string",
+            "description": "The Instagram profile handle for the establishment (without the '@')."
         }
       },
       "required": [

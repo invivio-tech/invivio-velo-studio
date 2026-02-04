@@ -25,6 +25,7 @@ import {
 import type { Service } from '@/app/services/page';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { EstablishmentSettings } from '@/app/establishment/page';
+import { Instagram } from 'lucide-react';
 
 export default function LandingPage() {
   const heroImage = PlaceHolderImages.find((p) => p.id === 'landing-hero');
@@ -59,6 +60,7 @@ export default function LandingPage() {
     servicesSubtitle: 'Do clássico ao contemporâneo, temos o serviço perfeito para você.',
     address: 'Rua da Barbearia, 123 - Centro, Sua Cidade',
     whatsapp: '5511999998888',
+    instagram: 'barbearia.inteligente',
   };
   
   const establishmentName = settings?.name || defaultSettings.name;
@@ -69,6 +71,7 @@ export default function LandingPage() {
   const establishmentServicesSubtitle = settings?.servicesSubtitle || defaultSettings.servicesSubtitle;
   const establishmentAddress = settings?.address || defaultSettings.address;
   const establishmentWhatsapp = settings?.whatsapp || defaultSettings.whatsapp;
+  const establishmentInstagram = settings?.instagram;
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -254,8 +257,16 @@ export default function LandingPage() {
         </section>
       </main>
 
-      <footer id="contact" className="bg-background">
+      <footer id="contact" className="bg-card border-t">
         <div className="container py-8 text-center text-sm text-muted-foreground">
+          {establishmentInstagram && (
+              <div className="flex justify-center gap-6 mb-4">
+                 <a href={`https://instagram.com/${establishmentInstagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
+                    <Instagram className="h-6 w-6" />
+                    <span className="sr-only">Instagram</span>
+                 </a>
+              </div>
+          )}
           <p>
             &copy; 2024 {establishmentName}. Todos os direitos reservados.
           </p>
