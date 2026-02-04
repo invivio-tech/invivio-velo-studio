@@ -154,7 +154,7 @@ export default function UserManagementDialog({
               <FormField
                 control={form.control}
                 name="serviceIds"
-                render={() => (
+                render={({ field }) => (
                   <FormItem>
                     <div className="mb-4">
                       <FormLabel className="text-base">Serviços Habilitados</FormLabel>
@@ -163,39 +163,30 @@ export default function UserManagementDialog({
                       </p>
                     </div>
                     <ScrollArea className="h-48 rounded-md border p-4">
-                        {allServices.map((service) => (
-                        <FormField
-                            key={service.id}
-                            control={form.control}
-                            name="serviceIds"
-                            render={({ field }) => {
-                            return (
-                                <FormItem
-                                key={service.id}
-                                className="flex flex-row items-start space-x-3 space-y-0 mb-4"
-                                >
-                                <FormControl>
-                                    <Checkbox
-                                    checked={field.value?.includes(service.id)}
-                                    onCheckedChange={(checked) => {
-                                        return checked
-                                        ? field.onChange([...(field.value || []), service.id])
-                                        : field.onChange(
-                                            field.value?.filter(
-                                                (value) => value !== service.id
-                                            )
-                                            );
-                                    }}
-                                    />
-                                </FormControl>
-                                <FormLabel className="font-normal">
-                                    {service.name}
-                                </FormLabel>
-                                </FormItem>
-                            );
-                            }}
-                        />
-                        ))}
+                      {allServices.map((service) => (
+                        <FormItem
+                          key={service.id}
+                          className="flex flex-row items-start space-x-3 space-y-0 mb-4"
+                        >
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value?.includes(service.id)}
+                              onCheckedChange={(checked) => {
+                                return checked
+                                  ? field.onChange([...(field.value || []), service.id])
+                                  : field.onChange(
+                                      field.value?.filter(
+                                        (value) => value !== service.id
+                                      )
+                                    );
+                              }}
+                            />
+                          </FormControl>
+                          <FormLabel className="font-normal">
+                            {service.name}
+                          </FormLabel>
+                        </FormItem>
+                      ))}
                     </ScrollArea>
                     <FormMessage />
                   </FormItem>
