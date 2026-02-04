@@ -152,9 +152,6 @@ export default function EstablishmentPage() {
         form.setValue('about', result.about, { shouldValidate: true });
         form.setValue('servicesTitle', result.servicesTitle, { shouldValidate: true });
         form.setValue('servicesSubtitle', result.servicesSubtitle, { shouldValidate: true });
-        form.setValue('address', result.address, { shouldValidate: true });
-        form.setValue('whatsapp', result.whatsapp, { shouldValidate: true });
-        form.setValue('instagram', result.instagram, { shouldValidate: true });
         toast({
             title: 'Sugestões aplicadas!',
             description: 'Novos textos foram gerados e preenchidos no formulário.'
