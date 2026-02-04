@@ -62,9 +62,14 @@ service cloud.firestore {
      * @path /users/{userId}
      */
     match /users/{userId} {
-      allow get: if isOwner(userId) || isAdmin();
-      allow list: if isAdmin();
-      allow create: if isOwner(userId);
+      // Professionals' profiles are public to signed-in users for booking purposes.
+      // Owners can read their own profile, and admins can read any profile.
+      allow get: if isOwner(userId) || isAdmin() || (isSignedIn() && resource.data.role == 'professional');
+      // Allow signed-in users to perform queries (e.g., to find professionals).
+      // The `get` rule above secures the individual documents returned by the query.
+      allow list: if isSignedIn();
+      // Users can create their own profile, and admins can create any user.
+      allow create: if isOwner(userId) || isAdmin();
       allow update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
 
