@@ -38,6 +38,7 @@ export async function createAccount(name: string, email: string, pass: string) {
       email: user.email,
       photoURL: user.photoURL,
       role: role,
+      disabled: false,
     };
 
     try {
@@ -68,22 +69,30 @@ export async function loginWithEmail(email: string, pass: string) {
     const userCredential = await signInWithEmailAndPassword(auth, email, pass);
     const user = userCredential.user;
 
-    // Self-healing: Check for and create profile if it's missing.
     const userRef = doc(db, 'users', user.uid);
     const userDoc = await getDoc(userRef);
 
-    if (!userDoc.exists()) {
-      // Profile is missing, create it.
+    if (userDoc.exists()) {
+       if (userDoc.data().disabled) {
+        await signOut(auth);
+        return {
+          code: 'auth/user-disabled',
+          message: 'Esta conta de usuário foi desativada.',
+        };
+      }
+    } else {
+      // Self-healing: Check for and create profile if it's missing.
       const isAdmin = user.email === 'admin@barbearia.com';
       const isProfessional = user.email?.endsWith('@barbearia.com') && !isAdmin;
       const role = isAdmin ? 'admin' : isProfessional ? 'professional' : 'client';
 
       const userData = {
         id: user.uid,
-        name: user.displayName || user.email, // Use email as fallback name
+        name: user.displayName || user.email,
         email: user.email,
         photoURL: user.photoURL,
         role: role,
+        disabled: false,
       };
 
       try {
@@ -95,7 +104,6 @@ export async function loginWithEmail(email: string, pass: string) {
               requestResourceData: userData,
           });
           errorEmitter.emit('permission-error', permissionError);
-          // Don't block login if self-healing fails, just log it.
           console.error("Failed to self-heal user profile:", serverError);
       }
     }
@@ -121,11 +129,16 @@ export async function signInWithGoogle() {
         const userDoc = await getDoc(userRef);
 
         if (userDoc.exists()) {
-          // User profile already exists, do nothing to their role.
+          if (userDoc.data().disabled) {
+            await signOut(auth);
+            return {
+              code: 'auth/user-disabled',
+              message: 'Esta conta de usuário foi desativada.',
+            };
+          }
           return null;
         }
 
-        // If user profile does not exist, create a new one as 'client'.
         const role = 'client';
 
         const userData = {
@@ -134,6 +147,7 @@ export async function signInWithGoogle() {
             email: user.email,
             photoURL: user.photoURL,
             role: role,
+            disabled: false,
         };
 
         try {
@@ -141,7 +155,7 @@ export async function signInWithGoogle() {
         } catch (serverError) {
           const permissionError = new FirestorePermissionError({
             path: userRef.path,
-            operation: 'create', // Using 'create' as it's an upsert
+            operation: 'create',
             requestResourceData: userData,
           });
           errorEmitter.emit('permission-error', permissionError);
@@ -162,7 +176,6 @@ export async function signInWithGoogle() {
 export async function createAccountByAdmin(data: { name: string, email: string, pass: string, role: 'professional' | 'admin' | 'client', serviceIds?: string[] }) {
   const { name, email, pass, role, serviceIds } = data;
   
-  // Use a temporary app instance to create the user without signing out the admin
   const tempAppName = `temp-user-creation-${Date.now()}`;
   const tempApp = initializeApp(firebaseConfig, tempAppName);
   const tempAuth = getAuth(tempApp);
@@ -171,18 +184,17 @@ export async function createAccountByAdmin(data: { name: string, email: string, 
       const userCredential = await createUserWithEmailAndPassword(tempAuth, email, pass);
       const user = userCredential.user;
 
-      // Now, use the main db instance to create the Firestore document
       const userRef = doc(db, 'users', user.uid);
       const userData = {
           id: user.uid,
           name: name,
           email: user.email,
-          photoURL: null, // No photoURL when creating via email/pass
+          photoURL: null,
           role: role,
           serviceIds: role === 'professional' ? serviceIds || [] : [],
+          disabled: false,
       };
       
-      // This needs to be done with admin privileges, which the security rules should allow.
       await setDoc(userRef, userData);
       
       return { user: userData, error: null };
@@ -216,3 +228,5 @@ export async function resetPassword(email: string) {
     };
   }
 }
+
+    

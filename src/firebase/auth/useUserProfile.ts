@@ -12,6 +12,7 @@ export interface UserProfile {
   photoURL?: string;
   role: 'admin' | 'client' | 'professional';
   serviceIds?: string[];
+  disabled?: boolean;
 }
 
 export function useUserProfile() {
@@ -54,3 +55,5 @@ export function useUserProfile() {
 
   return { userProfile, isLoading };
 }
+
+    

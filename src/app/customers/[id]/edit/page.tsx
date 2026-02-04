@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useFirestore, useDoc, useCollection, useMemoFirebase, useUserProfile } from '@/firebase';
-import { doc, updateDoc, collection } from 'firebase/firestore';
+import { doc, updateDoc, collection, deleteDoc } from 'firebase/firestore';
 import type { UserProfile } from '@/firebase';
 import type { ServiceWithId } from '@/app/services/page';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -16,14 +16,17 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, Users } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Loader2, Users, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
 const formSchema = z.object({
+  name: z.string().min(2, { message: 'O nome é obrigatório.' }),
   role: z.enum(['client', 'professional', 'admin']),
   serviceIds: z.array(z.string()).optional(),
 });
@@ -38,10 +41,14 @@ export default function EditUserPage() {
   const { userProfile: adminProfile, isLoading: isAdminLoading } = useUserProfile();
   const firestore = useFirestore();
   const { toast } = useToast();
+  
   const [isSaving, setIsSaving] = useState(false);
+  const [isDisabling, setIsDisabling] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
 
   const userRef = useMemoFirebase(() => (firestore && userId ? doc(firestore, 'users', userId) : null), [firestore, userId]);
-  const { data: user, isLoading: isUserLoading } = useDoc<UserProfile>(userRef);
+  const { data: user, isLoading: isUserLoading, error: userError } = useDoc<UserProfile>(userRef);
 
   const servicesCollection = useMemoFirebase(() => (firestore ? collection(firestore, 'services') : null), [firestore]);
   const { data: allServices, isLoading: areServicesLoading } = useCollection<ServiceWithId>(servicesCollection);
@@ -61,6 +68,7 @@ export default function EditUserPage() {
   useEffect(() => {
     if (user) {
       form.reset({
+        name: user.name,
         role: user.role,
         serviceIds: user.serviceIds || [],
       });
@@ -75,6 +83,7 @@ export default function EditUserPage() {
     
     const userToUpdateRef = doc(firestore, 'users', user.id);
     const updatedData: Partial<UserProfile> = {
+      name: values.name,
       role: values.role,
       serviceIds: values.role === 'professional' ? values.serviceIds : [],
     };
@@ -83,7 +92,7 @@ export default function EditUserPage() {
       .then(() => {
         toast({
           title: 'Usuário atualizado!',
-          description: `A função de ${user.name} foi atualizada.`,
+          description: `Os dados de ${user.name} foram atualizados.`,
         });
         router.push('/customers');
       })
@@ -104,6 +113,66 @@ export default function EditUserPage() {
         setIsSaving(false);
       });
   }
+
+  const handleToggleDisable = async () => {
+    if (!firestore || !user) return;
+    setIsDisabling(true);
+    const userToUpdateRef = doc(firestore, 'users', user.id);
+    const newDisabledState = !user.disabled;
+    
+    updateDoc(userToUpdateRef, { disabled: newDisabledState })
+      .then(() => {
+        toast({
+          title: `Usuário ${newDisabledState ? 'Desativado' : 'Reativado'}`,
+          description: `${user.name} foi ${newDisabledState ? 'desativado' : 'reativado'} com sucesso.`,
+        });
+      })
+      .catch((serverError) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: userToUpdateRef.path,
+          operation: 'update',
+          requestResourceData: { disabled: newDisabledState },
+        }));
+        toast({
+          variant: 'destructive',
+          title: 'Erro na operação',
+          description: 'Você não tem permissão para alterar o status deste usuário.',
+        });
+      })
+      .finally(() => {
+        setIsDisabling(false);
+      });
+  };
+
+  const handleDeleteUser = async () => {
+    if (!firestore || !user) return;
+    setIsDeleting(true);
+
+    const userToDeleteRef = doc(firestore, 'users', user.id);
+    deleteDoc(userToDeleteRef)
+      .then(() => {
+        toast({
+          title: 'Usuário Excluído!',
+          description: `Os dados de ${user.name} foram removidos do sistema.`,
+        });
+        router.push('/customers');
+      })
+      .catch((serverError) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: userToDeleteRef.path,
+          operation: 'delete',
+        }));
+        toast({
+          variant: 'destructive',
+          title: 'Erro ao Excluir',
+          description: 'Você não tem permissão para excluir este usuário.',
+        });
+      })
+      .finally(() => {
+        setIsDeleting(false);
+        setIsAlertOpen(false);
+      });
+  };
   
   const isLoading = isAdminLoading || isUserLoading || areServicesLoading;
 
@@ -130,6 +199,10 @@ export default function EditUserPage() {
       </div>
     );
   }
+  
+  if (userError) {
+     return <div className="p-8 text-center text-destructive">Erro ao carregar os dados do usuário.</div>;
+  }
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -142,11 +215,20 @@ export default function EditUserPage() {
       <Card className="w-full max-w-2xl">
         <CardHeader>
           <CardTitle className="font-headline">Gerenciar {user.name}</CardTitle>
-          <CardDescription>Altere a função e as permissões do usuário.</CardDescription>
+          <CardDescription>Altere o nome, função e as permissões do usuário.</CardDescription>
         </CardHeader>
         <CardContent>
            <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+               <FormField control={form.control} name="name" render={({ field }) => (
+                  <FormItem>
+                      <FormLabel>Nome Completo</FormLabel>
+                      <FormControl>
+                          <Input placeholder="Nome do usuário" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                  </FormItem>
+              )} />
               <FormField
                 control={form.control}
                 name="role"
@@ -224,6 +306,64 @@ export default function EditUserPage() {
           </Form>
         </CardContent>
       </Card>
+
+      <Card className="mt-6 border-destructive/50">
+        <CardHeader>
+          <CardTitle className="font-headline text-destructive">Zona de Perigo</CardTitle>
+          <CardDescription>
+            Estas ações são permanentes e devem ser usadas com cuidado.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between rounded-lg border border-dashed p-4">
+            <div>
+              <h3 className="font-semibold">
+                {user.disabled ? 'Reativar Usuário' : 'Desativar Usuário'}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {user.disabled ? 'Permitir que este usuário faça login novamente.' : 'Impedir que este usuário faça login.'}
+              </p>
+            </div>
+            <Button variant={user.disabled ? 'secondary' : 'outline'} onClick={handleToggleDisable} disabled={isDisabling}>
+              {isDisabling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {user.disabled ? 'Reativar' : 'Desativar'}
+            </Button>
+          </div>
+          <div className="flex items-center justify-between rounded-lg border border-dashed border-destructive p-4">
+            <div>
+              <h3 className="font-semibold text-destructive">Excluir Usuário</h3>
+              <p className="text-sm text-muted-foreground">
+                Excluir permanentemente os dados deste usuário do aplicativo.
+              </p>
+            </div>
+            <Button variant="destructive" onClick={() => setIsAlertOpen(true)} disabled={isDeleting}>
+              {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              Excluir
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Você tem certeza absoluta?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Isso excluirá permanentemente os dados do usuário da aplicação (perfil, etc.), mas não removerá sua conta de autenticação. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteUser} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+              {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Sim, excluir usuário
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }
+
+    
