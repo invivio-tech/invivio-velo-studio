@@ -19,6 +19,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar as CalendarIcon, Clock, Users, Scissors, User, Check, ArrowLeft, Loader2 } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 // Types for data used in this page
 interface Appointment {
@@ -35,6 +36,11 @@ interface BlockedTime {
   startTime: Timestamp;
   endTime: Timestamp;
   reason: string;
+}
+
+interface Category {
+  id: string;
+  name: string;
 }
 
 // Main component
@@ -65,6 +71,9 @@ export default function BookAppointmentPage() {
   // Data fetching
   const servicesCollection = useMemoFirebase(() => firestore ? collection(firestore, 'services') : null, [firestore]);
   const { data: services, isLoading: areServicesLoading } = useCollection<ServiceWithId>(servicesCollection);
+
+  const categoriesCollection = useMemoFirebase(() => firestore ? collection(firestore, 'serviceCategories') : null, [firestore]);
+  const { data: categories, isLoading: areCategoriesLoading } = useCollection<Category>(categoriesCollection);
 
   const professionalsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'users'), where('role', '==', 'professional')) : null, [firestore]);
   const { data: allProfessionals, isLoading: areProfessionalsLoading } = useCollection<UserProfile>(professionalsQuery);
@@ -182,6 +191,20 @@ export default function BookAppointmentPage() {
     return allProfessionals.filter(p => p.serviceIds?.includes(selectedService.id));
   }, [selectedService, allProfessionals]);
 
+  const servicesByCategory = useMemo(() => {
+    if (!services || !categories) return [];
+    
+    const categoryMap = new Map(categories.map(cat => [cat.id, { ...cat, services: [] as ServiceWithId[] }]));
+
+    services.forEach(service => {
+        if (service.categoryId && categoryMap.has(service.categoryId)) {
+            categoryMap.get(service.categoryId)!.services.push(service);
+        }
+    });
+
+    return Array.from(categoryMap.values()).filter(cat => cat.services.length > 0);
+  }, [services, categories]);
+
 
   const handleSelectService = (service: ServiceWithId) => {
     setSelectedService(service);
@@ -248,7 +271,7 @@ export default function BookAppointmentPage() {
     </div>
   );
 
-  const isLoading = isUserLoading || areServicesLoading || areProfessionalsLoading || areEstablishmentSettingsLoading;
+  const isLoading = isUserLoading || areServicesLoading || areProfessionalsLoading || areEstablishmentSettingsLoading || areCategoriesLoading;
 
   if (isLoading) {
       return (
@@ -270,22 +293,40 @@ export default function BookAppointmentPage() {
       <div className="max-w-4xl mx-auto space-y-6">
           {/* Step 1: Select Service */}
           <StepHeader stepNum={1} title="Escolha o Serviço">
-             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                 {services?.map(service => (
-                     <Card key={service.id} onClick={() => handleSelectService(service)} className="cursor-pointer hover:border-primary transition-colors">
-                        <CardHeader>
-                            <CardTitle className="font-headline text-lg">{service.name}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                             <p className="text-sm text-muted-foreground">{service.description}</p>
-                        </CardContent>
-                        <CardFooter className="flex justify-between text-sm">
-                            <span className="font-bold text-primary">{`R$${service.price.toFixed(2).replace('.', ',')}`}</span>
-                            <span className="text-muted-foreground">{service.duration}</span>
-                        </CardFooter>
-                     </Card>
-                 ))}
-             </div>
+             <Accordion type="multiple" className="w-full" defaultValue={categories?.map(c => c.id)}>
+                {areCategoriesLoading ? (
+                    <div className="space-y-4">
+                        <Skeleton className="h-12 w-full"/>
+                        <Skeleton className="h-12 w-full"/>
+                    </div>
+                ) : servicesByCategory.length > 0 ? (
+                    servicesByCategory.map(category => (
+                        <AccordionItem value={category.id} key={category.id}>
+                            <AccordionTrigger className="text-xl font-headline hover:no-underline">{category.name}</AccordionTrigger>
+                            <AccordionContent>
+                                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                    {category.services.map(service => (
+                                        <Card key={service.id} onClick={() => handleSelectService(service)} className="cursor-pointer hover:border-primary transition-colors">
+                                            <CardHeader>
+                                                <CardTitle className="font-headline text-lg">{service.name}</CardTitle>
+                                            </CardHeader>
+                                            <CardContent>
+                                                <p className="text-sm text-muted-foreground">{service.description}</p>
+                                            </CardContent>
+                                            <CardFooter className="flex justify-between text-sm">
+                                                <span className="font-bold text-primary">{`R$${service.price.toFixed(2).replace('.', ',')}`}</span>
+                                                <span className="text-muted-foreground">{service.duration}</span>
+                                            </CardFooter>
+                                        </Card>
+                                    ))}
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                    ))
+                ) : (
+                    <p className="text-muted-foreground text-center py-4">Nenhum serviço encontrado. Peça para um administrador adicionar serviços e categorias.</p>
+                )}
+             </Accordion>
           </StepHeader>
 
           {/* Step 2: Select Professional */}
@@ -372,3 +413,5 @@ export default function BookAppointmentPage() {
     </div>
   );
 }
+
+    

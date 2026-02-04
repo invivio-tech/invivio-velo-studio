@@ -27,6 +27,7 @@ import {
   ContactRound,
   Building,
   PlusCircle,
+  LayoutGrid,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -42,6 +43,7 @@ import type { EstablishmentSettings } from '@/app/establishment/page';
 const adminMenuItems = [
   { href: '/schedule', label: 'Painel', icon: Calendar },
   { href: '/services', label: 'Serviços', icon: BookOpen },
+  { href: '/categories', label: 'Categorias', icon: LayoutGrid },
   { href: '/customers', label: 'Equipe', icon: Users },
   { href: '/clients', label: 'Clientes', icon: ContactRound },
   { href: '/invoices', label: 'Faturas', icon: FileText },
@@ -208,3 +210,5 @@ export default function AppSidebar() {
     </>
   );
 }
+
+    

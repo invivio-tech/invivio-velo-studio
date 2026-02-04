@@ -126,6 +126,17 @@ service cloud.firestore {
     }
 
     /**
+     * @description Publicly lists the categories for services.
+     * @path /serviceCategories/{serviceCategoryId}
+     * @allow (get, list) Any user, signed in or not, can read the list of categories.
+     * @allow (write) Only authenticated admins can create, update, or delete categories.
+     */
+    match /serviceCategories/{serviceCategoryId} {
+      allow get, list: if true;
+      allow write: if isAdmin();
+    }
+
+    /**
      * @description Publicly lists the services offered by the business.
      * @path /services/{serviceId}
      * @allow (get, list) Any user, signed in or not, can read the list of services.
@@ -189,3 +200,5 @@ service cloud.firestore {
     }
   }
 }
+
+    

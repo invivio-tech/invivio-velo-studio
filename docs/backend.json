@@ -60,6 +60,19 @@
       },
       "required": ["id", "name", "email", "role"]
     },
+    "ServiceCategory": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Service Category",
+      "type": "object",
+      "description": "Represents a category for services (e.g., 'Cabelo', 'Barba').",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the category."
+        }
+      },
+      "required": ["name"]
+    },
     "Service": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Service",
@@ -86,12 +99,17 @@
           "type": "string",
           "description": "URL for the service's image.",
           "format": "uri"
+        },
+        "categoryId": {
+          "type": "string",
+          "description": "Reference to the service's category ID."
         }
       },
       "required": [
         "name",
         "price",
-        "duration"
+        "duration",
+        "categoryId"
       ]
     },
     "Appointment": {
@@ -499,6 +517,22 @@
         }
       },
       {
+        "path": "/serviceCategories/{categoryId}",
+        "definition": {
+          "entityName": "ServiceCategory",
+          "schema": {
+            "$ref": "#/backend/entities/ServiceCategory"
+          },
+          "description": "Stores categories for services.",
+          "params": [
+            {
+              "name": "categoryId",
+              "description": "The unique identifier for the service category."
+            }
+          ]
+        }
+      },
+      {
         "path": "/services/{serviceId}",
         "definition": {
           "entityName": "Service",
@@ -572,3 +606,5 @@
     "reasoning": "The Firestore structure has been updated to be more role-oriented. The 'customers' collection is now 'users', reflecting that a user can be a client, professional, or admin. Appointments and invoices have been moved to top-level collections to decouple them from a single user's data tree, preparing the system for more complex relationships, such as a professional's view of their own schedule. This flat structure simplifies queries and security rules, especially for features involving multiple user roles. Added professional-specific subcollections for scheduleSettings and blockedTimes to allow for individual schedule management."
   }
 }
+
+    

@@ -53,6 +53,7 @@ export interface Service {
   price: number;
   duration: string;
   imageUrl?: string;
+  categoryId: string;
 }
 
 export type ServiceWithId = Service & { id: string };
@@ -70,7 +71,7 @@ export default function ServicesPage() {
     data: services,
     isLoading: areServicesLoading,
     error,
-  } = useCollection<Service>(servicesCollection);
+  } = useCollection<ServiceWithId>(servicesCollection);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
@@ -297,3 +298,5 @@ export default function ServicesPage() {
     </div>
   );
 }
+
+    

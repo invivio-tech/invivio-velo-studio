@@ -30,6 +30,14 @@ import { Loader2, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { generateServiceDescription } from '@/ai/flows/generate-service-description';
 import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
+
+interface Category {
+  id: string;
+  name: string;
+}
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'O nome do serviço deve ter pelo menos 2 caracteres.' }),
@@ -37,6 +45,7 @@ const formSchema = z.object({
   price: z.coerce.number().positive({ message: 'O preço deve ser um número positivo.' }),
   duration: z.string().min(2, { message: 'A duração é obrigatória.' }),
   imageUrl: z.string().url({ message: 'Por favor, insira uma URL válida.' }).optional().or(z.literal('')),
+  categoryId: z.string().min(1, { message: 'A categoria é obrigatória.' }),
 });
 
 type ServiceFormProps = {
@@ -51,16 +60,22 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
   const [isSuggesting, setIsSuggesting] = useState(false);
   const { toast } = useToast();
 
+  const firestore = useFirestore();
+  const categoriesCollection = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'serviceCategories') : null),
+    [firestore]
+  );
+  const { data: categories, isLoading: areCategoriesLoading } = useCollection<Category>(categoriesCollection);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: service ? {
-      ...service,
-    } : {
+    defaultValues: {
       name: '',
       description: '',
       price: 0,
       duration: '',
       imageUrl: '',
+      categoryId: '',
     },
   });
   
@@ -72,6 +87,7 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
         price: 0,
         duration: '',
         imageUrl: '',
+        categoryId: '',
         });
     }
   }, [service, isOpen, form]);
@@ -137,6 +153,30 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
                   <FormControl>
                     <Input placeholder="ex: Corte Moderno" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="categoryId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Categoria</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={areCategoriesLoading}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={areCategoriesLoading ? 'Carregando...' : 'Selecione uma categoria'} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {categories?.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
