@@ -47,7 +47,6 @@ const adminMenuItems = [
 const professionalMenuItems = [
   { href: '/schedule', label: 'Painel', icon: Calendar },
   { href: '/services', label: 'Serviços', icon: BookOpen },
-  { href: '/customers', label: 'Usuários', icon: Users },
 ];
 
 const clientMenuItems = [

@@ -13,10 +13,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Users } from "lucide-react";
+import { MoreHorizontal, Users, PlusCircle } from "lucide-react";
 import { Skeleton } from '@/components/ui/skeleton';
 import type { UserProfile } from '@/firebase';
-import type { ServiceWithId } from '@/app/services/page';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 const roleDisplay: Record<UserProfile['role'], string> = {
   admin: 'Admin',
@@ -106,11 +106,21 @@ export default function UsersPage() {
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center gap-4">
-        <Users className="w-8 h-8 text-secondary"/>
-        <h1 className="text-3xl font-headline font-bold tracking-tight">
-          Gestão de Usuários
-        </h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Users className="w-8 h-8 text-secondary"/>
+          <h1 className="text-3xl font-headline font-bold tracking-tight">
+            Gestão de Usuários
+          </h1>
+        </div>
+        {userProfile?.role === 'admin' && (
+            <Button asChild>
+                <Link href="/customers/new">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Novo Usuário
+                </Link>
+            </Button>
+        )}
       </div>
       <Card>
         <CardHeader>

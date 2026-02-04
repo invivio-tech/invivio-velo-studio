@@ -10,11 +10,14 @@ import {
   signInWithPopup,
   sendPasswordResetEmail,
   type User,
+  getAuth,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { initializeFirebase } from '..';
 import { errorEmitter } from '../error-emitter';
 import { FirestorePermissionError } from '../errors';
+import { initializeApp } from 'firebase/app';
+import { firebaseConfig } from '../config';
 
 const { auth, firestore: db } = initializeFirebase();
 
@@ -27,9 +30,7 @@ export async function createAccount(name: string, email: string, pass: string) {
     await updateProfile(user, { displayName: name });
 
     const userRef = doc(db, 'users', user.uid);
-    const isAdmin = email === 'admin@barbearia.com';
-    const isProfessional = email.endsWith('@barbearia.com') && !isAdmin;
-    const role = isAdmin ? 'admin' : isProfessional ? 'professional' : 'client';
+    const role = 'client';
 
     const userData = {
       id: user.uid,
@@ -117,9 +118,15 @@ export async function signInWithGoogle() {
         const user = result.user;
 
         const userRef = doc(db, 'users', user.uid);
-        const isAdmin = user.email === 'admin@barbearia.com';
-        const isProfessional = user.email?.endsWith('@barbearia.com') && !isAdmin;
-        const role = isAdmin ? 'admin' : isProfessional ? 'professional' : 'client';
+        const userDoc = await getDoc(userRef);
+
+        if (userDoc.exists()) {
+          // User profile already exists, do nothing to their role.
+          return null;
+        }
+
+        // If user profile does not exist, create a new one as 'client'.
+        const role = 'client';
 
         const userData = {
             id: user.uid,
@@ -149,6 +156,40 @@ export async function signInWithGoogle() {
             message: e.message,
         };
     }
+}
+
+// --- Create account by Admin ---
+export async function createAccountByAdmin(data: { name: string, email: string, pass: string, role: 'professional' | 'admin' | 'client', serviceIds?: string[] }) {
+  const { name, email, pass, role, serviceIds } = data;
+  
+  // Use a temporary app instance to create the user without signing out the admin
+  const tempAppName = `temp-user-creation-${Date.now()}`;
+  const tempApp = initializeApp(firebaseConfig, tempAppName);
+  const tempAuth = getAuth(tempApp);
+
+  try {
+      const userCredential = await createUserWithEmailAndPassword(tempAuth, email, pass);
+      const user = userCredential.user;
+
+      // Now, use the main db instance to create the Firestore document
+      const userRef = doc(db, 'users', user.uid);
+      const userData = {
+          id: user.uid,
+          name: name,
+          email: user.email,
+          photoURL: null, // No photoURL when creating via email/pass
+          role: role,
+          serviceIds: role === 'professional' ? serviceIds || [] : [],
+      };
+      
+      // This needs to be done with admin privileges, which the security rules should allow.
+      await setDoc(userRef, userData);
+      
+      return { user: userData, error: null };
+  } catch (e: any) {
+      console.error('Error creating user by admin:', e);
+      return { user: null, error: { code: e.code, message: e.message } };
+  }
 }
 
 
