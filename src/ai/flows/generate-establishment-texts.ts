@@ -12,6 +12,7 @@ import {z} from 'genkit';
 
 const EstablishmentTextsInputSchema = z.object({
   name: z.string().describe('The name of the establishment.'),
+  context: z.string().optional().describe('Comentários ou contexto adicional sobre o estabelecimento, como público-alvo, diferenciais, etc.'),
 });
 export type EstablishmentTextsInput = z.infer<typeof EstablishmentTextsInputSchema>;
 
@@ -34,13 +35,17 @@ const prompt = ai.definePrompt({
   Sua tarefa é criar textos atraentes e profissionais para a página inicial de um estabelecimento.
 
   O nome do estabelecimento é: {{{name}}}
+  {{#if context}}
+  Aqui estão alguns comentários e contexto adicional sobre o estabelecimento para te guiar:
+  {{{context}}}
+  {{/if}}
 
-  Com base no nome, gere o seguinte:
+  Com base nas informações fornecidas, gere o seguinte:
   1.  Um "Título Principal" (heroTitle) curto, impactante e memorável.
   2.  Um "Subtítulo" (heroSubtitle) que complemente o título principal, detalhando a proposta de valor.
   3.  Um texto para a seção "Sobre" (about) que conte uma história convincente sobre o negócio, com cerca de 2 a 3 parágrafos.
 
-  Se o nome for genérico como "Barbearia", assuma que é um estabelecimento moderno e de alta qualidade.
+  Se o nome for genérico como "Barbearia" e não houver contexto adicional, assuma que é um estabelecimento moderno e de alta qualidade.
   Seja criativo e profissional.
   `,
 });

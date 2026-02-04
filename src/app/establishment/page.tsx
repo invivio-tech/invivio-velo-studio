@@ -15,7 +15,7 @@ import { generateEstablishmentTexts } from '@/ai/flows/generate-establishment-te
 
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -31,6 +31,7 @@ export interface EstablishmentSettings {
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'O nome é obrigatório.' }),
+  context: z.string().optional(),
   about: z.string().min(10, { message: 'O texto sobre deve ter pelo menos 10 caracteres.' }),
   heroTitle: z.string().min(10, { message: 'O título principal é obrigatório.' }),
   heroSubtitle: z.string().min(10, { message: 'O subtítulo é obrigatório.' }),
@@ -64,6 +65,7 @@ export default function EstablishmentPage() {
     about: 'Fundada em 2024, nossa barbearia nasceu com o propósito de resgatar a essência das barbearias clássicas, incorporando tecnologia para oferecer uma experiência única e conveniente. Nossos profissionais são artistas apaixonados, dedicados a entregar o melhor resultado para cada cliente. Utilizamos produtos de alta qualidade e as técnicas mais apuradas para garantir que seu cabelo e barba estejam sempre impecáveis. Venha nos visitar e descubra por que somos a escolha inteligente para o homem moderno.',
     heroTitle: 'Estilo e Precisão em Cada Corte.',
     heroSubtitle: 'Experimente a combinação perfeita de tradição e modernidade. Na Barbearia Inteligente, cuidamos do seu visual com a maestria que você merece.',
+    context: '',
   };
 
   const form = useForm<SettingsFormValues>({
@@ -74,7 +76,10 @@ export default function EstablishmentPage() {
   // Load data into the form once it's fetched
   useEffect(() => {
     if (settings) {
-      form.reset(settings);
+      form.reset({
+        ...defaultValues,
+        ...settings,
+      });
     }
   }, [settings, form]);
 
@@ -82,7 +87,9 @@ export default function EstablishmentPage() {
     if (!settingsRef) return;
     setIsSaving(true);
     
-    setDoc(settingsRef, values, { merge: true })
+    const { context, ...settingsData } = values;
+
+    setDoc(settingsRef, settingsData, { merge: true })
       .then(() => {
         toast({
           title: 'Configurações salvas!',
@@ -93,7 +100,7 @@ export default function EstablishmentPage() {
         const permissionError = new FirestorePermissionError({
           path: settingsRef.path,
           operation: 'update',
-          requestResourceData: values,
+          requestResourceData: settingsData,
         });
         errorEmitter.emit('permission-error', permissionError);
         toast({
@@ -109,6 +116,7 @@ export default function EstablishmentPage() {
   
   const handleSuggestTexts = async () => {
     const name = form.getValues('name');
+    const context = form.getValues('context');
     if (!name || name.length < 2) {
       toast({
         variant: 'destructive',
@@ -119,7 +127,7 @@ export default function EstablishmentPage() {
     }
     setIsSuggesting(true);
     try {
-      const result = await generateEstablishmentTexts({ name });
+      const result = await generateEstablishmentTexts({ name, context });
       if (result) {
         form.setValue('heroTitle', result.heroTitle, { shouldValidate: true });
         form.setValue('heroSubtitle', result.heroSubtitle, { shouldValidate: true });
@@ -193,7 +201,7 @@ export default function EstablishmentPage() {
                   </FormItem>
               )} />
 
-              <div className="border-t pt-6 space-y-2">
+              <div className="border-t pt-6 space-y-4">
                 <div className="flex items-center justify-between">
                     <h3 className="text-lg font-medium">Textos da Página Inicial</h3>
                     <Button type="button" variant="outline" size="sm" onClick={handleSuggestTexts} disabled={isSuggesting}>
@@ -205,9 +213,18 @@ export default function EstablishmentPage() {
                         Sugerir Textos com IA
                     </Button>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                    Clique no botão para gerar sugestões para o título, subtítulo e seção "Sobre" com base no nome do estabelecimento.
-                </p>
+                 <FormField control={form.control} name="context" render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Comentários para a IA</FormLabel>
+                        <FormControl>
+                            <Textarea placeholder="Ex: Somos uma barbearia de luxo para o público jovem, com um ambiente descolado e música ao vivo nos finais de semana." {...field} />
+                        </FormControl>
+                        <FormDescription>
+                            Forneça contexto extra para a IA, como público-alvo, diferenciais ou o tom desejado.
+                        </FormDescription>
+                        <FormMessage />
+                    </FormItem>
+                )} />
               </div>
 
                <FormField control={form.control} name="heroTitle" render={({ field }) => (
