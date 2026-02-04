@@ -164,7 +164,7 @@ export default function UserManagementDialog({
                     </div>
                     <ScrollArea className="h-48 rounded-md border p-4">
                       {allServices.map((service) => (
-                        <FormItem
+                        <div
                           key={service.id}
                           className="flex flex-row items-start space-x-3 space-y-0 mb-4"
                         >
@@ -172,20 +172,21 @@ export default function UserManagementDialog({
                             <Checkbox
                               checked={field.value?.includes(service.id)}
                               onCheckedChange={(checked) => {
+                                const currentValue = field.value || [];
                                 return checked
-                                  ? field.onChange([...(field.value || []), service.id])
+                                  ? field.onChange([...currentValue, service.id])
                                   : field.onChange(
-                                      field.value?.filter(
+                                      currentValue?.filter(
                                         (value) => value !== service.id
                                       )
                                     );
                               }}
                             />
                           </FormControl>
-                          <FormLabel className="font-normal">
-                            {service.name}
-                          </FormLabel>
-                        </FormItem>
+                           <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                              {service.name}
+                            </label>
+                        </div>
                       ))}
                     </ScrollArea>
                     <FormMessage />
