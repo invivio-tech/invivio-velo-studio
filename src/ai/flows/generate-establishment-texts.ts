@@ -20,6 +20,9 @@ const EstablishmentTextsOutputSchema = z.object({
   heroTitle: z.string().describe('The generated main hero title for the landing page.'),
   heroSubtitle: z.string().describe('The generated hero subtitle for the landing page.'),
   about: z.string().describe('The generated "about" text for the landing page.'),
+  servicesTitle: z.string().describe('The generated title for the services section.'),
+  servicesSubtitle: z.string().describe('The generated subtitle for the services section.'),
+  address: z.string().describe('The generated physical address for the establishment.'),
 });
 export type EstablishmentTextsOutput = z.infer<typeof EstablishmentTextsOutputSchema>;
 
@@ -44,6 +47,9 @@ const prompt = ai.definePrompt({
   1.  Um "Título Principal" (heroTitle) curto, impactante e memorável.
   2.  Um "Subtítulo" (heroSubtitle) que complemente o título principal, detalhando a proposta de valor.
   3.  Um texto para a seção "Sobre" (about) que conte uma história convincente sobre o negócio, com cerca de 2 a 3 parágrafos.
+  4.  Um título para a seção de serviços (servicesTitle).
+  5.  Um subtítulo para a seção de serviços (servicesSubtitle).
+  6.  Um endereço fictício, mas realista, para o estabelecimento (address).
 
   Se o nome for genérico como "Barbearia" e não houver contexto adicional, assuma que é um estabelecimento moderno e de alta qualidade.
   Seja criativo e profissional.

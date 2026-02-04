@@ -141,6 +141,9 @@ export default function EstablishmentPage() {
         form.setValue('heroTitle', result.heroTitle, { shouldValidate: true });
         form.setValue('heroSubtitle', result.heroSubtitle, { shouldValidate: true });
         form.setValue('about', result.about, { shouldValidate: true });
+        form.setValue('servicesTitle', result.servicesTitle, { shouldValidate: true });
+        form.setValue('servicesSubtitle', result.servicesSubtitle, { shouldValidate: true });
+        form.setValue('address', result.address, { shouldValidate: true });
         toast({
             title: 'Sugestões aplicadas!',
             description: 'Novos textos foram gerados e preenchidos no formulário.'
@@ -314,5 +317,3 @@ export default function EstablishmentPage() {
     </div>
   );
 }
-
-    
