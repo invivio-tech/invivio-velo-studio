@@ -47,7 +47,14 @@ export default function EditUserPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
 
-  const userRef = useMemoFirebase(() => (firestore && userId ? doc(firestore, 'users', userId) : null), [firestore, userId]);
+  const userRef = useMemoFirebase(() => {
+    // Only create the reference if we know the current user is an admin
+    if (firestore && userId && adminProfile?.role === 'admin') {
+      return doc(firestore, 'users', userId);
+    }
+    return null;
+  }, [firestore, userId, adminProfile]);
+  
   const { data: user, isLoading: isUserLoading, error: userError } = useDoc<UserProfile>(userRef);
 
   const servicesCollection = useMemoFirebase(() => (firestore ? collection(firestore, 'services') : null), [firestore]);
@@ -179,9 +186,9 @@ export default function EditUserPage() {
       });
   };
   
-  const isLoading = isAdminLoading || isUserLoading || areServicesLoading;
+  const isLoading = isAdminLoading || (adminProfile?.role === 'admin' && (isUserLoading || areServicesLoading));
 
-  if (isLoading || !user || !allServices) {
+  if (isLoading || !adminProfile) {
     return (
        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <Skeleton className="h-10 w-64" />
@@ -206,8 +213,38 @@ export default function EditUserPage() {
   }
   
   if (userError) {
-     return <div className="p-8 text-center text-destructive">Erro ao carregar os dados do usuário.</div>;
+     return <div className="p-8 text-center text-destructive">Erro ao carregar os dados do usuário. Verifique suas permissões.</div>;
   }
+  
+  if (!user && adminProfile?.role === 'admin' && !isUserLoading) {
+    return <div className="p-8 text-center text-destructive">Usuário não encontrado.</div>;
+  }
+  
+  // Need to make sure `user` is loaded before rendering the form
+  if (!user) {
+     return (
+       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        <Skeleton className="h-10 w-64" />
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-72" />
+          </CardHeader>
+          <CardContent className="space-y-8">
+            <div className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-10 w-full" />
+            </div>
+            <div className="flex justify-end gap-2">
+                <Skeleton className="h-10 w-24" />
+                <Skeleton className="h-10 w-24" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -257,7 +294,7 @@ export default function EditUserPage() {
                 )}
               />
 
-              {watchedRole === 'professional' && (
+              {watchedRole === 'professional' && allServices && (
                 <FormField
                   control={form.control}
                   name="serviceIds"
