@@ -30,11 +30,13 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { useUser, useUserProfile } from '@/firebase';
+import { useUser, useUserProfile, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { logout } from '@/firebase/auth/client';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Skeleton } from '../ui/skeleton';
 import { useRouter } from 'next/navigation';
+import { doc } from 'firebase/firestore';
+import type { EstablishmentSettings } from '@/app/establishment/page';
 
 const adminMenuItems = [
   { href: '/schedule', label: 'Painel', icon: Calendar },
@@ -71,6 +73,14 @@ export default function AppSidebar() {
   const { user, isUserLoading } = useUser();
   const { userProfile, isLoading: isProfileLoading } = useUserProfile();
 
+  const firestore = useFirestore();
+  const settingsRef = useMemoFirebase(
+    () => (firestore ? doc(firestore, 'establishmentSettings', 'main') : null),
+    [firestore]
+  );
+  const { data: settings, isLoading: areSettingsLoading } = useDoc<EstablishmentSettings>(settingsRef);
+  const establishmentName = settings?.name || 'Barbearia Inteligente';
+
   const handleLogout = async () => {
     await logout();
     router.push('/login');
@@ -98,11 +108,15 @@ export default function AppSidebar() {
       <Sidebar collapsible="icon">
         <SidebarContent>
           <SidebarHeader className="h-20 flex items-center justify-center">
-            <Link href="/schedule" className="flex items-center gap-2">
-              <BarberPoleIcon className="w-8 h-8 text-primary" />
-              <span className="font-headline text-xl font-semibold">
-                Barbearia Inteligente
-              </span>
+            <Link href="/schedule" className="flex items-center gap-2 p-2">
+              <BarberPoleIcon className="w-8 h-8 text-primary shrink-0" />
+              {areSettingsLoading ? (
+                <Skeleton className="h-6 w-36" />
+              ) : (
+                <span className="font-headline text-xl font-semibold truncate">
+                  {establishmentName}
+                </span>
+              )}
             </Link>
           </SidebarHeader>
 
@@ -179,7 +193,11 @@ export default function AppSidebar() {
             </SidebarMenu>
            ) : (
             <div className="p-2 text-xs text-center text-muted-foreground">
-              <p>&copy; 2024 Barbearia Inteligente</p>
+              {areSettingsLoading ? (
+                <Skeleton className="h-4 w-32 mx-auto" />
+              ) : (
+                <p>&copy; 2024 {establishmentName}</p>
+              )}
             </div>
            )}
         </SidebarFooter>
