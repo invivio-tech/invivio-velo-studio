@@ -56,12 +56,6 @@ export default function UsersPage() {
   const { data: services, isLoading: areServicesLoading } = useCollection<ServiceWithId>(servicesCollection);
 
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
-  
-  const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      setEditingUser(null);
-    }
-  };
 
   const isLoading = isProfileLoading || areUsersLoading || areServicesLoading;
 
@@ -72,7 +66,7 @@ export default function UsersPage() {
   }, [isProfileLoading, userProfile, router]);
 
 
-  if (isProfileLoading || userProfile?.role !== 'admin') {
+  if (isProfileLoading || (userProfile && userProfile.role !== 'admin')) {
     return (
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="flex items-center gap-4">
@@ -194,14 +188,11 @@ export default function UsersPage() {
           </Table>
         </CardContent>
       </Card>
-      {editingUser && (
-        <UserManagementDialog
-          isOpen={!!editingUser}
-          setIsOpen={handleOpenChange}
-          user={editingUser}
-          allServices={services || []}
-        />
-      )}
+      <UserManagementDialog
+        user={editingUser}
+        onClose={() => setEditingUser(null)}
+        allServices={services || []}
+      />
     </div>
   );
 }

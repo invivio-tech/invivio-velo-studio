@@ -13,7 +13,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogClose,
 } from '@/components/ui/dialog';
 import {
   Form,
@@ -48,16 +47,14 @@ const formSchema = z.object({
 type UserManagementFormValues = z.infer<typeof formSchema>;
 
 type UserManagementDialogProps = {
-  isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
-  user: UserProfile;
+  user: UserProfile | null;
+  onClose: () => void;
   allServices: ServiceWithId[];
 };
 
 export default function UserManagementDialog({
-  isOpen,
-  setIsOpen,
   user,
+  onClose,
   allServices,
 }: UserManagementDialogProps) {
   const [isSaving, setIsSaving] = React.useState(false);
@@ -66,10 +63,6 @@ export default function UserManagementDialog({
 
   const form = useForm<UserManagementFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      role: user.role,
-      serviceIds: user.serviceIds || [],
-    },
   });
   
   React.useEffect(() => {
@@ -84,7 +77,7 @@ export default function UserManagementDialog({
   const watchedRole = form.watch('role');
 
   async function onSubmit(values: UserManagementFormValues) {
-    if (!firestore) return;
+    if (!firestore || !user) return;
     setIsSaving(true);
     
     const userRef = doc(firestore, 'users', user.id);
@@ -99,7 +92,7 @@ export default function UserManagementDialog({
           title: 'Usuário atualizado!',
           description: `A função de ${user.name} foi atualizada.`,
         });
-        setIsOpen(false);
+        onClose();
       })
       .catch((serverError) => {
         const permissionError = new FirestorePermissionError({
@@ -120,10 +113,14 @@ export default function UserManagementDialog({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={!!user} onOpenChange={(open) => {
+      if (!open) {
+        onClose();
+      }
+    }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="font-headline">Gerenciar {user.name}</DialogTitle>
+          <DialogTitle className="font-headline">Gerenciar {user?.name}</DialogTitle>
           <DialogDescription>
             Altere a função e as permissões do usuário.
           </DialogDescription>
@@ -207,9 +204,7 @@ export default function UserManagementDialog({
             )}
 
             <DialogFooter>
-              <DialogClose asChild>
-                <Button type="button" variant="ghost">Cancelar</Button>
-              </DialogClose>
+              <Button type="button" variant="ghost" onClick={onClose}>Cancelar</Button>
               <Button type="submit" disabled={isSaving}>
                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Salvar
