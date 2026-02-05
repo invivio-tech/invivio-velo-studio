@@ -12,7 +12,7 @@ import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUser, useUserProfile, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { collection, query, where, orderBy, Timestamp } from 'firebase/firestore';
 import { format } from 'date-fns';
@@ -182,19 +182,20 @@ function AdminProfessionalDashboard() {
 
 // Dashboard for Client role
 function ClientDashboard() {
-  const { user } = useUser();
+  const { user, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
+  const [queryStartDate] = useState(() => new Date()); // Use lazy initial state for stability
 
   // Fetch upcoming appointments for the current user
   const appointmentsQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
+    if (!firestore || !user?.uid || isAuthLoading) return null; // Guard against running while auth is loading
     return query(
       collection(firestore, 'appointments'),
       where('customerId', '==', user.uid),
-      where('startTime', '>=', new Date()),
+      where('startTime', '>=', queryStartDate), // Use stable date
       orderBy('startTime', 'asc')
     );
-  }, [firestore, user?.uid]);
+  }, [firestore, user?.uid, isAuthLoading, queryStartDate]);
   const { data: appointments, isLoading: areAppointmentsLoading } = useCollection<Appointment>(appointmentsQuery);
 
   // Fetch all services to map serviceId to service details
@@ -205,7 +206,7 @@ function ClientDashboard() {
   const professionalsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'users'), where('role', '==', 'professional')) : null, [firestore]);
   const { data: allProfessionals, isLoading: areProfessionalsLoading } = useCollection<UserProfile>(professionalsQuery);
   
-  const isLoading = areAppointmentsLoading || areServicesLoading || areProfessionalsLoading;
+  const isLoading = areAppointmentsLoading || areServicesLoading || areProfessionalsLoading || isAuthLoading;
 
   const getServiceDetails = (serviceId: string) => allServices?.find(s => s.id === serviceId);
   const getProfessionalDetails = (professionalId: string) => allProfessionals?.find(p => p.id === professionalId);
