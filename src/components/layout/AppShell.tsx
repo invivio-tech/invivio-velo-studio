@@ -14,12 +14,28 @@ const appRoutes = [
     '/account',
     '/establishment',
     '/categories',
-    '/book-appointment'
+    '/book-appointment',
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isAppPage = appRoutes.some(route => pathname.startsWith(route));
+  // Check if the current path starts with any of the app routes or matches a dynamic route pattern
+  const isAppPage = appRoutes.some(route => {
+    if (pathname.startsWith(route) && route.length > 1) {
+      return true;
+    }
+    // Handle root path separately
+    if (route === '/' && pathname === '/') {
+        return true;
+    }
+    return false;
+  }) || /^\/customers\/[^/]+\/(edit|schedule)$/.test(pathname) || /^\/clients\/[^/]+\/edit$/.test(pathname)
+
+  // A more specific check for the root to not include it in the app shell
+   if(pathname === '/') {
+      return <>{children}</>;
+   }
+
 
   if (isAppPage) {
     return (
