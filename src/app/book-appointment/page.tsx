@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { addMinutes, format, isAfter, isBefore, isEqual, parse, set, startOfDay } from 'date-fns';
+import { addMinutes, format, isAfter, isBefore, isEqual, parse, set, startOfDay, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { addDoc, collection, query, where, getDocs, Timestamp, doc } from 'firebase/firestore';
 
@@ -78,63 +78,39 @@ export default function BookAppointmentPage() {
   const professionalsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'users'), where('role', '==', 'professional')) : null, [firestore]);
   const { data: allProfessionals, isLoading: areProfessionalsLoading } = useCollection<UserProfile>(professionalsQuery);
 
-  const [dailyAppointments, setDailyAppointments] = useState<Appointment[]>([]);
-  const [dailyBlockedTimes, setDailyBlockedTimes] = useState<BlockedTime[]>([]);
-  const [areSlotsLoading, setAreSlotsLoading] = useState(false);
+  const dailyAppointmentsQuery = useMemoFirebase(() => {
+    if (!firestore || !selectedDate || isUserLoading) return null;
+    const startOfSelectedDay = startOfDay(selectedDate);
+    const endOfSelectedDay = addDays(startOfSelectedDay, 1);
+    return query(
+      collection(firestore, 'appointments'),
+      where('startTime', '>=', Timestamp.fromDate(startOfSelectedDay)),
+      where('startTime', '<', Timestamp.fromDate(endOfSelectedDay))
+    );
+  }, [firestore, selectedDate, isUserLoading]);
+  const { data: dailyAppointments, isLoading: areAppointmentsLoading } = useCollection<Appointment>(dailyAppointmentsQuery);
   
-  // This effect fetches all appointments and blocked times for the selected date
-  useEffect(() => {
-    if (!selectedDate || !firestore) return;
-
-    const fetchDailyData = async () => {
-      setAreSlotsLoading(true);
-
-      const startOfSelectedDay = startOfDay(selectedDate);
-      const endOfSelectedDay = addMinutes(startOfSelectedDay, 24 * 60 -1);
-
-      // Fetch appointments
-      const aptQuery = query(
-        collection(firestore, 'appointments'),
-        where('startTime', '>=', Timestamp.fromDate(startOfSelectedDay)),
-        where('startTime', '<=', Timestamp.fromDate(endOfSelectedDay))
-      );
-      const aptsSnapshot = await getDocs(aptQuery);
-      const appointments = aptsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
-      setDailyAppointments(appointments);
-      
-      // Fetch blocked times (general and all professionals for that day)
-      const btQuery = query(
-        collection(firestore, 'blockedTimes'),
-        where('startTime', '>=', Timestamp.fromDate(startOfSelectedDay)),
-        where('startTime', '<=', Timestamp.fromDate(endOfSelectedDay))
-      );
-      const btSnapshot = await getDocs(btQuery);
-      const blockedTimes = btSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BlockedTime));
-      
-      // TODO: Also fetch professional specific blocked times...
-      
-      setDailyBlockedTimes(blockedTimes);
-      setAreSlotsLoading(false);
-    };
-
-    fetchDailyData();
-
-  }, [selectedDate, firestore]);
+  // TODO: This should also fetch professional-specific blocked times. For now, it only fetches global ones.
+  const dailyBlockedTimesQuery = useMemoFirebase(() => {
+     if (!firestore || !selectedDate || isUserLoading) return null;
+    const startOfSelectedDay = startOfDay(selectedDate);
+    const endOfSelectedDay = addDays(startOfSelectedDay, 1);
+    return query(
+      collection(firestore, 'blockedTimes'),
+      where('startTime', '>=', Timestamp.fromDate(startOfSelectedDay)),
+      where('startTime', '<', Timestamp.fromDate(endOfSelectedDay))
+    );
+  }, [firestore, selectedDate, isUserLoading]);
+  const { data: dailyBlockedTimes, isLoading: areBlockedTimesLoading } = useCollection<BlockedTime>(dailyBlockedTimesQuery);
   
   const establishmentSettingsRef = useMemoFirebase(() => firestore ? doc(firestore, 'scheduleSettings', 'main') : null, [firestore]);
   const { data: establishmentSettings, isLoading: areEstablishmentSettingsLoading } = useDoc<ScheduleSettings>(establishmentSettingsRef);
   
-  const professionalSchedules = useMemo(() => {
-      // TODO: In a real app, this would fetch all professional schedules.
-      return {};
-  }, []);
-
   const parseDuration = (durationStr: string): number => parseInt(durationStr, 10) || 30;
 
   // The core availability calculation logic
   const availableSlots = useMemo(() => {
-    if (!selectedDate || !selectedService || !selectedProfessional || !establishmentSettings || !allProfessionals) return [];
-    setAreSlotsLoading(true);
+    if (!selectedDate || !selectedService || !selectedProfessional || !establishmentSettings || !allProfessionals || areAppointmentsLoading || areBlockedTimesLoading) return [];
 
     const serviceDuration = parseDuration(selectedService.duration);
     const dayOfWeek = format(selectedDate, 'eeee').toLowerCase() as keyof ScheduleSettings['workingHours'];
@@ -147,6 +123,7 @@ export default function BookAppointmentPage() {
 
     for (const prof of professionalsToCheck) {
       // Simplified: using establishment schedule for all professionals
+      // TODO: Use professional-specific schedule if it exists
       const profSchedule = establishmentSettings.workingHours[dayOfWeek];
       if (!profSchedule || !profSchedule.isOpen) continue;
 
@@ -154,8 +131,8 @@ export default function BookAppointmentPage() {
       const workDayEnd = parse(profSchedule.endTime, 'HH:mm', selectedDate);
 
       const busyBlocks = [
-        ...dailyAppointments.filter(a => a.professionalId === prof.id).map(a => ({ start: a.startTime.toDate(), end: a.endTime.toDate() })),
-        ...dailyBlockedTimes.map(b => ({ start: b.startTime.toDate(), end: b.endTime.toDate() })),
+        ...(dailyAppointments || []).filter(a => a.professionalId === prof.id).map(a => ({ start: a.startTime.toDate(), end: a.endTime.toDate() })),
+        ...(dailyBlockedTimes || []).map(b => ({ start: b.startTime.toDate(), end: b.endTime.toDate() })),
         ...(profSchedule.breaks?.map(b => ({ start: parse(b.startTime, 'HH:mm', selectedDate), end: parse(b.endTime, 'HH:mm', selectedDate) })) || [])
       ];
 
@@ -181,10 +158,9 @@ export default function BookAppointmentPage() {
     const uniqueSlots = Array.from(new Map(slots.map(s => [s.time, s])).values());
     uniqueSlots.sort((a, b) => a.time.localeCompare(b.time));
 
-    setAreSlotsLoading(false);
     return uniqueSlots;
 
-  }, [selectedDate, selectedService, selectedProfessional, dailyAppointments, dailyBlockedTimes, establishmentSettings, allProfessionals]);
+  }, [selectedDate, selectedService, selectedProfessional, dailyAppointments, dailyBlockedTimes, establishmentSettings, allProfessionals, areAppointmentsLoading, areBlockedTimesLoading]);
   
   const professionalsForService = useMemo(() => {
     if (!selectedService || !allProfessionals) return [];
@@ -271,6 +247,7 @@ export default function BookAppointmentPage() {
     </div>
   );
 
+  const areSlotsLoading = areAppointmentsLoading || areBlockedTimesLoading;
   const isLoading = isUserLoading || areServicesLoading || areProfessionalsLoading || areEstablishmentSettingsLoading || areCategoriesLoading;
 
   if (isLoading) {

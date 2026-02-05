@@ -105,7 +105,7 @@ service cloud.firestore {
      * @path /appointments/{appointmentId}
      */
     match /appointments/{appointmentId} {
-      // Allow any signed-in user to read appointment data. This is necessary
+      // Any signed-in user can read appointment data. This is necessary
       // for the booking feature to check for availability.
       // NOTE: This means appointment data (including customerId) is readable by any authenticated user.
       // For a production app, this should be handled by a secure Cloud Function.
