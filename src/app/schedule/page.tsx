@@ -184,6 +184,16 @@ function AdminProfessionalDashboard() {
 // Dashboard for Client role
 function ClientDashboard() {
   const { user, isLoading: isAuthLoading } = useUser();
+  const firestore = useFirestore();
+
+  const appointmentsQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return query(collection(firestore, 'appointments'), where('customerId', '==', user.uid));
+  }, [firestore, user]);
+
+  const { data: appointments, isLoading: areAppointmentsLoading } = useCollection<Appointment>(appointmentsQuery);
+  
+  const isLoading = isAuthLoading || areAppointmentsLoading;
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
@@ -196,31 +206,24 @@ function ClientDashboard() {
         </Button>
       </div>
       
-      {isAuthLoading ? (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
-            <CardHeader>
-                <Skeleton className="h-8 w-64" />
-                <Skeleton className="h-4 w-80 mt-2" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total de Agendamentos</CardTitle>
+                <CalendarCheck className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-                <Skeleton className="h-10 w-40" />
+                {isLoading ? (
+                    <Skeleton className="h-8 w-12" />
+                ) : (
+                    <div className="text-2xl font-bold">
+                        {appointments?.length ?? 0}
+                    </div>
+                )}
+                 <p className="text-xs text-muted-foreground">O número total de horários que você já agendou.</p>
             </CardContent>
         </Card>
-      ) : (
-        <Card>
-            <CardHeader>
-                <CardTitle className="font-headline">Bem-vindo(a) ao seu painel!</CardTitle>
-                <CardDescription>
-                    Pronto para agendar seu próximo horário?
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Button asChild>
-                    <Link href="/book-appointment">Agendar um horário</Link>
-                </Button>
-            </CardContent>
-        </Card>
-      )}
+      </div>
     </div>
   );
 }
