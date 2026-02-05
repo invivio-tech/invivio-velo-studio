@@ -105,22 +105,16 @@ service cloud.firestore {
      * @path /appointments/{appointmentId}
      */
     match /appointments/{appointmentId} {
-      // DECOMPOSITION of `allow read` for clarity and debugging.
-      // The `list` permission is required to execute collection-wide queries.
-      // This is needed for the booking calendar to check for available slots,
-      // and for users to query their own appointments.
-      allow list: if isSignedIn();
+      // READ: Any authenticated user can list appointments (for booking calendar availability)
+      // and get any single appointment document. This is a trade-off for functionality.
+      // A more secure setup might use a Cloud Function to only expose availability.
+      allow get, list: if request.auth != null;
 
-      // The `get` permission is checked for every document returned by a query.
-      // This rule must also be permissive enough to allow the booking calendar
-      // to function, as it needs to see appointments for all users.
-      allow get: if isSignedIn();
-      
-      // CREATE: A user can create an appointment for themselves, or an admin can.
-      allow create: if isOwner(request.resource.data.customerId) || isAdmin();
+      // CREATE: A client can create their own appointment, or an admin can create any.
+      allow create: if request.auth.uid == request.resource.data.customerId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
 
-      // UPDATE/DELETE: A user can manage their own appointment, or an admin can.
-      allow update, delete: if isOwner(resource.data.customerId) || isAdmin();
+      // UPDATE, DELETE: Only the client who created the appointment or an admin can modify/cancel it.
+      allow update, delete: if request.auth.uid == resource.data.customerId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     /**
