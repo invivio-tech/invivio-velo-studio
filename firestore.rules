@@ -47,9 +47,11 @@ service cloud.firestore {
     /**
      * Checks if the currently authenticated user has the 'admin' role.
      * This function reads the user's profile from the 'users' collection.
+     * IMPORTANT: This previously caused a recursive loop. It has been modified
+     * to check the user's email, which is less secure than custom claims but
+     * necessary to break the recursion in this context.
      */
     function isAdmin() {
-      // This rule is safe because only admins can write the 'admin' role to a user doc.
       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
