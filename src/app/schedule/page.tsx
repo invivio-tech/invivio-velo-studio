@@ -16,6 +16,7 @@ import { useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { collection, query, where, orderBy, Timestamp } from 'firebase/firestore';
 import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
@@ -186,14 +187,28 @@ function ClientDashboard() {
   const { user, isLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
 
-  const appointmentsQuery = useMemoFirebase(() => {
+  // Query for ALL appointments (for total count)
+  const allAppointmentsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return query(collection(firestore, 'appointments'), where('customerId', '==', user.uid));
   }, [firestore, user]);
 
-  const { data: appointments, isLoading: areAppointmentsLoading } = useCollection<Appointment>(appointmentsQuery);
+  // Query for UPCOMING appointments (for the list)
+  const upcomingAppointmentsQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return query(
+        collection(firestore, 'appointments'), 
+        where('customerId', '==', user.uid),
+        where('startTime', '>=', new Date()),
+        orderBy('startTime', 'asc')
+    );
+  }, [firestore, user]);
+
+  const { data: allAppointments, isLoading: areAllAppointmentsLoading } = useCollection<Appointment>(allAppointmentsQuery);
+  const { data: upcomingAppointments, isLoading: areUpcomingAppointmentsLoading } = useCollection<Appointment>(upcomingAppointmentsQuery);
   
-  const isLoading = isAuthLoading || areAppointmentsLoading;
+  const isLoading = isAuthLoading || areAllAppointmentsLoading || areUpcomingAppointmentsLoading;
+
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
@@ -206,7 +221,7 @@ function ClientDashboard() {
         </Button>
       </div>
       
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total de Agendamentos</CardTitle>
@@ -217,10 +232,51 @@ function ClientDashboard() {
                     <Skeleton className="h-8 w-12" />
                 ) : (
                     <div className="text-2xl font-bold">
-                        {appointments?.length ?? 0}
+                        {allAppointments?.length ?? 0}
                     </div>
                 )}
                  <p className="text-xs text-muted-foreground">O número total de horários que você já agendou.</p>
+            </CardContent>
+        </Card>
+        
+        <Card className="md:col-span-2">
+            <CardHeader>
+                <CardTitle className="font-headline">Próximos Agendamentos</CardTitle>
+                <CardDescription>Seus horários confirmados para o futuro.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {isLoading ? (
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between p-3"><Skeleton className="h-10 w-full" /></div>
+                        <div className="flex items-center justify-between p-3"><Skeleton className="h-10 w-full" /></div>
+                    </div>
+                ) : upcomingAppointments && upcomingAppointments.length > 0 ? (
+                    <div className="space-y-4">
+                        {upcomingAppointments.map((apt) => (
+                            <div key={apt.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-lg border p-4 gap-4">
+                                <div className="flex items-center gap-4">
+                                    <div className="bg-primary/10 p-3 rounded-full">
+                                        <CalendarCheck className="h-6 w-6 text-primary" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold">{apt.serviceName}</p>
+                                        <p className="text-sm text-muted-foreground capitalize">
+                                            {format(apt.startTime.toDate(), "EEEE, dd/MM 'às' HH:mm", { locale: ptBR })}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="text-left sm:text-right">
+                                    <p className="font-medium text-sm">{apt.professionalName}</p>
+                                    <p className="text-xs text-muted-foreground">Profissional</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="text-center text-muted-foreground py-8">
+                        Você não possui agendamentos futuros.
+                    </p>
+                )}
             </CardContent>
         </Card>
       </div>
