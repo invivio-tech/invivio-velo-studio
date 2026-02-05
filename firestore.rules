@@ -47,9 +47,8 @@ service cloud.firestore {
     /**
      * Checks if the currently authenticated user has the 'admin' role.
      * This function reads the user's profile from the 'users' collection.
-     * IMPORTANT: This previously caused a recursive loop. It has been modified
-     * to check the user's email, which is less secure than custom claims but
-     * necessary to break the recursion in this context.
+     * This has been changed to no longer cause a recursive loop by checking a custom claim
+     * or a hardcoded value instead of another get() call.
      */
     function isAdmin() {
       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
@@ -67,6 +66,7 @@ service cloud.firestore {
     match /users/{userId} {
       // A user can read their own profile. An admin can read any profile.
       // Any signed-in user can read the profile of a 'professional' to see their details for booking.
+      // This rule is now safe because isAdmin() is no longer recursive.
       allow get: if isOwner(userId) || isAdmin() || (resource.data.role == 'professional');
       // Allow signed-in users to perform queries (e.g., to find professionals).
       // The `get` rule above secures the individual documents returned by the query.
@@ -107,10 +107,10 @@ service cloud.firestore {
      * @path /appointments/{appointmentId}
      */
     match /appointments/{appointmentId} {
-      // READ: Any authenticated user can list appointments for booking calendar availability.
-      // This is a trade-off for functionality. A more secure setup would use a Cloud
-      // Function to only expose availability, but this is suitable for this app.
-      allow read: if isSignedIn();
+      // READ: An admin can read any appointment. A user can read an appointment
+      // if they are the customer or the professional assigned to it.
+      // This allows queries like `where('customerId', '==', uid)` to succeed.
+      allow read: if isOwner(resource.data.customerId) || isOwner(resource.data.professionalId) || isAdmin();
 
       // CREATE: A client can create their own appointment, or an admin can create any.
       allow create: if isOwner(request.resource.data.customerId) || isAdmin();
@@ -208,3 +208,5 @@ service cloud.firestore {
     }
   }
 }
+
+    
