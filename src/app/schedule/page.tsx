@@ -193,21 +193,9 @@ function ClientDashboard() {
     return query(collection(firestore, 'appointments'), where('customerId', '==', user.uid));
   }, [firestore, user]);
 
-  // Query for UPCOMING appointments (for the list)
-  const upcomingAppointmentsQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return query(
-        collection(firestore, 'appointments'), 
-        where('customerId', '==', user.uid),
-        where('startTime', '>=', new Date()),
-        orderBy('startTime', 'asc')
-    );
-  }, [firestore, user]);
-
   const { data: allAppointments, isLoading: areAllAppointmentsLoading } = useCollection<Appointment>(allAppointmentsQuery);
-  const { data: upcomingAppointments, isLoading: areUpcomingAppointmentsLoading } = useCollection<Appointment>(upcomingAppointmentsQuery);
   
-  const isLoading = isAuthLoading || areAllAppointmentsLoading || areUpcomingAppointmentsLoading;
+  const isLoading = isAuthLoading || areAllAppointmentsLoading;
 
 
   return (
@@ -221,61 +209,22 @@ function ClientDashboard() {
         </Button>
       </div>
       
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total de Agendamentos</CardTitle>
-                <CalendarCheck className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-                {isLoading ? (
-                    <Skeleton className="h-8 w-12" />
-                ) : (
-                    <div className="text-2xl font-bold">
-                        {allAppointments?.length ?? 0}
-                    </div>
-                )}
-                 <p className="text-xs text-muted-foreground">O número total de horários que você já agendou.</p>
-            </CardContent>
-        </Card>
-        
-        <Card className="md:col-span-2">
-            <CardHeader>
-                <CardTitle className="font-headline">Próximos Agendamentos</CardTitle>
-                <CardDescription>Seus horários confirmados para o futuro.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                {isLoading ? (
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between p-3"><Skeleton className="h-10 w-full" /></div>
-                        <div className="flex items-center justify-between p-3"><Skeleton className="h-10 w-full" /></div>
-                    </div>
-                ) : upcomingAppointments && upcomingAppointments.length > 0 ? (
-                    <div className="space-y-4">
-                        {upcomingAppointments.map((apt) => (
-                            <div key={apt.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-lg border p-4 gap-4">
-                                <div className="flex items-center gap-4">
-                                    <div className="bg-primary/10 p-3 rounded-full">
-                                        <CalendarCheck className="h-6 w-6 text-primary" />
-                                    </div>
-                                    <div>
-                                        <p className="font-semibold">Agendamento Confirmado</p>
-                                        <p className="text-sm text-muted-foreground capitalize">
-                                            {format(apt.startTime.toDate(), "EEEE, dd/MM 'às' HH:mm", { locale: ptBR })}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <p className="text-center text-muted-foreground py-8">
-                        Você não possui agendamentos futuros.
-                    </p>
-                )}
-            </CardContent>
-        </Card>
-      </div>
+      <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total de Agendamentos</CardTitle>
+              <CalendarCheck className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+              {isLoading ? (
+                  <Skeleton className="h-8 w-12" />
+              ) : (
+                  <div className="text-2xl font-bold">
+                      {allAppointments?.length ?? 0}
+                  </div>
+              )}
+               <p className="text-xs text-muted-foreground">O número total de horários que você já agendou.</p>
+          </CardContent>
+      </Card>
     </div>
   );
 }
