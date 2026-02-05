@@ -7,16 +7,15 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card';
-import { DollarSign, Users, CalendarCheck, Lock, User, Clock } from 'lucide-react';
+import { DollarSign, Users, CalendarCheck, Lock } from 'lucide-react';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUser, useUserProfile, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { collection, query, where, orderBy, Timestamp } from 'firebase/firestore';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
@@ -185,80 +184,43 @@ function AdminProfessionalDashboard() {
 // Dashboard for Client role
 function ClientDashboard() {
   const { user, isLoading: isAuthLoading } = useUser();
-  const firestore = useFirestore();
-  const [queryStartDate] = useState(() => new Date()); // Use lazy initial state for stability
-
-  // Fetch upcoming appointments for the current user
-  const appointmentsQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid || isAuthLoading) return null; // Guard against running while auth is loading
-    return query(
-      collection(firestore, 'appointments'),
-      where('customerId', '==', user.uid),
-      where('startTime', '>=', queryStartDate), // Use stable date
-      orderBy('startTime', 'asc')
-    );
-  }, [firestore, user?.uid, isAuthLoading, queryStartDate]);
-  const { data: appointments, isLoading: areAppointmentsLoading } = useCollection<Appointment>(appointmentsQuery);
-  
-  const isLoading = areAppointmentsLoading || isAuthLoading;
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-3xl font-headline font-bold tracking-tight">Olá, {user?.displayName}!</h1>
+        <h1 className="text-3xl font-headline font-bold tracking-tight">
+          {isAuthLoading ? <Skeleton className="h-9 w-48" /> : `Olá, ${user?.displayName}!`}
+        </h1>
         <Button asChild size="lg">
           <Link href="/book-appointment">Novo Agendamento</Link>
         </Button>
       </div>
       
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-headline flex items-center gap-2"><CalendarCheck/> Próximos Agendamentos</CardTitle>
-          <CardDescription>Aqui estão seus horários confirmados.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-4">
-              {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24 w-full" />)}
-            </div>
-          ) : appointments && appointments.length > 0 ? (
-             <div className="space-y-4">
-              {appointments.map(apt => {
-                const startTime = apt.startTime.toDate();
-                return (
-                  <Card key={apt.id} className="bg-muted/50">
-                    <CardHeader>
-                        <CardTitle className="font-headline text-lg">{format(startTime, "EEEE, dd 'de' MMMM", { locale: ptBR })}</CardTitle>
-                        <CardDescription>
-                            {apt.serviceName}
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid sm:grid-cols-2 gap-4 text-sm">
-                      <div className="flex items-center gap-2">
-                          <User className="w-4 h-4 text-muted-foreground"/>
-                          <span>Profissional: <strong>{apt.professionalName}</strong></span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-muted-foreground"/>
-                        <span>Horário: <strong>{format(startTime, 'HH:mm')}</strong></span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )
-              })}
-             </div>
-          ) : (
-            <div className="text-center py-10">
-              <p className="text-muted-foreground mb-4">Você ainda não tem agendamentos futuros.</p>
-              <Button asChild>
-                <Link href="/book-appointment">Agendar meu primeiro horário</Link>
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {isAuthLoading ? (
+        <Card>
+            <CardHeader>
+                <Skeleton className="h-8 w-64" />
+                <Skeleton className="h-4 w-80 mt-2" />
+            </CardHeader>
+            <CardContent>
+                <Skeleton className="h-10 w-40" />
+            </CardContent>
+        </Card>
+      ) : (
+        <Card>
+            <CardHeader>
+                <CardTitle className="font-headline">Bem-vindo(a) ao seu painel!</CardTitle>
+                <CardDescription>
+                    Pronto para agendar seu próximo horário?
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Button asChild>
+                    <Link href="/book-appointment">Agendar um horário</Link>
+                </Button>
+            </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
-
-    
