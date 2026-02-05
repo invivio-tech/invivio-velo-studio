@@ -185,9 +185,6 @@ export default function UsersPage() {
                             <DropdownMenuItem onSelect={() => router.push(`/customers/${user.id}/schedule`)}>
                               Gerenciar Agenda
                             </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => router.push(`/customers/${user.id}/appointments`)}>
-                              Ver Agendamentos
-                            </DropdownMenuItem>
                           </>
                         )}
                       </DropdownMenuContent>
