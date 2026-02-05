@@ -33,6 +33,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
+import { Checkbox } from '../ui/checkbox';
 
 interface Category {
   id: string;
@@ -46,6 +47,7 @@ const formSchema = z.object({
   duration: z.string().min(2, { message: 'A duração é obrigatória.' }),
   imageUrl: z.string().url({ message: 'Por favor, insira uma URL válida.' }).optional().or(z.literal('')),
   categoryId: z.string().min(1, { message: 'A categoria é obrigatória.' }),
+  featured: z.boolean().default(false),
 });
 
 type ServiceFormProps = {
@@ -76,18 +78,24 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
       duration: '',
       imageUrl: '',
       categoryId: '',
+      featured: false,
     },
   });
   
   React.useEffect(() => {
     if (isOpen) {
-        form.reset(service ? { ...service, imageUrl: service.imageUrl || '' } : {
-        name: '',
-        description: '',
-        price: 0,
-        duration: '',
-        imageUrl: '',
-        categoryId: '',
+        form.reset(service ? { 
+            ...service, 
+            imageUrl: service.imageUrl || '',
+            featured: service.featured || false,
+        } : {
+            name: '',
+            description: '',
+            price: 0,
+            duration: '',
+            imageUrl: '',
+            categoryId: '',
+            featured: false,
         });
     }
   }, [service, isOpen, form]);
@@ -247,6 +255,28 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
                   <FormMessage />
                 </FormItem>
               )}
+            />
+            <FormField
+                control={form.control}
+                name="featured"
+                render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                        <FormControl>
+                            <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                            <FormLabel>
+                            Destaque na Página Inicial
+                            </FormLabel>
+                            <FormDescription>
+                            Marque para exibir este serviço na página inicial.
+                            </FormDescription>
+                        </div>
+                    </FormItem>
+                )}
             />
             <DialogFooter>
               <DialogClose asChild>

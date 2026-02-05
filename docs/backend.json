@@ -103,6 +103,10 @@
         "categoryId": {
           "type": "string",
           "description": "Reference to the service's category ID."
+        },
+        "featured": {
+          "type": "boolean",
+          "description": "Whether the service should be featured on the landing page."
         }
       },
       "required": [

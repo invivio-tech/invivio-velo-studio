@@ -30,6 +30,7 @@ import {
   Pencil,
   Trash2,
   BookOpen,
+  Star,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import ServiceForm from '@/components/services/ServiceForm';
@@ -56,6 +57,7 @@ export interface Service {
   duration: string;
   imageUrl?: string;
   categoryId: string;
+  featured?: boolean;
 }
 
 export type ServiceWithId = Service & { id: string };
@@ -273,6 +275,12 @@ export default function ServicesPage() {
                                           </Button>
                                           </div>
                                       )}
+                                      {service.featured && (
+                                        <Badge variant="secondary" className="absolute top-2 left-2 flex items-center gap-1 border-primary bg-primary/10 text-primary">
+                                            <Star className="h-3 w-3" />
+                                            Destaque
+                                        </Badge>
+                                      )}
                                       </CardHeader>
                                       <div className="flex flex-col flex-grow p-6">
                                       <CardTitle className="font-headline text-2xl mb-2">{service.name}</CardTitle>
@@ -327,3 +335,5 @@ export default function ServicesPage() {
     </div>
   );
 }
+
+    

@@ -15,7 +15,7 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Badge } from '@/components/ui/badge';
 import { BarberPoleIcon } from '@/components/icons/barber-pole-icon';
 
-import { collection, doc } from 'firebase/firestore';
+import { collection, doc, query, where, limit } from 'firebase/firestore';
 import {
   useFirestore,
   useCollection,
@@ -33,9 +33,9 @@ export default function LandingPage() {
 
   const firestore = useFirestore();
   
-  // Fetch Services
+  // Fetch Featured Services
   const servicesCollectionRef = useMemoFirebase(
-    () => (firestore ? collection(firestore, 'services') : null),
+    () => (firestore ? query(collection(firestore, 'services'), where('featured', '==', true), limit(6)) : null),
     [firestore]
   );
   const { data: services, isLoading: areServicesLoading } = useCollection<Service>(
@@ -306,3 +306,5 @@ export default function LandingPage() {
     </div>
   );
 }
+
+    
