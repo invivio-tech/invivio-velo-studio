@@ -78,34 +78,68 @@ export default function BookAppointmentPage() {
   const professionalsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'users'), where('role', '==', 'professional')) : null, [firestore]);
   const { data: allProfessionals, isLoading: areProfessionalsLoading } = useCollection<UserProfile>(professionalsQuery);
 
-  const dailyAppointmentsQuery = useMemoFirebase(() => {
-    if (!firestore || !selectedDate || isUserLoading) return null;
-    const startOfSelectedDay = startOfDay(selectedDate);
-    const endOfSelectedDay = addDays(startOfSelectedDay, 1);
-    return query(
-      collection(firestore, 'appointments'),
-      where('startTime', '>=', Timestamp.fromDate(startOfSelectedDay)),
-      where('startTime', '<', Timestamp.fromDate(endOfSelectedDay))
-    );
-  }, [firestore, selectedDate, isUserLoading]);
-  const { data: dailyAppointments, isLoading: areAppointmentsLoading } = useCollection<Appointment>(dailyAppointmentsQuery);
-  
-  // TODO: This should also fetch professional-specific blocked times. For now, it only fetches global ones.
-  const dailyBlockedTimesQuery = useMemoFirebase(() => {
-     if (!firestore || !selectedDate || isUserLoading) return null;
-    const startOfSelectedDay = startOfDay(selectedDate);
-    const endOfSelectedDay = addDays(startOfSelectedDay, 1);
-    return query(
-      collection(firestore, 'blockedTimes'),
-      where('startTime', '>=', Timestamp.fromDate(startOfSelectedDay)),
-      where('startTime', '<', Timestamp.fromDate(endOfSelectedDay))
-    );
-  }, [firestore, selectedDate, isUserLoading]);
-  const { data: dailyBlockedTimes, isLoading: areBlockedTimesLoading } = useCollection<BlockedTime>(dailyBlockedTimesQuery);
-  
   const establishmentSettingsRef = useMemoFirebase(() => firestore ? doc(firestore, 'scheduleSettings', 'main') : null, [firestore]);
   const { data: establishmentSettings, isLoading: areEstablishmentSettingsLoading } = useDoc<ScheduleSettings>(establishmentSettingsRef);
   
+  // State for daily data fetched via getDocs
+  const [dailyAppointments, setDailyAppointments] = useState<Appointment[] | null>(null);
+  const [areAppointmentsLoading, setAreAppointmentsLoading] = useState(false);
+  const [dailyBlockedTimes, setDailyBlockedTimes] = useState<BlockedTime[] | null>(null);
+  const [areBlockedTimesLoading, setAreBlockedTimesLoading] = useState(false);
+
+  // Fetch daily appointments and blocked times with getDocs for stability
+  useEffect(() => {
+    if (!firestore || !selectedDate) {
+      return;
+    }
+
+    const fetchDailyData = async () => {
+      setAreAppointmentsLoading(true);
+      setAreBlockedTimesLoading(true);
+
+      try {
+        const startOfSelectedDay = startOfDay(selectedDate);
+        const endOfSelectedDay = addDays(startOfSelectedDay, 1);
+
+        // Fetch appointments
+        const appointmentsQuery = query(
+          collection(firestore, 'appointments'),
+          where('startTime', '>=', Timestamp.fromDate(startOfSelectedDay)),
+          where('startTime', '<', Timestamp.fromDate(endOfSelectedDay))
+        );
+        const appointmentsSnapshot = await getDocs(appointmentsQuery);
+        const appointmentsData = appointmentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
+        setDailyAppointments(appointmentsData);
+
+        // Fetch blocked times
+        const blockedTimesQuery = query(
+          collection(firestore, 'blockedTimes'),
+          where('startTime', '>=', Timestamp.fromDate(startOfSelectedDay)),
+          where('startTime', '<', Timestamp.fromDate(endOfSelectedDay))
+        );
+        const blockedTimesSnapshot = await getDocs(blockedTimesQuery);
+        const blockedTimesData = blockedTimesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BlockedTime));
+        setDailyBlockedTimes(blockedTimesData);
+
+      } catch (error) {
+        console.error("Error fetching daily data:", error);
+        toast({
+          title: "Erro ao carregar horários",
+          description: "Não foi possível buscar os dados de agendamento para este dia.",
+          variant: "destructive"
+        });
+        setDailyAppointments(null);
+        setDailyBlockedTimes(null);
+      } finally {
+        setAreAppointmentsLoading(false);
+        setAreBlockedTimesLoading(false);
+      }
+    };
+
+    fetchDailyData();
+
+  }, [firestore, selectedDate, toast]);
+
   const parseDuration = (durationStr: string): number => parseInt(durationStr, 10) || 30;
 
   // The core availability calculation logic
