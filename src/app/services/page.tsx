@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Image from 'next/image';
 import {
   collection,
@@ -46,6 +46,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import type { CategoryWithId } from '@/app/categories/page';
 
 export interface Service {
   name: string;
@@ -73,10 +75,38 @@ export default function ServicesPage() {
     error,
   } = useCollection<ServiceWithId>(servicesCollection);
 
+  const categoriesCollection = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'serviceCategories') : null),
+    [firestore]
+  );
+  const { data: categories, isLoading: areCategoriesLoading, error: categoriesError } = useCollection<CategoryWithId>(categoriesCollection);
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<ServiceWithId | null>(null);
   const [serviceToDelete, setServiceToDelete] = useState<ServiceWithId | null>(null);
+
+  const servicesByCategory = useMemo(() => {
+    if (!services || !categories) return [];
+    
+    const categoryMap = new Map(categories.map(cat => [cat.id, { ...cat, services: [] as ServiceWithId[] }]));
+    const uncategorized = { id: 'uncategorized', name: 'Sem Categoria', services: [] as ServiceWithId[] };
+
+    services.forEach(service => {
+        if (service.categoryId && categoryMap.has(service.categoryId)) {
+            categoryMap.get(service.categoryId)!.services.push(service);
+        } else {
+            uncategorized.services.push(service);
+        }
+    });
+
+    const result = Array.from(categoryMap.values()).filter(cat => cat.services.length > 0);
+    if(uncategorized.services.length > 0) {
+        result.push(uncategorized);
+    }
+    return result;
+  }, [services, categories]);
+
 
   const handleSaveService = (serviceData: Service | ServiceWithId): Promise<void> => {
     if (!firestore) return Promise.reject(new Error("Firestore not available"));
@@ -163,7 +193,7 @@ export default function ServicesPage() {
   };
 
   const isAdmin = userProfile?.role === 'admin';
-  const isLoading = isProfileLoading || areServicesLoading;
+  const isLoading = isProfileLoading || areServicesLoading || areCategoriesLoading;
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -186,83 +216,82 @@ export default function ServicesPage() {
       </p>
 
       {isLoading && (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
-          {[...Array(3)].map((_, i) => (
-            <Card key={i}>
-              <CardHeader className="p-0">
-                <Skeleton className="aspect-[16/9] w-full" />
-              </CardHeader>
-              <div className="p-6">
-                <Skeleton className="h-6 w-1/2 mb-2" />
-                <Skeleton className="h-10 w-full" />
-              </div>
-              <CardFooter>
-                <Skeleton className="h-6 w-1/4" />
-              </CardFooter>
-            </Card>
-          ))}
+        <div className="space-y-4">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-64 w-full" />
         </div>
       )}
 
-      {!isLoading && error && (
+      {!isLoading && (error || categoriesError) && (
         <Card>
           <CardHeader>
             <CardTitle>Erro</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-destructive">
-              Não foi possível carregar os serviços. Por favor, tente novamente mais tarde.
+              Não foi possível carregar os serviços ou categorias. Por favor, tente novamente mais tarde.
             </p>
           </CardContent>
         </Card>
       )}
 
-      {!isLoading && !error && services && (
+      {!isLoading && !error && !categoriesError && services && servicesByCategory && (
         <>
-          {services.length > 0 ? (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
-              {services.map((service) => {
-                const image = service.imageUrl;
-                return (
-                  <Card key={service.id} className="flex flex-col overflow-hidden">
-                    <CardHeader className="p-0 relative">
-                      {image ? (
-                        <div className="relative aspect-[16/9] w-full">
-                          <Image
-                            src={image}
-                            alt={service.name}
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                      ) : (
-                        <div className="aspect-[16/9] w-full bg-muted" />
-                      )}
-                      {isAdmin && (
-                        <div className="absolute top-2 right-2 flex gap-2">
-                          <Button size="icon" variant="secondary" onClick={() => openServiceForm(service)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button size="icon" variant="destructive" onClick={() => openDeleteAlert(service)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      )}
-                    </CardHeader>
-                    <div className="flex flex-col flex-grow p-6">
-                      <CardTitle className="font-headline text-2xl mb-2">{service.name}</CardTitle>
-                      <CardDescription className="flex-grow">{service.description}</CardDescription>
-                    </div>
-                    <CardFooter className="flex justify-between items-center">
-                      <span className="text-xl font-bold font-headline text-primary">
-                        {`R$${service.price.toFixed(2).replace('.', ',')}`}
-                      </span>
-                      <Badge variant="secondary">{service.duration}</Badge>
-                    </CardFooter>
-                  </Card>
-                );
-              })}
-            </div>
+          {services.length > 0 && categories ? (
+            <Accordion type="multiple" className="w-full" defaultValue={(categories?.map(c => c.id) || []).concat(['uncategorized'])}>
+              {servicesByCategory.map(category => (
+                  <AccordionItem value={category.id} key={category.id}>
+                      <AccordionTrigger className="text-2xl font-headline hover:no-underline">{category.name} ({category.services.length})</AccordionTrigger>
+                      <AccordionContent>
+                          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
+                              {category.services.map((service) => {
+                                  const image = service.imageUrl;
+                                  return (
+                                  <Card key={service.id} className="flex flex-col overflow-hidden">
+                                      <CardHeader className="p-0 relative">
+                                      {image ? (
+                                          <div className="relative aspect-[16/9] w-full">
+                                          <Image
+                                              src={image}
+                                              alt={service.name}
+                                              fill
+                                              className="object-cover"
+                                          />
+                                          </div>
+                                      ) : (
+                                          <div className="aspect-[16/9] w-full bg-muted" />
+                                      )}
+                                      {isAdmin && (
+                                          <div className="absolute top-2 right-2 flex gap-2">
+                                          <Button size="icon" variant="secondary" onClick={() => openServiceForm(service)}>
+                                              <Pencil className="h-4 w-4" />
+                                          </Button>
+                                          <Button size="icon" variant="destructive" onClick={() => openDeleteAlert(service)}>
+                                              <Trash2 className="h-4 w-4" />
+                                          </Button>
+                                          </div>
+                                      )}
+                                      </CardHeader>
+                                      <div className="flex flex-col flex-grow p-6">
+                                      <CardTitle className="font-headline text-2xl mb-2">{service.name}</CardTitle>
+                                      <CardDescription className="flex-grow">{service.description}</CardDescription>
+                                      </div>
+                                      <CardFooter className="flex justify-between items-center">
+                                      <span className="text-xl font-bold font-headline text-primary">
+                                          {`R$${service.price.toFixed(2).replace('.', ',')}`}
+                                      </span>
+                                      <Badge variant="secondary">{service.duration}</Badge>
+                                      </CardFooter>
+                                  </Card>
+                                  );
+                              })}
+                          </div>
+                      </AccordionContent>
+                  </AccordionItem>
+              ))}
+          </Accordion>
           ) : (
             <Card className="text-center p-8">
               <CardContent>
@@ -298,5 +327,3 @@ export default function ServicesPage() {
     </div>
   );
 }
-
-    
