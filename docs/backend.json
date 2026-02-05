@@ -122,36 +122,17 @@
       "type": "object",
       "description": "Represents an appointment scheduled with a customer for a specific professional.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the appointment."
-        },
-        "customerId": {
-          "type": "string",
-          "description": "Reference to UserProfile (client). (Relationship: UserProfile 1:N Appointment)"
-        },
-        "professionalId": {
-          "type": "string",
-          "description": "Reference to UserProfile (professional). (Relationship: UserProfile 1:N Appointment)"
-        },
-        "serviceId": {
-          "type": "string",
-          "description": "Reference to Service. (Relationship: Service 1:N Appointment)"
-        },
-        "startTime": {
-          "type": "string",
-          "description": "Start time of the appointment.",
-          "format": "date-time"
-        },
-        "endTime": {
-          "type": "string",
-          "description": "End time of the appointment.",
-          "format": "date-time"
-        },
-        "notes": {
-          "type": "string",
-          "description": "Any notes about the appointment."
-        }
+        "id": { "type": "string", "description": "Unique identifier for the appointment." },
+        "customerId": { "type": "string", "description": "Reference to UserProfile (client)." },
+        "professionalId": { "type": "string", "description": "Reference to UserProfile (professional)." },
+        "serviceId": { "type": "string", "description": "Reference to Service." },
+        "startTime": { "type": "string", "description": "Start time of the appointment.", "format": "date-time" },
+        "endTime": { "type": "string", "description": "End time of the appointment.", "format": "date-time" },
+        "notes": { "type": "string", "description": "Any notes about the appointment." },
+        "serviceName": { "type": "string", "description": "Denormalized name of the service." },
+        "professionalName": { "type": "string", "description": "Denormalized name of the professional." },
+        "serviceDuration": { "type": "string", "description": "Denormalized duration of the service." },
+        "servicePrice": { "type": "number", "description": "Denormalized price of the service at time of booking." }
       },
       "required": [
         "id",
@@ -159,7 +140,11 @@
         "professionalId",
         "serviceId",
         "startTime",
-        "endTime"
+        "endTime",
+        "serviceName",
+        "professionalName",
+        "serviceDuration",
+        "servicePrice"
       ]
     },
     "Invoice": {

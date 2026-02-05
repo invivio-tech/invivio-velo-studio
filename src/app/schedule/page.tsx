@@ -19,8 +19,6 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import type { UserProfile } from '@/firebase';
-import type { ServiceWithId } from '../services/page';
 
 // Type for global blocked times (for admin/pro dashboard)
 interface BlockedTime {
@@ -30,7 +28,7 @@ interface BlockedTime {
   reason: string;
 }
 
-// Type for appointments, adding service and professional details
+// Type for appointments, now with denormalized data
 interface Appointment {
   id: string;
   customerId: string;
@@ -38,6 +36,10 @@ interface Appointment {
   serviceId: string;
   startTime: Timestamp;
   endTime: Timestamp;
+  serviceName: string;
+  professionalName: string;
+  serviceDuration: string;
+  servicePrice: number;
 }
 
 export default function SchedulePage() {
@@ -182,7 +184,7 @@ function AdminProfessionalDashboard() {
 
 // Dashboard for Client role
 function ClientDashboard() {
-  const { user, isUserLoading: isAuthLoading } = useUser();
+  const { user, isLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
   const [queryStartDate] = useState(() => new Date()); // Use lazy initial state for stability
 
@@ -197,19 +199,8 @@ function ClientDashboard() {
     );
   }, [firestore, user?.uid, isAuthLoading, queryStartDate]);
   const { data: appointments, isLoading: areAppointmentsLoading } = useCollection<Appointment>(appointmentsQuery);
-
-  // Fetch all services to map serviceId to service details
-  const servicesCollection = useMemoFirebase(() => firestore ? collection(firestore, 'services') : null, [firestore]);
-  const { data: allServices, isLoading: areServicesLoading } = useCollection<ServiceWithId>(servicesCollection);
-
-  // Fetch all professionals to map professionalId to professional details
-  const professionalsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'users'), where('role', '==', 'professional')) : null, [firestore]);
-  const { data: allProfessionals, isLoading: areProfessionalsLoading } = useCollection<UserProfile>(professionalsQuery);
   
-  const isLoading = areAppointmentsLoading || areServicesLoading || areProfessionalsLoading || isAuthLoading;
-
-  const getServiceDetails = (serviceId: string) => allServices?.find(s => s.id === serviceId);
-  const getProfessionalDetails = (professionalId: string) => allProfessionals?.find(p => p.id === professionalId);
+  const isLoading = areAppointmentsLoading || isAuthLoading;
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
@@ -233,21 +224,19 @@ function ClientDashboard() {
           ) : appointments && appointments.length > 0 ? (
              <div className="space-y-4">
               {appointments.map(apt => {
-                const service = getServiceDetails(apt.serviceId);
-                const professional = getProfessionalDetails(apt.professionalId);
                 const startTime = apt.startTime.toDate();
                 return (
                   <Card key={apt.id} className="bg-muted/50">
                     <CardHeader>
                         <CardTitle className="font-headline text-lg">{format(startTime, "EEEE, dd 'de' MMMM", { locale: ptBR })}</CardTitle>
                         <CardDescription>
-                            {service?.name || 'Serviço não encontrado'}
+                            {apt.serviceName}
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="grid sm:grid-cols-2 gap-4 text-sm">
                       <div className="flex items-center gap-2">
                           <User className="w-4 h-4 text-muted-foreground"/>
-                          <span>Profissional: <strong>{professional?.name || 'Não encontrado'}</strong></span>
+                          <span>Profissional: <strong>{apt.professionalName}</strong></span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4 text-muted-foreground"/>
@@ -271,3 +260,5 @@ function ClientDashboard() {
     </div>
   );
 }
+
+    

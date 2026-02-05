@@ -253,6 +253,11 @@ export default function BookAppointmentPage() {
         startTime: Timestamp.fromDate(startTime),
         endTime: Timestamp.fromDate(endTime),
         notes: '',
+        // Denormalized data
+        serviceName: selectedService.name,
+        professionalName: finalProfessional.name,
+        serviceDuration: selectedService.duration,
+        servicePrice: selectedService.price,
       };
 
       try {
@@ -434,3 +439,5 @@ export default function BookAppointmentPage() {
     </div>
   );
 }
+
+    
