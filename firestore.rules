@@ -49,6 +49,7 @@ service cloud.firestore {
      * This function reads the user's profile from the 'users' collection.
      */
     function isAdmin() {
+      // This rule is safe because only admins can write the 'admin' role to a user doc.
       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
@@ -58,19 +59,22 @@ service cloud.firestore {
     // ----------------------------------------------------------------------
 
     /**
-     * @description Manages user profiles (clients, professionals, admins) and their individual settings.
+     * @description Manages user profiles (clients, professionals, admins).
      * @path /users/{userId}
      */
     match /users/{userId} {
-      // Professionals' profiles are public to signed-in users for booking purposes.
-      // Owners can read their own profile, and admins can read any profile.
+      // A user can read their own profile. An admin can read any profile.
+      // Any signed-in user can read the profile of a 'professional' to see their details for booking.
       allow get: if isOwner(userId) || isAdmin() || (isSignedIn() && resource.data.role == 'professional');
       // Allow signed-in users to perform queries (e.g., to find professionals).
       // The `get` rule above secures the individual documents returned by the query.
       allow list: if isSignedIn();
-      // Users can create their own profile, and admins can create any user.
-      allow create: if isOwner(userId) || isAdmin();
-      allow update: if isOwner(userId) || isAdmin();
+      // An unauthenticated user can create their own 'client' profile upon signing up.
+      // An admin can create any user.
+      allow create: if (isOwner(userId) && request.resource.data.role == 'client') || isAdmin();
+      // A user can update their own profile, but cannot change their role.
+      // An admin can update any profile.
+      allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role) || isAdmin();
       allow delete: if isAdmin();
 
       /**
@@ -99,15 +103,18 @@ service cloud.firestore {
     /**
      * @description Manages all appointments in the system.
      * @path /appointments/{appointmentId}
-     * @allow (get) A client can get their own appointment. A professional can get an appointment assigned to them. An admin can get any.
-     * @allow (list) Signed-in users can list appointments (queries must be used to filter by customer/professional).
-     * @allow (create) A client can create an appointment for themselves. An admin can create any appointment.
-     * @allow (update, delete) A client can modify their own appointment. An admin can modify any.
      */
     match /appointments/{appointmentId} {
-      allow get: if isAdmin() || isOwner(resource.data.customerId) || isOwner(resource.data.professionalId);
-      allow list: if isSignedIn(); // Requires secure queries in the app
+      // Allow any signed-in user to read appointment data. This is necessary
+      // for the booking feature to check for availability.
+      // NOTE: This means appointment data (including customerId) is readable by any authenticated user.
+      // For a production app, this should be handled by a secure Cloud Function.
+      allow read: if isSignedIn();
+      
+      // Allow creation if the user is creating an appointment for themselves, or is an admin.
       allow create: if isOwner(request.resource.data.customerId) || isAdmin();
+
+      // Allow update/delete only if the user is the owner of the appointment, or an admin.
       allow update, delete: if isOwner(resource.data.customerId) || isAdmin();
     }
 
@@ -200,5 +207,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
