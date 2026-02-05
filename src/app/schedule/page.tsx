@@ -259,15 +259,11 @@ function ClientDashboard() {
                                         <CalendarCheck className="h-6 w-6 text-primary" />
                                     </div>
                                     <div>
-                                        <p className="font-semibold">{apt.serviceName}</p>
+                                        <p className="font-semibold">Agendamento Confirmado</p>
                                         <p className="text-sm text-muted-foreground capitalize">
                                             {format(apt.startTime.toDate(), "EEEE, dd/MM 'às' HH:mm", { locale: ptBR })}
                                         </p>
                                     </div>
-                                </div>
-                                <div className="text-left sm:text-right">
-                                    <p className="font-medium text-sm">{apt.professionalName}</p>
-                                    <p className="text-xs text-muted-foreground">Profissional</p>
                                 </div>
                             </div>
                         ))}
