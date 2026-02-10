@@ -6,20 +6,28 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
+  CardFooter
 } from '@/components/ui/card';
-import { DollarSign, Users, CalendarCheck, Lock, Calendar } from 'lucide-react';
+import { DollarSign, Users, CalendarCheck, Lock, Calendar, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { useUser, useUserProfile, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useUserProfile, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { collection, query, where, orderBy, Timestamp, getDocs } from 'firebase/firestore';
-import { format, startOfDay } from 'date-fns';
+import { collection, query, where, orderBy, Timestamp, getDocs, doc, deleteDoc } from 'firebase/firestore';
+import { format, startOfDay, isBefore, subHours } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import type { EstablishmentSettings } from '@/app/establishment/page';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
+
 
 // Type for global blocked times (for admin/pro dashboard)
 interface BlockedTime {
@@ -189,54 +197,108 @@ function ClientDashboard() {
   const { user, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const router = useRouter();
 
   const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[] | null>(null);
   const [areUpcomingLoading, setAreUpcomingLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [appointmentToCancel, setAppointmentToCancel] = useState<Appointment | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  // Fetch establishment settings
+  const settingsRef = useMemoFirebase(() => firestore ? doc(firestore, 'establishmentSettings', 'main') : null, [firestore]);
+  const { data: settings, isLoading: areSettingsLoading } = useDoc<EstablishmentSettings>(settingsRef);
+
+  const fetchAppointments = async () => {
+    if (!user || !firestore) return;
+
+    setAreUpcomingLoading(true);
+    setError(null);
+    
+    const upcomingAppointmentsQuery = query(
+      collection(firestore, 'appointments'),
+      where('customerId', '==', user.uid),
+      where('startTime', '>=', startOfDay(new Date())),
+      orderBy('startTime', 'asc')
+    );
+
+    try {
+      const querySnapshot = await getDocs(upcomingAppointmentsQuery);
+      const appointments = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
+      setUpcomingAppointments(appointments);
+    } catch (err: any) {
+      console.error("Error fetching upcoming appointments:", err);
+      setError(err);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao buscar agendamentos',
+        description: 'Não foi possível carregar seus próximos agendamentos. Tente recarregar a página.',
+      });
+      setUpcomingAppointments(null);
+    } finally {
+      setAreUpcomingLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Don't fetch if auth is still loading or user/firestore isn't available
-    if (isAuthLoading || !user || !firestore) {
-      if (!isAuthLoading) {
-        setAreUpcomingLoading(false);
-      }
-      return;
+    if (!isAuthLoading) {
+      fetchAppointments();
     }
+  }, [user, firestore, isAuthLoading]);
+  
+  const handleConfirmCancel = async () => {
+    if (!appointmentToCancel || !firestore) return;
 
-    const fetchAppointments = async () => {
-      setAreUpcomingLoading(true);
-      setError(null);
-      
-      const upcomingAppointmentsQuery = query(
-        collection(firestore, 'appointments'),
-        where('customerId', '==', user.uid),
-        where('startTime', '>=', startOfDay(new Date())),
-        orderBy('startTime', 'asc')
-      );
+    setIsCancelling(true);
+    const docRef = doc(firestore, 'appointments', appointmentToCancel.id);
 
-      try {
-        const querySnapshot = await getDocs(upcomingAppointmentsQuery);
-        const appointments = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
-        setUpcomingAppointments(appointments);
-      } catch (err: any) {
-        console.error("Error fetching upcoming appointments:", err);
-        setError(err);
+    try {
+        await deleteDoc(docRef);
         toast({
-          variant: 'destructive',
-          title: 'Erro ao buscar agendamentos',
-          description: 'Não foi possível carregar seus próximos agendamentos. Tente recarregar a página.',
+            title: 'Agendamento Cancelado!',
+            description: 'Seu horário foi removido da agenda.'
         });
-        setUpcomingAppointments(null);
-      } finally {
-        setAreUpcomingLoading(false);
-      }
-    };
+        setUpcomingAppointments(prev => prev?.filter(apt => apt.id !== appointmentToCancel.id) || null);
+    } catch(e) {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'delete'}));
+        toast({
+            title: 'Erro ao Cancelar',
+            description: 'Não foi possível cancelar o agendamento. Pode ser tarde demais ou você não tem permissão.',
+            variant: 'destructive'
+        });
+    } finally {
+        setIsCancelling(false);
+        setAppointmentToCancel(null);
+    }
+  };
 
-    fetchAppointments();
-  }, [user, firestore, isAuthLoading, toast]);
+  const handleReschedule = async (appointment: Appointment) => {
+    if (!firestore) return;
+    const docRef = doc(firestore, 'appointments', appointment.id);
+    try {
+        await deleteDoc(docRef);
+        toast({
+            title: 'Horário Liberado',
+            description: 'Seu agendamento anterior foi cancelado. Escolha um novo horário.'
+        });
+        router.push('/book-appointment');
+    } catch (e) {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'delete'}));
+        toast({
+            title: 'Erro ao Reagendar',
+            description: 'Não foi possível cancelar o horário anterior. Verifique suas permissões.',
+            variant: 'destructive'
+        });
+    }
+  };
 
+  const isCancellable = (appointment: Appointment) => {
+    const timeLimitHours = settings?.cancellationTimeLimitHours ?? 24;
+    const cancellationCutoff = subHours(appointment.startTime.toDate(), timeLimitHours);
+    return isBefore(new Date(), cancellationCutoff);
+  }
 
-  const isLoading = isAuthLoading || areUpcomingLoading;
+  const isLoading = isAuthLoading || areUpcomingLoading || areSettingsLoading;
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
@@ -252,7 +314,7 @@ function ClientDashboard() {
       <Card>
         <CardHeader>
           <CardTitle className="font-headline">Próximos Agendamentos</CardTitle>
-          <CardDescription>Seus horários confirmados.</CardDescription>
+          <CardDescription>Seus horários confirmados. Você pode cancelar ou reagendar com até {settings?.cancellationTimeLimitHours ?? 24} horas de antecedência.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -266,27 +328,59 @@ function ClientDashboard() {
             </p>
           ) : upcomingAppointments && upcomingAppointments.length > 0 ? (
             <div className="space-y-4">
-              {upcomingAppointments.map((apt) => (
-                <div key={apt.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-lg border">
-                  <div className="flex items-center gap-4">
-                    <Calendar className="h-6 w-6 text-primary" />
-                    <div>
-                      <p className="font-semibold">{apt.serviceName}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Com {apt.professionalName}
-                      </p>
+              {upcomingAppointments.map((apt) => {
+                const canCancel = isCancellable(apt);
+                const tooltipMessage = canCancel ? '' : `Não é possível alterar com menos de ${settings?.cancellationTimeLimitHours ?? 24}h de antecedência.`;
+
+                return (
+                    <div key={apt.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-lg border">
+                        <div className="flex items-center gap-4">
+                        <Calendar className="h-6 w-6 text-primary" />
+                        <div>
+                            <p className="font-semibold">{apt.serviceName}</p>
+                            <p className="text-sm text-muted-foreground">
+                            Com {apt.professionalName}
+                            </p>
+                        </div>
+                        </div>
+                        <div className="text-left sm:text-right">
+                        <p className="font-semibold capitalize">
+                            {format(apt.startTime.toDate(), "EEEE, dd/MM", { locale: ptBR })}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                            às {format(apt.startTime.toDate(), "HH:mm")}
+                        </p>
+                        </div>
+                        <TooltipProvider>
+                            <Tooltip delayDuration={100}>
+                                <TooltipTrigger asChild>
+                                    {/* This div is necessary to allow the tooltip to work on a disabled button */}
+                                    <div> 
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" disabled={!canCancel}>
+                                                <MoreHorizontal className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent>
+                                            <DropdownMenuItem onSelect={() => handleReschedule(apt)}>
+                                                <Pencil className="mr-2 h-4 w-4" />
+                                                Reagendar
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => setAppointmentToCancel(apt)} className="text-destructive">
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                Cancelar
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                    </div>
+                                </TooltipTrigger>
+                                {!canCancel && <TooltipContent><p>{tooltipMessage}</p></TooltipContent>}
+                            </Tooltip>
+                        </TooltipProvider>
                     </div>
-                  </div>
-                  <div className="text-left sm:text-right">
-                    <p className="font-semibold capitalize">
-                      {format(apt.startTime.toDate(), "EEEE, dd/MM", { locale: ptBR })}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      às {format(apt.startTime.toDate(), "HH:mm")}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           ) : (
             <p className="text-muted-foreground text-center py-4">
@@ -295,7 +389,25 @@ function ClientDashboard() {
           )}
         </CardContent>
       </Card>
-
+      
+      <AlertDialog open={!!appointmentToCancel} onOpenChange={(open) => !open && setAppointmentToCancel(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Confirmar Cancelamento</AlertDialogTitle>
+                <AlertDialogDescription>
+                    Você tem certeza que deseja cancelar seu agendamento para <strong>{appointmentToCancel?.serviceName}</strong> no dia{' '}
+                    <strong>{appointmentToCancel && format(appointmentToCancel.startTime.toDate(), "dd/MM 'às' HH:mm")}</strong>?
+                    Esta ação não pode ser desfeita.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Voltar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmCancel} disabled={isCancelling}>
+                    {isCancelling ? 'Cancelando...' : 'Sim, cancelar'}
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

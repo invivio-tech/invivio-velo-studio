@@ -52,6 +52,16 @@ service cloud.firestore {
       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    /**
+      * Checks if a client is allowed to modify their own appointment based on a time limit.
+      */
+    function clientCanModifyAppointment() {
+      let settings = get(/databases/$(database)/documents/establishmentSettings/main).data;
+      let timeLimitHours = settings.cancellationTimeLimitHours;
+      // The request time must be before the appointment's start time minus the configured buffer.
+      return request.time < resource.data.startTime - duration.value(timeLimitHours, 'h');
+    }
+
 
     // ----------------------------------------------------------------------
     // Collection Rules
@@ -104,15 +114,16 @@ service cloud.firestore {
      * @path /appointments/{appointmentId}
      */
     match /appointments/{appointmentId} {
-      // READ: Split into GET and LIST for security and functionality.
+      // READ: A user can get their own appointment, a professional can get theirs, or an admin can get any.
       allow get: if isOwner(resource.data.customerId) || isOwner(resource.data.professionalId) || isAdmin();
-      allow list: if isSignedIn(); // Allows LIST queries (e.g., with `where`), which are then secured by the `get` rule per document.
+      // LIST: Allows LIST queries (e.g., with `where`), which are then secured by the `get` rule per document.
+      allow list: if isSignedIn();
 
       // CREATE: A client can create their own appointment, or an admin can create any.
       allow create: if isOwner(request.resource.data.customerId) || isAdmin();
 
-      // UPDATE, DELETE: Only the client who created the appointment or an admin can modify/cancel it.
-      allow update, delete: if isOwner(resource.data.customerId) || isAdmin();
+      // UPDATE, DELETE: An admin can always modify. A client can modify only if they are the owner AND within the allowed time window.
+      allow update, delete: if isAdmin() || (isOwner(resource.data.customerId) && clientCanModifyAppointment());
     }
 
     /**
