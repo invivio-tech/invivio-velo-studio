@@ -194,8 +194,20 @@ function ClientDashboard() {
     return query(collection(firestore, 'appointments'), where('customerId', '==', user.uid));
   }, [firestore, user]);
   const { data: allAppointments, isLoading: areAllAppointmentsLoading } = useCollection<Appointment>(allAppointmentsQuery);
+
+  // Query for UPCOMING appointments
+  const upcomingAppointmentsQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return query(
+      collection(firestore, 'appointments'),
+      where('customerId', '==', user.uid),
+      where('startTime', '>=', startOfDay(new Date())),
+      orderBy('startTime', 'asc')
+    );
+  }, [firestore, user]);
+  const { data: upcomingAppointments, isLoading: areUpcomingAppointmentsLoading } = useCollection<Appointment>(upcomingAppointmentsQuery);
   
-  const isLoading = isAuthLoading || areAllAppointmentsLoading;
+  const isLoading = isAuthLoading || areAllAppointmentsLoading || areUpcomingAppointmentsLoading;
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
@@ -208,14 +220,14 @@ function ClientDashboard() {
         </Button>
       </div>
       
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4">
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total de Agendamentos</CardTitle>
                 <CalendarCheck className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-                {isLoading ? (
+                {areAllAppointmentsLoading ? (
                     <Skeleton className="h-8 w-12" />
                 ) : (
                     <div className="text-2xl font-bold">
@@ -226,6 +238,50 @@ function ClientDashboard() {
             </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-headline">Próximos Agendamentos</CardTitle>
+          <CardDescription>Seus horários confirmados.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {areUpcomingAppointmentsLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+            </div>
+          ) : upcomingAppointments && upcomingAppointments.length > 0 ? (
+            <div className="space-y-4">
+              {upcomingAppointments.map((apt) => (
+                <div key={apt.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-lg border">
+                  <div className="flex items-center gap-4">
+                    <Calendar className="h-6 w-6 text-primary" />
+                    <div>
+                      <p className="font-semibold">{apt.serviceName}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Com {apt.professionalName}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-left sm:text-right">
+                    <p className="font-semibold capitalize">
+                      {format(apt.startTime.toDate(), "EEEE, dd/MM", { locale: ptBR })}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      às {format(apt.startTime.toDate(), "HH:mm")}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-center py-4">
+              Você não tem nenhum agendamento futuro.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
     </div>
   );
 }
