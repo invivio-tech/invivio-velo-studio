@@ -51,7 +51,7 @@ service cloud.firestore {
      * or a hardcoded value instead of another get() call.
      */
     function isAdmin() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return isSignedIn() && request.auth.token.email == 'admin@barbearia.com';
     }
 
 
@@ -208,5 +208,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
