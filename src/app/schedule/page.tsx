@@ -188,13 +188,6 @@ function ClientDashboard() {
   const { user, isLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
 
-  // Query for ALL appointments (for total count)
-  const allAppointmentsQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return query(collection(firestore, 'appointments'), where('customerId', '==', user.uid));
-  }, [firestore, user]);
-  const { data: allAppointments, isLoading: areAllAppointmentsLoading } = useCollection<Appointment>(allAppointmentsQuery);
-
   // Query for UPCOMING appointments
   const upcomingAppointmentsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -205,9 +198,9 @@ function ClientDashboard() {
       orderBy('startTime', 'asc')
     );
   }, [firestore, user]);
-  const { data: upcomingAppointments, isLoading: areUpcomingAppointmentsLoading } = useCollection<Appointment>(upcomingAppointmentsQuery);
+  const { data: upcomingAppointments, isLoading: areUpcomingAppointmentsLoading, error: upcomingAppointmentsError } = useCollection<Appointment>(upcomingAppointmentsQuery);
   
-  const isLoading = isAuthLoading || areAllAppointmentsLoading || areUpcomingAppointmentsLoading;
+  const isLoading = isAuthLoading || areUpcomingAppointmentsLoading;
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
@@ -220,36 +213,21 @@ function ClientDashboard() {
         </Button>
       </div>
       
-      <div className="grid gap-4">
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total de Agendamentos</CardTitle>
-                <CalendarCheck className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-                {areAllAppointmentsLoading ? (
-                    <Skeleton className="h-8 w-12" />
-                ) : (
-                    <div className="text-2xl font-bold">
-                        {allAppointments?.length ?? 0}
-                    </div>
-                )}
-                <p className="text-xs text-muted-foreground">O número total de horários que você já agendou.</p>
-            </CardContent>
-        </Card>
-      </div>
-
       <Card>
         <CardHeader>
           <CardTitle className="font-headline">Próximos Agendamentos</CardTitle>
           <CardDescription>Seus horários confirmados.</CardDescription>
         </CardHeader>
         <CardContent>
-          {areUpcomingAppointmentsLoading ? (
+          {isLoading ? (
             <div className="space-y-4">
               <Skeleton className="h-20 w-full" />
               <Skeleton className="h-20 w-full" />
             </div>
+          ) : upcomingAppointmentsError ? (
+            <p className="text-destructive text-center py-4">
+              Não foi possível carregar seus agendamentos. Por favor, recarregue a página.
+            </p>
           ) : upcomingAppointments && upcomingAppointments.length > 0 ? (
             <div className="space-y-4">
               {upcomingAppointments.map((apt) => (
