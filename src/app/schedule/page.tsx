@@ -185,11 +185,18 @@ function AdminProfessionalDashboard() {
 
 // Dashboard for Client role
 function ClientDashboard() {
-  const { user, isLoading: isAuthLoading } = useUser();
+  const { user, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
+
+  // --- START DEBUG LOG ---
+  console.log('[DEBUG] ClientDashboard rendering. User:', user, 'isAuthLoading:', isAuthLoading);
+  // --- END DEBUG LOG ---
 
   // Query for UPCOMING appointments for the logged-in client
   const upcomingAppointmentsQuery = useMemoFirebase(() => {
+    // --- START DEBUG LOG ---
+    console.log('[DEBUG] useMemoFirebase for query is running. User UID:', user?.uid);
+    // --- END DEBUG LOG ---
     if (!firestore || !user) return null;
     return query(
       collection(firestore, 'appointments'),
@@ -199,6 +206,10 @@ function ClientDashboard() {
     );
   }, [firestore, user]);
   const { data: upcomingAppointments, isLoading: areUpcomingLoading, error: upcomingError } = useCollection<Appointment>(upcomingAppointmentsQuery);
+
+  // --- START DEBUG LOG ---
+  console.log('[DEBUG] useCollection results for appointments:', { data: upcomingAppointments, isLoading: areUpcomingLoading, error: upcomingError });
+  // --- END DEBUG LOG ---
 
   const isLoading = isAuthLoading || areUpcomingLoading;
 
