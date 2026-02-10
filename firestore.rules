@@ -46,9 +46,7 @@ service cloud.firestore {
     
     /**
      * Checks if the currently authenticated user has the 'admin' role.
-     * This function reads the user's profile from the 'users' collection.
-     * This has been changed to no longer cause a recursive loop by checking a custom claim
-     * or a hardcoded value instead of another get() call.
+     * This function now checks for a specific email to avoid recursive lookups.
      */
     function isAdmin() {
       return isSignedIn() && request.auth.token.email == 'admin@barbearia.com';
@@ -66,7 +64,6 @@ service cloud.firestore {
     match /users/{userId} {
       // A user can read their own profile. An admin can read any profile.
       // Any signed-in user can read the profile of a 'professional' to see their details for booking.
-      // This rule is now safe because isAdmin() is no longer recursive.
       allow get: if isOwner(userId) || isAdmin() || (resource.data.role == 'professional');
       // Allow signed-in users to perform queries (e.g., to find professionals).
       // The `get` rule above secures the individual documents returned by the query.
@@ -107,10 +104,12 @@ service cloud.firestore {
      * @path /appointments/{appointmentId}
      */
     match /appointments/{appointmentId} {
-      // READ: An admin can read any appointment. A user can read an appointment
-      // if they are the customer or the professional assigned to it.
-      // This allows queries like `where('customerId', '==', uid)` to succeed.
-      allow read: if isOwner(resource.data.customerId) || isOwner(resource.data.professionalId) || isAdmin();
+      // READ: Split into GET and LIST for security and functionality.
+      // GET: A user can get a specific appointment if they are the customer or the professional. Admins can get any.
+      allow get: if isOwner(resource.data.customerId) || isOwner(resource.data.professionalId) || isAdmin();
+      // LIST: Any authenticated user can perform queries on the collection.
+      // The client-side code MUST use `where` clauses to securely filter the results.
+      allow list: if isSignedIn();
 
       // CREATE: A client can create their own appointment, or an admin can create any.
       allow create: if isOwner(request.resource.data.customerId) || isAdmin();

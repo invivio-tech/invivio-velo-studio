@@ -7,7 +7,7 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card';
-import { DollarSign, Users, CalendarCheck, Lock, Calendar } from 'lucide-react';
+import { DollarSign, Users, CalendarCheck, Lock, Calendar, Clock } from 'lucide-react';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUser, useUserProfile, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
@@ -251,13 +251,15 @@ function ClientDashboard() {
                   </div>
                 ) : upcomingAppointments && upcomingAppointments.length > 0 ? (
                     upcomingAppointments.map(apt => (
-                        <div key={apt.id} className="p-3 bg-muted/50 rounded-lg text-xs font-mono">
-                            <p><strong>serviceName:</strong> {apt.serviceName}</p>
-                            <p><strong>professionalName:</strong> {apt.professionalName}</p>
-                            <p><strong>price:</strong> {apt.servicePrice}</p>
-                            <p><strong>duration:</strong> {apt.serviceDuration}</p>
-                            <p><strong>startTime:</strong> {apt.startTime.toDate().toString()}</p>
-                            <p><strong>endTime:</strong> {apt.endTime.toDate().toString()}</p>
+                        <div key={apt.id} className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg">
+                           <Calendar className="h-6 w-6 text-primary mt-1" />
+                           <div>
+                            <p className="font-semibold">{apt.serviceName}</p>
+                            <p className="text-sm text-muted-foreground capitalize">
+                              {format(apt.startTime.toDate(), "EEEE, dd/MM 'às' HH:mm", { locale: ptBR })}
+                            </p>
+                            <p className="text-sm text-muted-foreground">com {apt.professionalName}</p>
+                           </div>
                         </div>
                     ))
                 ) : (
