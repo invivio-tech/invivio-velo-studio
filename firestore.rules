@@ -132,21 +132,14 @@ service cloud.firestore {
       // CREATE: A client can create their own appointment, or an admin can create any.
       allow create: if isOwner(request.resource.data.customerId) || isAdmin();
 
-      // UPDATE: Admin can always update. Client can only update their own appointment to set the status to 'cancelled' within the allowed time window.
+      // UPDATE: Admin can always update. A client can only update their own appointment
+      // to change the status to 'cancelled' within the allowed time window.
+      // No other fields can be changed by the client.
       allow update: if isAdmin() || (
-        isOwner(resource.data.customerId) &&
-        clientCanModifyAppointment() &&
-        request.resource.data.status == 'cancelled' &&
-        request.resource.data.customerId == resource.data.customerId &&
-        request.resource.data.professionalId == resource.data.professionalId &&
-        request.resource.data.serviceId == resource.data.serviceId &&
-        request.resource.data.startTime == resource.data.startTime &&
-        request.resource.data.endTime == resource.data.endTime &&
-        request.resource.data.notes == resource.data.notes &&
-        request.resource.data.serviceName == resource.data.serviceName &&
-        request.resource.data.professionalName == resource.data.professionalName &&
-        request.resource.data.serviceDuration == resource.data.serviceDuration &&
-        request.resource.data.servicePrice == resource.data.servicePrice
+          isOwner(resource.data.customerId) &&
+          clientCanModifyAppointment() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+          request.resource.data.status == 'cancelled'
       );
       
       // DELETE: Only admins can permanently delete records.
@@ -242,5 +235,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
