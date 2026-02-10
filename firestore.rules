@@ -68,8 +68,8 @@ service cloud.firestore {
         timeLimitHours = settingsData.cancellationTimeLimitHours;
       }
       
-      // Compare the current time with the appointment's start time minus the limit.
-      return request.time < resource.data.startTime - duration.value(timeLimitHours, 'h');
+      // Check if the current time plus the cancellation window is still before the appointment start time.
+      return request.time + duration.value(timeLimitHours, 'h') < resource.data.startTime;
     }
 
 
