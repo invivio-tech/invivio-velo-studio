@@ -7,7 +7,7 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card';
-import { DollarSign, Users, CalendarCheck, Lock, Calendar, Clock } from 'lucide-react';
+import { DollarSign, Users, CalendarCheck, Lock, Calendar } from 'lucide-react';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUser, useUserProfile, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
@@ -188,7 +188,7 @@ function ClientDashboard() {
   const { user, isLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
 
-  // Query for UPCOMING appointments
+  // Query for UPCOMING appointments for the logged-in client
   const upcomingAppointmentsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return query(
@@ -198,9 +198,9 @@ function ClientDashboard() {
       orderBy('startTime', 'asc')
     );
   }, [firestore, user]);
-  const { data: upcomingAppointments, isLoading: areUpcomingAppointmentsLoading, error: upcomingAppointmentsError } = useCollection<Appointment>(upcomingAppointmentsQuery);
-  
-  const isLoading = isAuthLoading || areUpcomingAppointmentsLoading;
+  const { data: upcomingAppointments, isLoading: areUpcomingLoading, error: upcomingError } = useCollection<Appointment>(upcomingAppointmentsQuery);
+
+  const isLoading = isAuthLoading || areUpcomingLoading;
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
@@ -224,7 +224,7 @@ function ClientDashboard() {
               <Skeleton className="h-20 w-full" />
               <Skeleton className="h-20 w-full" />
             </div>
-          ) : upcomingAppointmentsError ? (
+          ) : upcomingError ? (
             <p className="text-destructive text-center py-4">
               Não foi possível carregar seus agendamentos. Por favor, recarregue a página.
             </p>
