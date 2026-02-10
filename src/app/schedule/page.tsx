@@ -195,19 +195,7 @@ function ClientDashboard() {
   }, [firestore, user]);
   const { data: allAppointments, isLoading: areAllAppointmentsLoading } = useCollection<Appointment>(allAppointmentsQuery);
   
-  // Query for UPCOMING appointments
-  const upcomingAppointmentsQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return query(
-      collection(firestore, 'appointments'),
-      where('customerId', '==', user.uid),
-      where('startTime', '>=', startOfDay(new Date())),
-      orderBy('startTime', 'asc')
-    );
-  }, [firestore, user]);
-  const { data: upcomingAppointments, isLoading: areUpcomingAppointmentsLoading } = useCollection<Appointment>(upcomingAppointmentsQuery);
-
-  const isLoading = isAuthLoading || areAllAppointmentsLoading || areUpcomingAppointmentsLoading;
+  const isLoading = isAuthLoading || areAllAppointmentsLoading;
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
@@ -235,36 +223,6 @@ function ClientDashboard() {
                     </div>
                 )}
                 <p className="text-xs text-muted-foreground">O número total de horários que você já agendou.</p>
-            </CardContent>
-        </Card>
-
-        <Card>
-            <CardHeader>
-                <CardTitle className="font-headline">Próximos Agendamentos</CardTitle>
-                <CardDescription>Seus horários confirmados.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                {isLoading ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-20 w-full" />
-                    <Skeleton className="h-20 w-full" />
-                  </div>
-                ) : upcomingAppointments && upcomingAppointments.length > 0 ? (
-                    upcomingAppointments.map(apt => (
-                        <div key={apt.id} className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg">
-                           <Calendar className="h-6 w-6 text-primary mt-1" />
-                           <div>
-                            <p className="font-semibold">{apt.serviceName}</p>
-                            <p className="text-sm text-muted-foreground capitalize">
-                              {format(apt.startTime.toDate(), "EEEE, dd/MM 'às' HH:mm", { locale: ptBR })}
-                            </p>
-                            <p className="text-sm text-muted-foreground">com {apt.professionalName}</p>
-                           </div>
-                        </div>
-                    ))
-                ) : (
-                    <p className="text-sm text-muted-foreground text-center py-4">Você não possui agendamentos futuros.</p>
-                )}
             </CardContent>
         </Card>
       </div>
