@@ -54,19 +54,18 @@ service cloud.firestore {
 
     /**
       * Checks if a client is allowed to modify their own appointment based on a time limit.
-      * This rule is now more defensive to handle missing settings.
+      * This rule is now more defensive and direct.
       */
     function clientCanModifyAppointment() {
-      // Get the establishment settings document
-      let settingsDoc = get(/databases/$(database)/documents/establishmentSettings/main);
+      let settingsData = get(/databases/$(database)/documents/establishmentSettings/main).data;
       
-      // Default to a 24-hour limit if the document or field doesn't exist.
+      // Default to 24 hours.
       let timeLimitHours = 24;
-      if (settingsDoc.exists() && 'cancellationTimeLimitHours' in settingsDoc.data) {
-        // Ensure the value is not null before using it
-        if (settingsDoc.data.cancellationTimeLimitHours != null) {
-            timeLimitHours = settingsDoc.data.cancellationTimeLimitHours;
-        }
+
+      // Check if the data and the specific field exist and are not null.
+      // Accessing a non-existent field returns null in security rules.
+      if (settingsData != null && settingsData.cancellationTimeLimitHours != null) {
+        timeLimitHours = settingsData.cancellationTimeLimitHours;
       }
       
       // Compare the current time with the appointment's start time minus the limit.
