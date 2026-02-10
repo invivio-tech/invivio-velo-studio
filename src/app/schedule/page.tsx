@@ -15,7 +15,7 @@ import { useUser, useUserProfile, useFirestore, useCollection, useMemoFirebase, 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { collection, query, where, orderBy, Timestamp, getDocs, doc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, Timestamp, getDocs, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { format, startOfDay, isBefore, subHours } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -50,6 +50,7 @@ interface Appointment {
   serviceDuration: string;
   servicePrice: number;
   notes: string;
+  status: 'scheduled' | 'completed' | 'cancelled';
 }
 
 export default function SchedulePage() {
@@ -218,6 +219,7 @@ function ClientDashboard() {
     const upcomingAppointmentsQuery = query(
       collection(firestore, 'appointments'),
       where('customerId', '==', user.uid),
+      where('status', '==', 'scheduled'),
       where('startTime', '>=', startOfDay(new Date())),
       orderBy('startTime', 'asc')
     );
@@ -253,7 +255,7 @@ function ClientDashboard() {
     const docRef = doc(firestore, 'appointments', appointmentToCancel.id);
 
     try {
-        await deleteDoc(docRef);
+        await updateDoc(docRef, { status: 'cancelled' });
         toast({
             title: 'Agendamento Cancelado!',
             description: 'Seu horário foi removido da agenda.'
@@ -276,7 +278,7 @@ function ClientDashboard() {
     if (!firestore) return;
     const docRef = doc(firestore, 'appointments', appointment.id);
     try {
-        await deleteDoc(docRef);
+        await updateDoc(docRef, { status: 'cancelled' });
         toast({
             title: 'Horário Liberado',
             description: 'Seu agendamento anterior foi cancelado. Escolha um novo horário.'
@@ -411,3 +413,5 @@ function ClientDashboard() {
     </div>
   );
 }
+
+    

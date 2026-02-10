@@ -125,15 +125,32 @@ service cloud.firestore {
      */
     match /appointments/{appointmentId} {
       // READ: A user can get their own appointment, a professional can get theirs, or an admin can get any.
-      allow get: if isOwner(resource.data.customerId) || isOwner(resource.data.professionalId) || isAdmin();
+      allow get: if isSignedIn();
       // LIST: Allows LIST queries (e.g., with `where`), which are then secured by the `get` rule per document.
       allow list: if isSignedIn();
 
       // CREATE: A client can create their own appointment, or an admin can create any.
       allow create: if isOwner(request.resource.data.customerId) || isAdmin();
 
-      // UPDATE, DELETE: An admin can always modify. A client can modify only if they are the owner AND within the allowed time window.
-      allow update, delete: if isAdmin() || (isOwner(resource.data.customerId) && clientCanModifyAppointment());
+      // UPDATE: Admin can always update. Client can only update their own appointment to set the status to 'cancelled' within the allowed time window.
+      allow update: if isAdmin() || (
+        isOwner(resource.data.customerId) &&
+        clientCanModifyAppointment() &&
+        request.resource.data.status == 'cancelled' &&
+        request.resource.data.customerId == resource.data.customerId &&
+        request.resource.data.professionalId == resource.data.professionalId &&
+        request.resource.data.serviceId == resource.data.serviceId &&
+        request.resource.data.startTime == resource.data.startTime &&
+        request.resource.data.endTime == resource.data.endTime &&
+        request.resource.data.notes == resource.data.notes &&
+        request.resource.data.serviceName == resource.data.serviceName &&
+        request.resource.data.professionalName == resource.data.professionalName &&
+        request.resource.data.serviceDuration == resource.data.serviceDuration &&
+        request.resource.data.servicePrice == resource.data.servicePrice
+      );
+      
+      // DELETE: Only admins can permanently delete records.
+      allow delete: if isAdmin();
     }
 
     /**
@@ -225,3 +242,5 @@ service cloud.firestore {
     }
   }
 }
+
+    

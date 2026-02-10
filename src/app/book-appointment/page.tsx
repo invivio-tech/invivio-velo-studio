@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { addMinutes, format, isAfter, isBefore, isEqual, parse, set, startOfDay, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { addDoc, collection, query, where, getDocs, Timestamp, doc } from 'firebase/firestore';
+import { addDoc, collection, query, where, getDocs, Timestamp, doc, updateDoc } from 'firebase/firestore';
 
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase, type UserProfile } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -29,6 +29,7 @@ interface Appointment {
   serviceId: string;
   startTime: Timestamp;
   endTime: Timestamp;
+  status: 'scheduled' | 'completed' | 'cancelled';
 }
 
 interface BlockedTime {
@@ -165,7 +166,7 @@ export default function BookAppointmentPage() {
       const workDayEnd = parse(profSchedule.endTime, 'HH:mm', selectedDate);
 
       const busyBlocks = [
-        ...(dailyAppointments || []).filter(a => a.professionalId === prof.id).map(a => ({ start: a.startTime.toDate(), end: a.endTime.toDate() })),
+        ...(dailyAppointments || []).filter(a => a.professionalId === prof.id && a.status !== 'cancelled').map(a => ({ start: a.startTime.toDate(), end: a.endTime.toDate() })),
         ...(dailyBlockedTimes || []).map(b => ({ start: b.startTime.toDate(), end: b.endTime.toDate() })),
         ...(profSchedule.breaks?.map(b => ({ start: parse(b.startTime, 'HH:mm', selectedDate), end: parse(b.endTime, 'HH:mm', selectedDate) })) || [])
       ];
@@ -252,6 +253,7 @@ export default function BookAppointmentPage() {
         professionalId: finalProfessional.id,
         startTime: Timestamp.fromDate(startTime),
         endTime: Timestamp.fromDate(endTime),
+        status: 'scheduled',
         notes: '',
         // Denormalized data
         serviceName: selectedService.name,
@@ -261,7 +263,7 @@ export default function BookAppointmentPage() {
       };
 
       try {
-        await addDoc(collection(firestore, 'appointments'), newAppointment);
+        const docRef = await addDoc(collection(firestore, 'appointments'), newAppointment);
         toast({ title: 'Agendamento Confirmado!', description: `Seu horário para ${selectedService.name} às ${selectedTime} foi confirmado.`});
         router.push('/schedule');
       } catch (e) {
@@ -440,4 +442,5 @@ export default function BookAppointmentPage() {
   );
 }
 
+    
     
