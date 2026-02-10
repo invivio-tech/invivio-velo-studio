@@ -196,20 +196,7 @@ function ClientDashboard() {
 
   const { data: allAppointments, isLoading: areAllAppointmentsLoading } = useCollection<Appointment>(allAppointmentsQuery);
   
-  // Query for UPCOMING appointments
-  const upcomingAppointmentsQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return query(
-      collection(firestore, 'appointments'),
-      where('customerId', '==', user.uid),
-      where('startTime', '>=', startOfDay(new Date())),
-      orderBy('startTime', 'asc')
-    );
-  }, [firestore, user]);
-
-  const { data: upcomingAppointments, isLoading: areUpcomingAppointmentsLoading } = useCollection<Appointment>(upcomingAppointmentsQuery);
-
-  const isLoading = isAuthLoading || areAllAppointmentsLoading || areUpcomingAppointmentsLoading;
+  const isLoading = isAuthLoading || areAllAppointmentsLoading;
 
 
   return (
@@ -223,7 +210,7 @@ function ClientDashboard() {
         </Button>
       </div>
       
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="max-w-md">
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total de Agendamentos</CardTitle>
@@ -238,45 +225,6 @@ function ClientDashboard() {
                     </div>
                 )}
                 <p className="text-xs text-muted-foreground">O número total de horários que você já agendou.</p>
-            </CardContent>
-        </Card>
-        
-        <Card>
-            <CardHeader>
-                <CardTitle className="font-headline">Próximos Agendamentos</CardTitle>
-                <CardDescription>Seus próximos compromissos.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                {areUpcomingAppointmentsLoading ? (
-                    <div className="space-y-4">
-                        {[...Array(2)].map((_, i) => (
-                            <div key={i} className="flex flex-col gap-2 rounded-lg border p-4">
-                                <Skeleton className="h-4 w-3/4" />
-                                <Skeleton className="h-4 w-full" />
-                                <Skeleton className="h-4 w-4/5" />
-                            </div>
-                        ))}
-                    </div>
-                ) : upcomingAppointments && upcomingAppointments.length > 0 ? (
-                    <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-                        {upcomingAppointments.map((apt) => (
-                            <div key={apt.id} className="flex flex-col gap-1 rounded-lg border p-3 text-xs font-mono bg-muted/20">
-                                <p><strong>serviceName:</strong> {apt.serviceName}</p>
-                                <p><strong>professionalName:</strong> {apt.professionalName}</p>
-                                <p><strong>startTime:</strong> {apt.startTime.toDate().toString()}</p>
-                                <p><strong>endTime:</strong> {apt.endTime.toDate().toString()}</p>
-                                <p><strong>servicePrice:</strong> {apt.servicePrice}</p>
-                                <p><strong>serviceDuration:</strong> "{apt.serviceDuration}"</p>
-                                <p><strong>customerId:</strong> {apt.customerId}</p>
-                                <p><strong>professionalId:</strong> {apt.professionalId}</p>
-                                <p><strong>serviceId:</strong> {apt.serviceId}</p>
-                                <p><strong>notes:</strong> "{apt.notes}"</p>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <p className="text-muted-foreground text-center py-4 text-sm">Você não tem agendamentos futuros.</p>
-                )}
             </CardContent>
         </Card>
       </div>
