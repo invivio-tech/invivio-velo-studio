@@ -105,10 +105,7 @@ service cloud.firestore {
      */
     match /appointments/{appointmentId} {
       // READ: Split into GET and LIST for security and functionality.
-      // GET: A user can get a specific appointment if they are the customer or the professional. Admins can get any.
-      allow get: if isOwner(resource.data.customerId) || isOwner(resource.data.professionalId) || isAdmin();
-      // LIST: Any authenticated user can perform queries on the collection.
-      // The client-side code MUST use `where` clauses to securely filter the results.
+      allow get: if isSignedIn();
       allow list: if isSignedIn();
 
       // CREATE: A client can create their own appointment, or an admin can create any.
