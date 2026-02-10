@@ -62,27 +62,15 @@ export function useCollection<T = any>(
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
-    // --- START DEBUG LOG ---
-    console.log('[DEBUG] useCollection triggered.');
     if (!memoizedTargetRefOrQuery) {
-      console.log('[DEBUG] Query is null or undefined. Skipping effect.');
       setData(null);
       setIsLoading(false);
       setError(null);
       return;
     }
-    // --- END DEBUG LOG ---
 
     setIsLoading(true);
     setError(null);
-
-    // --- START DEBUG LOG ---
-    const debugPath: string = memoizedTargetRefOrQuery.type === 'collection'
-        ? (memoizedTargetRefOrQuery as CollectionReference).path
-        : (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString();
-    console.log(`[DEBUG] Subscribing to path: ${debugPath}`);
-    // --- END DEBUG LOG ---
-
 
     // Directly use memoizedTargetRefOrQuery as it's assumed to be the final query
     const unsubscribe = onSnapshot(
@@ -97,19 +85,11 @@ export function useCollection<T = any>(
         setIsLoading(false);
       },
       (error: FirestoreError) => {
-        // --- START DEBUG LOG ---
-        console.error('[DEBUG] onSnapshot Error Callback triggered.');
-        // --- END DEBUG LOG ---
-        
         // This logic extracts the path from either a ref or a query
         const path: string =
           memoizedTargetRefOrQuery.type === 'collection'
             ? (memoizedTargetRefOrQuery as CollectionReference).path
             : (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString()
-
-        // --- START DEBUG LOG ---
-        console.log(`[DEBUG] Error occurred on path: ${path}`);
-        // --- END DEBUG LOG ---
 
         const contextualError = new FirestorePermissionError({
           operation: 'list',

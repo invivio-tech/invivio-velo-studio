@@ -12,13 +12,14 @@ import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUser, useUserProfile, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { collection, query, where, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, query, where, orderBy, Timestamp, getDocs } from 'firebase/firestore';
 import { format, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { useToast } from '@/hooks/use-toast';
 
 // Type for global blocked times (for admin/pro dashboard)
 interface BlockedTime {
@@ -44,7 +45,7 @@ interface Appointment {
 }
 
 export default function SchedulePage() {
-  const { user, isLoading: isUserLoading } = useUser();
+  const { user, isUserLoading } = useUser();
   const { userProfile, isLoading: isProfileLoading } = useUserProfile();
   const router = useRouter();
 
@@ -187,29 +188,53 @@ function AdminProfessionalDashboard() {
 function ClientDashboard() {
   const { user, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
+  const { toast } = useToast();
 
-  // --- START DEBUG LOG ---
-  console.log('[DEBUG] ClientDashboard rendering. User:', user, 'isAuthLoading:', isAuthLoading);
-  // --- END DEBUG LOG ---
+  const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[] | null>(null);
+  const [areUpcomingLoading, setAreUpcomingLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
-  // Query for UPCOMING appointments for the logged-in client
-  const upcomingAppointmentsQuery = useMemoFirebase(() => {
-    // --- START DEBUG LOG ---
-    console.log('[DEBUG] useMemoFirebase for query is running. User UID:', user?.uid);
-    // --- END DEBUG LOG ---
-    if (!firestore || !user) return null;
-    return query(
-      collection(firestore, 'appointments'),
-      where('customerId', '==', user.uid),
-      where('startTime', '>=', startOfDay(new Date())),
-      orderBy('startTime', 'asc')
-    );
-  }, [firestore, user]);
-  const { data: upcomingAppointments, isLoading: areUpcomingLoading, error: upcomingError } = useCollection<Appointment>(upcomingAppointmentsQuery);
+  useEffect(() => {
+    // Don't fetch if auth is still loading or user/firestore isn't available
+    if (isAuthLoading || !user || !firestore) {
+      if (!isAuthLoading) {
+        setAreUpcomingLoading(false);
+      }
+      return;
+    }
 
-  // --- START DEBUG LOG ---
-  console.log('[DEBUG] useCollection results for appointments:', { data: upcomingAppointments, isLoading: areUpcomingLoading, error: upcomingError });
-  // --- END DEBUG LOG ---
+    const fetchAppointments = async () => {
+      setAreUpcomingLoading(true);
+      setError(null);
+      
+      const upcomingAppointmentsQuery = query(
+        collection(firestore, 'appointments'),
+        where('customerId', '==', user.uid),
+        where('startTime', '>=', startOfDay(new Date())),
+        orderBy('startTime', 'asc')
+      );
+
+      try {
+        const querySnapshot = await getDocs(upcomingAppointmentsQuery);
+        const appointments = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
+        setUpcomingAppointments(appointments);
+      } catch (err: any) {
+        console.error("Error fetching upcoming appointments:", err);
+        setError(err);
+        toast({
+          variant: 'destructive',
+          title: 'Erro ao buscar agendamentos',
+          description: 'Não foi possível carregar seus próximos agendamentos. Tente recarregar a página.',
+        });
+        setUpcomingAppointments(null);
+      } finally {
+        setAreUpcomingLoading(false);
+      }
+    };
+
+    fetchAppointments();
+  }, [user, firestore, isAuthLoading, toast]);
+
 
   const isLoading = isAuthLoading || areUpcomingLoading;
 
@@ -235,7 +260,7 @@ function ClientDashboard() {
               <Skeleton className="h-20 w-full" />
               <Skeleton className="h-20 w-full" />
             </div>
-          ) : upcomingError ? (
+          ) : error ? (
             <p className="text-destructive text-center py-4">
               Não foi possível carregar seus agendamentos. Por favor, recarregue a página.
             </p>
