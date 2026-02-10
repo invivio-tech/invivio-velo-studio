@@ -54,11 +54,22 @@ service cloud.firestore {
 
     /**
       * Checks if a client is allowed to modify their own appointment based on a time limit.
+      * This rule is now more defensive to handle missing settings.
       */
     function clientCanModifyAppointment() {
-      let settings = get(/databases/$(database)/documents/establishmentSettings/main).data;
-      let timeLimitHours = settings.cancellationTimeLimitHours;
-      // The request time must be before the appointment's start time minus the configured buffer.
+      // Get the establishment settings document
+      let settingsDoc = get(/databases/$(database)/documents/establishmentSettings/main);
+      
+      // Default to a 24-hour limit if the document or field doesn't exist.
+      let timeLimitHours = 24;
+      if (settingsDoc.exists() && 'cancellationTimeLimitHours' in settingsDoc.data) {
+        // Ensure the value is not null before using it
+        if (settingsDoc.data.cancellationTimeLimitHours != null) {
+            timeLimitHours = settingsDoc.data.cancellationTimeLimitHours;
+        }
+      }
+      
+      // Compare the current time with the appointment's start time minus the limit.
       return request.time < resource.data.startTime - duration.value(timeLimitHours, 'h');
     }
 
