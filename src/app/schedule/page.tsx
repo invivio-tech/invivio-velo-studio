@@ -262,7 +262,7 @@ function ClientDashboard() {
         });
         setUpcomingAppointments(prev => prev?.filter(apt => apt.id !== appointmentToCancel.id) || null);
     } catch(e) {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'delete'}));
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'update', requestResourceData: { status: 'cancelled' }}));
         toast({
             title: 'Erro ao Cancelar',
             description: 'Não foi possível cancelar o agendamento. Pode ser tarde demais ou você não tem permissão.',
@@ -285,7 +285,7 @@ function ClientDashboard() {
         });
         router.push('/book-appointment');
     } catch (e) {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'delete'}));
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'update', requestResourceData: { status: 'cancelled' }}));
         toast({
             title: 'Erro ao Reagendar',
             description: 'Não foi possível cancelar o horário anterior. Verifique suas permissões.',
@@ -413,5 +413,3 @@ function ClientDashboard() {
     </div>
   );
 }
-
-    
