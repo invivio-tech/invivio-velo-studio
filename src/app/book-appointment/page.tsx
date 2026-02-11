@@ -249,6 +249,8 @@ export default function BookAppointmentPage() {
 
       const newAppointment = {
         customerId: user.uid,
+        customerName: user.displayName || 'Cliente',
+        customerPhotoURL: user.photoURL || '',
         serviceId: selectedService.id,
         professionalId: finalProfessional.id,
         startTime: Timestamp.fromDate(startTime),
@@ -263,7 +265,8 @@ export default function BookAppointmentPage() {
       };
 
       try {
-        const docRef = await addDoc(collection(firestore, 'appointments'), newAppointment);
+        const appointmentsRef = collection(firestore, 'appointments');
+        const docRef = await addDoc(appointmentsRef, newAppointment);
         toast({ title: 'Agendamento Confirmado!', description: `Seu horário para ${selectedService.name} às ${selectedTime} foi confirmado.`});
         router.push('/schedule');
       } catch (e) {
@@ -441,3 +444,5 @@ export default function BookAppointmentPage() {
     </div>
   );
 }
+
+    

@@ -131,6 +131,15 @@
         "notes": { "type": "string", "description": "Any notes about the appointment." },
         "serviceName": { "type": "string", "description": "Denormalized name of the service." },
         "professionalName": { "type": "string", "description": "Denormalized name of the professional." },
+        "customerName": {
+            "type": "string",
+            "description": "Denormalized name of the client who booked the appointment."
+        },
+        "customerPhotoURL": {
+            "type": "string",
+            "description": "Denormalized URL of the client's profile picture.",
+            "format": "uri"
+        },
         "serviceDuration": { "type": "string", "description": "Denormalized duration of the service." },
         "servicePrice": { "type": "number", "description": "Denormalized price of the service at time of booking." },
         "status": {
@@ -152,6 +161,7 @@
         "endTime",
         "serviceName",
         "professionalName",
+        "customerName",
         "serviceDuration",
         "servicePrice",
         "status"

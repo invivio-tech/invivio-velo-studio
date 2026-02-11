@@ -27,6 +27,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { EstablishmentSettings } from '@/app/establishment/page';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 
 // Type for global blocked times (for admin/pro dashboard)
@@ -47,6 +48,8 @@ interface Appointment {
   endTime: Timestamp;
   serviceName: string;
   professionalName: string;
+  customerName: string;
+  customerPhotoURL?: string;
   serviceDuration: string;
   servicePrice: number;
   notes: string;
@@ -84,8 +87,12 @@ export default function SchedulePage() {
   }
 
   // Render dashboard based on user role
-  if (userProfile.role === 'admin' || userProfile.role === 'professional') {
-    return <AdminProfessionalDashboard />;
+  if (userProfile.role === 'admin') {
+    return <AdminDashboard />;
+  }
+  
+  if (userProfile.role === 'professional') {
+    return <ProfessionalDashboard />;
   }
 
   if (userProfile.role === 'client') {
@@ -96,8 +103,8 @@ export default function SchedulePage() {
   return null;
 }
 
-// Dashboard for Admin and Professional roles
-function AdminProfessionalDashboard() {
+// Dashboard for Admin
+function AdminDashboard() {
   const firestore = useFirestore();
   
   // Fetch global blocked times
@@ -189,6 +196,117 @@ function AdminProfessionalDashboard() {
           </CardContent>
         </Card>
       </div>
+    </div>
+  );
+}
+
+// NEW Dashboard for Professional role
+function ProfessionalDashboard() {
+  const { user, isUserLoading: isAuthLoading } = useUser();
+  const firestore = useFirestore();
+  const { toast } = useToast();
+
+  const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[] | null>(null);
+  const [areUpcomingLoading, setAreUpcomingLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!isAuthLoading && user && firestore) {
+      const fetchAppointments = async () => {
+        setAreUpcomingLoading(true);
+        setError(null);
+        
+        const upcomingAppointmentsQuery = query(
+          collection(firestore, 'appointments'),
+          where('professionalId', '==', user.uid),
+          where('status', '==', 'scheduled'),
+          where('startTime', '>=', startOfDay(new Date())),
+          orderBy('startTime', 'asc')
+        );
+
+        try {
+          const querySnapshot = await getDocs(upcomingAppointmentsQuery);
+          const appointments = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
+          setUpcomingAppointments(appointments);
+        } catch (err: any) {
+          console.error("Error fetching professional appointments:", err);
+          setError(err);
+          toast({
+            variant: 'destructive',
+            title: 'Erro ao buscar agendamentos',
+            description: 'Não foi possível carregar seus próximos agendamentos. Tente recarregar a página.',
+          });
+          setUpcomingAppointments(null);
+        } finally {
+          setAreUpcomingLoading(false);
+        }
+      };
+
+      fetchAppointments();
+    } else if (!isAuthLoading && !user) {
+        setAreUpcomingLoading(false);
+    }
+  }, [user, firestore, isAuthLoading, toast]);
+  
+  const isLoading = isAuthLoading || areUpcomingLoading;
+
+  return (
+    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <h1 className="text-3xl font-headline font-bold tracking-tight">
+          {isAuthLoading ? <Skeleton className="h-9 w-48" /> : `Olá, ${user?.displayName}!`}
+        </h1>
+        <p className="text-muted-foreground">Aqui estão seus próximos atendimentos.</p>
+      </div>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-headline">Próximos Agendamentos</CardTitle>
+          <CardDescription>Seus horários confirmados para hoje e os próximos dias.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+            </div>
+          ) : error ? (
+            <p className="text-destructive text-center py-4">
+              Não foi possível carregar seus agendamentos. Por favor, recarregue a página.
+            </p>
+          ) : upcomingAppointments && upcomingAppointments.length > 0 ? (
+            <div className="space-y-4">
+                {upcomingAppointments.map((apt) => (
+                    <div key={apt.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-lg border">
+                        <div className="flex items-center gap-4">
+                            <Calendar className="h-6 w-6 text-primary" />
+                            <div>
+                                <p className="font-semibold">{apt.serviceName}</p>
+                                <p className="text-sm text-muted-foreground capitalize">
+                                    {format(apt.startTime.toDate(), "EEEE, dd/MM 'às' HH:mm", { locale: ptBR })}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                           <Avatar>
+                             <AvatarImage src={apt.customerPhotoURL || ''} alt={apt.customerName} />
+                             <AvatarFallback>{apt.customerName?.charAt(0).toUpperCase()}</AvatarFallback>
+                           </Avatar>
+                           <div>
+                                <p className="font-semibold">{apt.customerName}</p>
+                                <p className="text-sm text-muted-foreground">Cliente</p>
+                           </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-center py-4">
+              Você não tem nenhum agendamento futuro.
+            </p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -420,3 +538,5 @@ function ClientDashboard() {
     </div>
   );
 }
+
+    
