@@ -38,7 +38,7 @@ service cloud.firestore {
 
     /**
      * Checks if the currently authenticated user's UID matches the provided userId.
-     * This is the core function for enforcing document ownership.
+     * This is the core function for enforcing document ownership for generic documents.
      */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
@@ -46,30 +46,41 @@ service cloud.firestore {
     
     /**
      * Checks if the currently authenticated user has the 'admin' role.
-     * This function now checks for a specific email to avoid recursive lookups.
      */
     function isAdmin() {
       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     /**
-      * Checks if a client is allowed to modify their own appointment based on a time limit.
-      * This rule is now more defensive and direct.
-      */
-    function clientCanModifyAppointment() {
-      let settingsData = get(/databases/$(database)/documents/establishmentSettings/main).data;
-      
-      // Default to 24 hours.
-      let timeLimitHours = 24;
+     * Checks if the user making the request is the owner of the appointment.
+     */
+    function isAppointmentOwner(appointment) {
+      return isSignedIn() && request.auth.uid == appointment.customerId;
+    }
 
-      // Check if the data and the specific field exist and are not null.
-      // Accessing a non-existent field returns null in security rules.
-      if (settingsData != null && settingsData.cancellationTimeLimitHours != null) {
-        timeLimitHours = settingsData.cancellationTimeLimitHours;
+    /**
+     * Checks if a client is allowed to modify their appointment based on the configured time limit.
+     */
+    function canClientCancel(appointment) {
+      let settings = get(/databases/$(database)/documents/establishmentSettings/main).data;
+      let limitHours = 24; // Default value
+
+      if (settings != null && settings.cancellationTimeLimitHours != null) {
+        limitHours = settings.cancellationTimeLimitHours;
       }
       
       // Check if the current time plus the cancellation window is still before the appointment start time.
-      return request.time + duration.value(timeLimitHours, 'h') < resource.data.startTime;
+      return request.time + duration.value(limitHours, 'h') < appointment.startTime;
+    }
+
+    /**
+     * Verifies that the only field being changed in an update request is the 'status' field,
+     * and its new value is 'cancelled'.
+     */
+    function isOnlyStatusChangingToCancelled(request, resource) {
+      let isStatusFieldOnly = request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+      let isNewStatusCancelled = request.resource.data.status == 'cancelled';
+      return isStatusFieldOnly && isNewStatusCancelled;
     }
 
 
@@ -130,16 +141,14 @@ service cloud.firestore {
       allow list: if isSignedIn();
 
       // CREATE: A client can create their own appointment, or an admin can create any.
-      allow create: if isOwner(request.resource.data.customerId) || isAdmin();
+      allow create: if isAppointmentOwner(request.resource.data) || isAdmin();
 
       // UPDATE: Admin can always update. A client can only update their own appointment
       // to change the status to 'cancelled' within the allowed time window.
-      // No other fields can be changed by the client.
       allow update: if isAdmin() || (
-          isOwner(resource.data.customerId) &&
-          clientCanModifyAppointment() &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
-          request.resource.data.status == 'cancelled'
+        isAppointmentOwner(resource.data) &&
+        canClientCancel(resource.data) &&
+        isOnlyStatusChangingToCancelled(request, resource)
       );
       
       // DELETE: Only admins can permanently delete records.
