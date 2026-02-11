@@ -52,10 +52,24 @@ service cloud.firestore {
     }
 
     /**
+     * Checks if the currently authenticated user has the 'professional' role.
+     */
+    function isProfessional() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'professional';
+    }
+
+    /**
      * Checks if the user making the request is the owner of the appointment.
      */
     function isAppointmentOwner(appointment) {
       return isSignedIn() && request.auth.uid == appointment.customerId;
+    }
+
+    /**
+     * Checks if the professional making the request is assigned to the appointment.
+     */
+    function isProfessionalAssignedToAppointment(appointment) {
+      return isProfessional() && request.auth.uid == appointment.professionalId;
     }
 
     /**
@@ -78,9 +92,20 @@ service cloud.firestore {
      * and its new value is 'cancelled'.
      */
     function isOnlyStatusChangingToCancelled(request, resource) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+             request.resource.data.status == 'cancelled';
+    }
+
+    /**
+     * Verifies that a professional is only changing the status from 'scheduled' to 'completed' or 'no-show'.
+     */
+    function isProfessionalUpdatingStatus(request, resource) {
+      let allowedNewStatuses = ['completed', 'no-show'];
       let isStatusFieldOnly = request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
-      let isNewStatusCancelled = request.resource.data.status == 'cancelled';
-      return isStatusFieldOnly && isNewStatusCancelled;
+
+      return resource.data.status == 'scheduled' &&
+             isStatusFieldOnly &&
+             request.resource.data.status in allowedNewStatuses;
     }
 
 
@@ -94,17 +119,19 @@ service cloud.firestore {
      */
     match /users/{userId} {
       // A user can read their own profile. An admin can read any profile.
-      // Any signed-in user can read the profile of a 'professional' to see their details for booking.
-      allow get: if isOwner(userId) || isAdmin() || (resource.data.role == 'professional');
+      // A professional can read any user's profile to see details for appointments.
+      allow get: if isOwner(userId) || isAdmin() || isProfessional();
       // Allow signed-in users to perform queries (e.g., to find professionals).
       // The `get` rule above secures the individual documents returned by the query.
       allow list: if isSignedIn();
       // An unauthenticated user can create their own 'client' profile upon signing up.
       // An admin can create any user.
       allow create: if (isOwner(userId) && request.resource.data.role == 'client') || isAdmin();
-      // A user can update their own profile, but cannot change their role.
-      // An admin can update any profile.
-      allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role) || isAdmin();
+      // A user can update their own profile (but not role). An admin can update any profile.
+      // A professional can update only the loyalty points of a client profile.
+      allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role) || 
+                       isAdmin() ||
+                       (isProfessional() && resource.data.role == 'client' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['loyaltyPoints']));
       allow delete: if isAdmin();
 
       /**
@@ -143,13 +170,12 @@ service cloud.firestore {
       // CREATE: A client can create their own appointment, or an admin can create any.
       allow create: if isAppointmentOwner(request.resource.data) || isAdmin();
 
-      // UPDATE: Admin can always update. A client can only update their own appointment
-      // to change the status to 'cancelled' within the allowed time window.
-      allow update: if isAdmin() || (
-        isAppointmentOwner(resource.data) &&
-        canClientCancel(resource.data) &&
-        isOnlyStatusChangingToCancelled(request, resource)
-      );
+      // UPDATE: Admin can always update. 
+      // A client can only update their own appointment to change the status to 'cancelled' within the allowed time window.
+      // A professional can update the status of their assigned appointment.
+      allow update: if isAdmin() || 
+                       (isAppointmentOwner(resource.data) && canClientCancel(resource.data) && isOnlyStatusChangingToCancelled(request, resource)) ||
+                       (isProfessionalAssignedToAppointment(resource.data) && isProfessionalUpdatingStatus(request, resource));
       
       // DELETE: Only admins can permanently delete records.
       allow delete: if isAdmin();
@@ -244,3 +270,5 @@ service cloud.firestore {
     }
   }
 }
+
+    

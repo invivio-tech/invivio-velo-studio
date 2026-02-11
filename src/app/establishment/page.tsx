@@ -19,7 +19,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Building, Loader2, Sparkles, Clock } from 'lucide-react';
+import { Building, Loader2, Sparkles, Clock, Star } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 export interface EstablishmentSettings {
@@ -34,6 +34,8 @@ export interface EstablishmentSettings {
   instagram?: string;
   context?: string;
   cancellationTimeLimitHours?: number;
+  pointsForCompletion?: number;
+  pointsPenaltyForNoShow?: number;
 }
 
 const formSchema = z.object({
@@ -48,6 +50,8 @@ const formSchema = z.object({
   whatsapp: z.string().optional(),
   instagram: z.string().optional(),
   cancellationTimeLimitHours: z.coerce.number().min(0, { message: 'O valor não pode ser negativo.' }).optional(),
+  pointsForCompletion: z.coerce.number().min(0, { message: 'Os pontos devem ser um valor positivo.' }).optional(),
+  pointsPenaltyForNoShow: z.coerce.number().min(0, { message: 'A penalidade deve ser um valor positivo.' }).optional(),
 });
 
 type SettingsFormValues = z.infer<typeof formSchema>;
@@ -85,6 +89,8 @@ export default function EstablishmentPage() {
     instagram: '',
     context: '',
     cancellationTimeLimitHours: 24,
+    pointsForCompletion: 10,
+    pointsPenaltyForNoShow: 5,
   };
 
   const form = useForm<SettingsFormValues>({
@@ -102,6 +108,8 @@ export default function EstablishmentPage() {
         instagram: settings.instagram || '',
         context: settings.context || '',
         cancellationTimeLimitHours: settings.cancellationTimeLimitHours === undefined ? 24 : settings.cancellationTimeLimitHours,
+        pointsForCompletion: settings.pointsForCompletion === undefined ? 10 : settings.pointsForCompletion,
+        pointsPenaltyForNoShow: settings.pointsPenaltyForNoShow === undefined ? 5 : settings.pointsPenaltyForNoShow,
       });
     }
   }, [settings, form]);
@@ -370,6 +378,49 @@ export default function EstablishmentPage() {
                 </CardContent>
             </Card>
 
+            <Card>
+                <CardHeader>
+                    <CardTitle className="font-headline flex items-center gap-2"><Star /> Programa de Fidelidade</CardTitle>
+                    <CardDescription>
+                        Configure o sistema de pontos para recompensar seus clientes.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <FormField
+                        control={form.control}
+                        name="pointsForCompletion"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Pontos por Comparecimento</FormLabel>
+                                <FormControl>
+                                    <Input type="number" placeholder="ex: 10" {...field} />
+                                </FormControl>
+                                <FormDescription>
+                                    Pontos que o cliente ganha ao concluir um serviço agendado.
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="pointsPenaltyForNoShow"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Penalidade por Não Comparecimento (pontos a deduzir)</FormLabel>
+                                <FormControl>
+                                    <Input type="number" placeholder="ex: 5" {...field} />
+                                </FormControl>
+                                <FormDescription>
+                                    Pontos que o cliente perde se não comparecer ao agendamento.
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </CardContent>
+            </Card>
+
 
             <div className="flex justify-end pt-4">
                 <Button type="submit" disabled={isSaving || isSuggesting}>
@@ -382,3 +433,5 @@ export default function EstablishmentPage() {
     </div>
   );
 }
+
+    

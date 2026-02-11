@@ -8,14 +8,14 @@ import {
   CardDescription,
   CardFooter
 } from '@/components/ui/card';
-import { DollarSign, Users, CalendarCheck, Lock, Calendar, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { DollarSign, Users, CalendarCheck, Lock, Calendar, MoreHorizontal, Pencil, Trash2, Check, X, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUser, useUserProfile, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { collection, query, where, orderBy, Timestamp, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, Timestamp, getDocs, doc, updateDoc, runTransaction } from 'firebase/firestore';
 import { format, startOfDay, isBefore, subHours } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -55,7 +55,7 @@ interface Appointment {
   serviceDuration: string;
   servicePrice: number;
   notes: string;
-  status: 'scheduled' | 'completed' | 'cancelled';
+  status: 'scheduled' | 'completed' | 'cancelled' | 'no-show';
 }
 
 export default function SchedulePage() {
@@ -211,6 +211,10 @@ function ProfessionalDashboard() {
   const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[] | null>(null);
   const [areUpcomingLoading, setAreUpcomingLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [isUpdating, setIsUpdating] = useState<string | null>(null);
+
+  const settingsRef = useMemoFirebase(() => firestore ? doc(firestore, 'establishmentSettings', 'main') : null, [firestore]);
+  const { data: settings, isLoading: areSettingsLoading } = useDoc<EstablishmentSettings>(settingsRef);
 
   useEffect(() => {
     if (!isAuthLoading && user && firestore) {
@@ -249,8 +253,63 @@ function ProfessionalDashboard() {
         setAreUpcomingLoading(false);
     }
   }, [user, firestore, isAuthLoading, toast]);
+
+  const handleUpdateAppointmentStatus = async (
+    appointment: Appointment, 
+    newStatus: 'completed' | 'no-show'
+  ) => {
+    if (!firestore || !settings) {
+        toast({ title: 'Erro', description: 'Configurações do sistema não carregadas.', variant: 'destructive'});
+        return;
+    };
+    setIsUpdating(appointment.id);
+    
+    const appointmentRef = doc(firestore, 'appointments', appointment.id);
+    const clientProfileRef = doc(firestore, 'users', appointment.customerId);
+
+    try {
+      await runTransaction(firestore, async (transaction) => {
+        const clientProfileDoc = await transaction.get(clientProfileRef);
+        if (!clientProfileDoc.exists()) {
+          throw new Error("Documento do cliente não encontrado!");
+        }
+
+        const currentPoints = clientProfileDoc.data().loyaltyPoints || 0;
+        let newPoints = currentPoints;
+
+        if (newStatus === 'completed') {
+          newPoints += settings.pointsForCompletion || 10;
+        } else if (newStatus === 'no-show') {
+          newPoints -= settings.pointsPenaltyForNoShow || 5;
+        }
+
+        transaction.update(appointmentRef, { status: newStatus });
+        transaction.update(clientProfileRef, { loyaltyPoints: newPoints });
+      });
+
+      toast({
+        title: 'Status Atualizado!',
+        description: `O agendamento foi marcado como ${newStatus === 'completed' ? 'concluído' : 'não comparecimento'}.`
+      });
+
+      setUpcomingAppointments(prev => prev?.filter(apt => apt.id !== appointment.id) || null);
+
+    } catch (e: any) {
+      console.error("Error updating appointment status:", e);
+      // Let the global error emitter handle permission errors
+      if (!(e instanceof FirestorePermissionError)) {
+          toast({
+            variant: 'destructive',
+            title: 'Erro ao atualizar',
+            description: e.message || 'Não foi possível atualizar o status. Tente novamente.'
+          });
+      }
+    } finally {
+      setIsUpdating(null);
+    }
+  };
   
-  const isLoading = isAuthLoading || areUpcomingLoading;
+  const isLoading = isAuthLoading || areUpcomingLoading || areSettingsLoading;
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
@@ -308,10 +367,27 @@ function ProfessionalDashboard() {
                                         {apt.customerPhoneNumber}
                                     </a>
                                 ) : (
-                                    <p className="block text-sm text-muted-foreground/70 italic">Telefone não informado</p>
+                                     <p className="block text-sm text-muted-foreground/70 italic">Telefone não informado</p>
                                 )}
                            </div>
                         </div>
+                         <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" disabled={isUpdating === apt.id}>
+                                    {isUpdating === apt.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <MoreHorizontal className="h-4 w-4" />}
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                <DropdownMenuItem onSelect={() => handleUpdateAppointmentStatus(apt, 'completed')}>
+                                    <Check className="mr-2 h-4 w-4" />
+                                    Serviço Concluído
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => handleUpdateAppointmentStatus(apt, 'no-show')} className="text-destructive focus:text-destructive">
+                                    <X className="mr-2 h-4 w-4" />
+                                    Não Compareceu
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                 ))}
             </div>
@@ -553,3 +629,5 @@ function ClientDashboard() {
     </div>
   );
 }
+
+    

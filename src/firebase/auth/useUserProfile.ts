@@ -17,6 +17,7 @@ export interface UserProfile {
   birthDate?: string;
   notes?: string;
   address?: string;
+  loyaltyPoints?: number;
 }
 
 export function useUserProfile() {
@@ -59,3 +60,5 @@ export function useUserProfile() {
 
   return { userProfile, isLoading };
 }
+
+    

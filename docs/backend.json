@@ -56,6 +56,10 @@
         "address": {
           "type": "string",
           "description": "The user's address."
+        },
+        "loyaltyPoints": {
+          "type": "number",
+          "description": "The user's loyalty points balance."
         }
       },
       "required": ["id", "name", "email", "role"]
@@ -154,7 +158,7 @@
         "status": {
           "type": "string",
           "description": "The current status of the appointment.",
-          "enum": ["scheduled", "completed", "cancelled"]
+          "enum": ["scheduled", "completed", "cancelled", "no-show"]
         },
         "cancellationReason": {
             "type": "string",
@@ -433,6 +437,14 @@
         "cancellationTimeLimitHours": {
           "type": "number",
           "description": "Time limit in hours before an appointment that a client can cancel or reschedule."
+        },
+        "pointsForCompletion": {
+            "type": "number",
+            "description": "Points awarded to a client for a completed appointment."
+        },
+        "pointsPenaltyForNoShow": {
+            "type": "number",
+            "description": "Points deducted from a client for a no-show."
         }
       },
       "required": [
@@ -630,3 +642,5 @@
     "reasoning": "The Firestore structure has been updated to be more role-oriented. The 'customers' collection is now 'users', reflecting that a user can be a client, professional, or admin. Appointments and invoices have been moved to top-level collections to decouple them from a single user's data tree, preparing the system for more complex relationships, such as a professional's view of their own schedule. This flat structure simplifies queries and security rules, especially for features involving multiple user roles. Added professional-specific subcollections for scheduleSettings and blockedTimes to allow for individual schedule management."
   }
 }
+
+    
