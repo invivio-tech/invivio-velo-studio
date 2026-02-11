@@ -76,7 +76,7 @@ export default function BookAppointmentPage() {
   const categoriesCollection = useMemoFirebase(() => firestore ? collection(firestore, 'serviceCategories') : null, [firestore]);
   const { data: categories, isLoading: areCategoriesLoading } = useCollection<Category>(categoriesCollection);
 
-  const professionalsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'users'), where('role', '==', 'professional')) : null, [firestore]);
+  const professionalsQuery = useMemoFirebase(() => firestore && user ? query(collection(firestore, 'users'), where('role', '==', 'professional')) : null, [firestore, user]);
   const { data: allProfessionals, isLoading: areProfessionalsLoading } = useCollection<UserProfile>(professionalsQuery);
 
   const establishmentSettingsRef = useMemoFirebase(() => firestore ? doc(firestore, 'scheduleSettings', 'main') : null, [firestore]);
@@ -441,6 +441,3 @@ export default function BookAppointmentPage() {
     </div>
   );
 }
-
-    
-    

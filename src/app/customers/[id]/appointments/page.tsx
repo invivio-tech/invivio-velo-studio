@@ -69,7 +69,7 @@ export default function ProfessionalAppointmentsPage() {
   const servicesCollection = useMemoFirebase(() => firestore ? collection(firestore, 'services') : null, [firestore]);
   const { data: allServices, isLoading: areServicesLoading } = useCollection<ServiceWithId>(servicesCollection);
 
-  const clientsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'users'), where('role', '==', 'client')) : null, [firestore]);
+  const clientsQuery = useMemoFirebase(() => firestore && adminProfile?.role === 'admin' ? query(collection(firestore, 'users'), where('role', '==', 'client')) : null, [firestore, adminProfile]);
   const { data: allClients, isLoading: areClientsLoading } = useCollection<UserProfile>(clientsQuery);
 
   // Memoize enriched and grouped appointments
