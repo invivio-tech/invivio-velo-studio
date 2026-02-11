@@ -205,49 +205,62 @@ function ClientDashboard() {
   const [error, setError] = useState<Error | null>(null);
   const [appointmentToCancel, setAppointmentToCancel] = useState<Appointment | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [cancellableStates, setCancellableStates] = useState<Record<string, boolean>>({});
 
   // Fetch establishment settings
   const settingsRef = useMemoFirebase(() => firestore ? doc(firestore, 'establishmentSettings', 'main') : null, [firestore]);
   const { data: settings, isLoading: areSettingsLoading } = useDoc<EstablishmentSettings>(settingsRef);
 
-  const fetchAppointments = async () => {
-    if (!user || !firestore) return;
-
-    setAreUpcomingLoading(true);
-    setError(null);
-    
-    const upcomingAppointmentsQuery = query(
-      collection(firestore, 'appointments'),
-      where('customerId', '==', user.uid),
-      where('status', '==', 'scheduled'),
-      where('startTime', '>=', startOfDay(new Date())),
-      orderBy('startTime', 'asc')
-    );
-
-    try {
-      const querySnapshot = await getDocs(upcomingAppointmentsQuery);
-      const appointments = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
-      setUpcomingAppointments(appointments);
-    } catch (err: any) {
-      console.error("Error fetching upcoming appointments:", err);
-      setError(err);
-      toast({
-        variant: 'destructive',
-        title: 'Erro ao buscar agendamentos',
-        description: 'Não foi possível carregar seus próximos agendamentos. Tente recarregar a página.',
-      });
-      setUpcomingAppointments(null);
-    } finally {
-      setAreUpcomingLoading(false);
-    }
-  };
-
   useEffect(() => {
-    if (!isAuthLoading) {
+    if (!isAuthLoading && user && firestore) {
+      const fetchAppointments = async () => {
+        setAreUpcomingLoading(true);
+        setError(null);
+        
+        const upcomingAppointmentsQuery = query(
+          collection(firestore, 'appointments'),
+          where('customerId', '==', user.uid),
+          where('status', '==', 'scheduled'),
+          where('startTime', '>=', startOfDay(new Date())),
+          orderBy('startTime', 'asc')
+        );
+
+        try {
+          const querySnapshot = await getDocs(upcomingAppointmentsQuery);
+          const appointments = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
+          setUpcomingAppointments(appointments);
+        } catch (err: any) {
+          console.error("Error fetching upcoming appointments:", err);
+          setError(err);
+          toast({
+            variant: 'destructive',
+            title: 'Erro ao buscar agendamentos',
+            description: 'Não foi possível carregar seus próximos agendamentos. Tente recarregar a página.',
+          });
+          setUpcomingAppointments(null);
+        } finally {
+          setAreUpcomingLoading(false);
+        }
+      };
+
       fetchAppointments();
+    } else if (!isAuthLoading && !user) {
+        setAreUpcomingLoading(false);
     }
-  }, [user, firestore, isAuthLoading]);
+  }, [user, firestore, isAuthLoading, toast]);
   
+  useEffect(() => {
+    if (!upcomingAppointments || areSettingsLoading) return;
+
+    const timeLimitHours = settings?.cancellationTimeLimitHours ?? 24;
+    const newStates: Record<string, boolean> = {};
+    upcomingAppointments.forEach(apt => {
+        const cancellationCutoff = subHours(apt.startTime.toDate(), timeLimitHours);
+        newStates[apt.id] = isBefore(new Date(), cancellationCutoff);
+    });
+    setCancellableStates(newStates);
+  }, [upcomingAppointments, settings, areSettingsLoading]);
+
   const handleConfirmCancel = async () => {
     if (!appointmentToCancel || !firestore) return;
 
@@ -294,12 +307,6 @@ function ClientDashboard() {
     }
   };
 
-  const isCancellable = (appointment: Appointment) => {
-    const timeLimitHours = settings?.cancellationTimeLimitHours ?? 24;
-    const cancellationCutoff = subHours(appointment.startTime.toDate(), timeLimitHours);
-    return isBefore(new Date(), cancellationCutoff);
-  }
-
   const isLoading = isAuthLoading || areUpcomingLoading || areSettingsLoading;
 
   return (
@@ -329,61 +336,61 @@ function ClientDashboard() {
               Não foi possível carregar seus agendamentos. Por favor, recarregue a página.
             </p>
           ) : upcomingAppointments && upcomingAppointments.length > 0 ? (
-            <div className="space-y-4">
-              {upcomingAppointments.map((apt) => {
-                const canCancel = isCancellable(apt);
-                const tooltipMessage = canCancel ? '' : `Não é possível alterar com menos de ${settings?.cancellationTimeLimitHours ?? 24}h de antecedência.`;
+            <TooltipProvider>
+              <div className="space-y-4">
+                {upcomingAppointments.map((apt) => {
+                  const canCancel = cancellableStates[apt.id] ?? false;
+                  const tooltipMessage = canCancel ? '' : `Não é possível alterar com menos de ${settings?.cancellationTimeLimitHours ?? 24}h de antecedência.`;
 
-                return (
-                    <div key={apt.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-lg border">
-                        <div className="flex items-center gap-4">
-                        <Calendar className="h-6 w-6 text-primary" />
-                        <div>
-                            <p className="font-semibold">{apt.serviceName}</p>
-                            <p className="text-sm text-muted-foreground">
-                            Com {apt.professionalName}
-                            </p>
-                        </div>
-                        </div>
-                        <div className="text-left sm:text-right">
-                        <p className="font-semibold capitalize">
-                            {format(apt.startTime.toDate(), "EEEE, dd/MM", { locale: ptBR })}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                            às {format(apt.startTime.toDate(), "HH:mm")}
-                        </p>
-                        </div>
-                        <TooltipProvider>
-                            <Tooltip delayDuration={100}>
-                                <TooltipTrigger asChild>
-                                    {/* This div is necessary to allow the tooltip to work on a disabled button */}
-                                    <div> 
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" disabled={!canCancel}>
-                                                <MoreHorizontal className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent>
-                                            <DropdownMenuItem onSelect={() => handleReschedule(apt)}>
-                                                <Pencil className="mr-2 h-4 w-4" />
-                                                Reagendar
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem onSelect={() => setAppointmentToCancel(apt)} className="text-destructive">
-                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                Cancelar
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                    </div>
-                                </TooltipTrigger>
-                                {!canCancel && <TooltipContent><p>{tooltipMessage}</p></TooltipContent>}
-                            </Tooltip>
-                        </TooltipProvider>
-                    </div>
-                )
-              })}
-            </div>
+                  return (
+                      <div key={apt.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-lg border">
+                          <div className="flex items-center gap-4">
+                          <Calendar className="h-6 w-6 text-primary" />
+                          <div>
+                              <p className="font-semibold">{apt.serviceName}</p>
+                              <p className="text-sm text-muted-foreground">
+                              Com {apt.professionalName}
+                              </p>
+                          </div>
+                          </div>
+                          <div className="text-left sm:text-right">
+                          <p className="font-semibold capitalize">
+                              {format(apt.startTime.toDate(), "EEEE, dd/MM", { locale: ptBR })}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                              às {format(apt.startTime.toDate(), "HH:mm")}
+                          </p>
+                          </div>
+                          <Tooltip delayDuration={100}>
+                              <TooltipTrigger asChild>
+                                  {/* This div is necessary to allow the tooltip to work on a disabled button */}
+                                  <div> 
+                                  <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                          <Button variant="ghost" size="icon" disabled={!canCancel}>
+                                              <MoreHorizontal className="h-4 w-4" />
+                                          </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent>
+                                          <DropdownMenuItem onSelect={() => handleReschedule(apt)}>
+                                              <Pencil className="mr-2 h-4 w-4" />
+                                              Reagendar
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onSelect={() => setAppointmentToCancel(apt)} className="text-destructive">
+                                              <Trash2 className="mr-2 h-4 w-4" />
+                                              Cancelar
+                                          </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                  </DropdownMenu>
+                                  </div>
+                              </TooltipTrigger>
+                              {!canCancel && <TooltipContent><p>{tooltipMessage}</p></TooltipContent>}
+                          </Tooltip>
+                      </div>
+                  )
+                })}
+              </div>
+            </TooltipProvider>
           ) : (
             <p className="text-muted-foreground text-center py-4">
               Você não tem nenhum agendamento futuro.
