@@ -39,7 +39,10 @@ export async function createAccount(name: string, email: string, pass: string) {
       photoURL: user.photoURL,
       role: role,
       disabled: false,
+      phoneNumber: '',
+      birthDate: '',
       address: '',
+      notes: '',
     };
 
     try {
@@ -94,7 +97,11 @@ export async function loginWithEmail(email: string, pass: string) {
         photoURL: user.photoURL,
         role: role,
         disabled: false,
+        phoneNumber: user.phoneNumber || '',
+        birthDate: '',
         address: '',
+        notes: role === 'client' ? '' : undefined,
+        serviceIds: role === 'professional' ? [] : undefined
       };
 
       try {
@@ -150,7 +157,10 @@ export async function signInWithGoogle() {
             photoURL: user.photoURL,
             role: role,
             disabled: false,
+            phoneNumber: user.phoneNumber || '',
+            birthDate: '',
             address: '',
+            notes: '',
         };
 
         try {
