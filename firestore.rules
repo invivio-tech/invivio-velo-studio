@@ -45,17 +45,21 @@ service cloud.firestore {
     }
     
     /**
-     * Checks if the currently authenticated user has the 'admin' role.
+     * Checks if the currently authenticated user has the 'admin' role based on their email.
+     * This is more performant than using get() and avoids issues in transactions.
      */
     function isAdmin() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return isSignedIn() && request.auth.token.email == 'admin@barbearia.com';
     }
 
     /**
-     * Checks if the currently authenticated user has the 'professional' role.
+     * Checks if the currently authenticated user has the 'professional' role based on their email.
+     * This is more performant than using get() and assumes only admins can create users with this email pattern.
      */
     function isProfessional() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'professional';
+      return isSignedIn() && 
+             request.auth.token.email.matches('.*@barbearia.com') && 
+             request.auth.token.email != 'admin@barbearia.com';
     }
 
     /**
@@ -270,5 +274,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
