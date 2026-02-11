@@ -140,6 +140,15 @@
             "description": "Denormalized URL of the client's profile picture.",
             "format": "uri"
         },
+        "customerEmail": {
+          "type": "string",
+          "description": "Denormalized email of the client.",
+          "format": "email"
+        },
+        "customerPhoneNumber": {
+            "type": "string",
+            "description": "Denormalized phone number of the client."
+        },
         "serviceDuration": { "type": "string", "description": "Denormalized duration of the service." },
         "servicePrice": { "type": "number", "description": "Denormalized price of the service at time of booking." },
         "status": {
@@ -162,6 +171,7 @@
         "serviceName",
         "professionalName",
         "customerName",
+        "customerEmail",
         "serviceDuration",
         "servicePrice",
         "status"
@@ -620,5 +630,3 @@
     "reasoning": "The Firestore structure has been updated to be more role-oriented. The 'customers' collection is now 'users', reflecting that a user can be a client, professional, or admin. Appointments and invoices have been moved to top-level collections to decouple them from a single user's data tree, preparing the system for more complex relationships, such as a professional's view of their own schedule. This flat structure simplifies queries and security rules, especially for features involving multiple user roles. Added professional-specific subcollections for scheduleSettings and blockedTimes to allow for individual schedule management."
   }
 }
-
-    

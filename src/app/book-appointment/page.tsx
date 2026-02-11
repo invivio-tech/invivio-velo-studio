@@ -6,7 +6,7 @@ import { addMinutes, format, isAfter, isBefore, isEqual, parse, set, startOfDay,
 import { ptBR } from 'date-fns/locale';
 import { addDoc, collection, query, where, getDocs, Timestamp, doc, updateDoc } from 'firebase/firestore';
 
-import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase, type UserProfile } from '@/firebase';
+import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase, type UserProfile, useUserProfile } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import type { ServiceWithId } from '@/app/services/page';
 import type { ScheduleSettings } from '@/components/schedule/ScheduleSettingsForm';
@@ -49,6 +49,7 @@ export default function BookAppointmentPage() {
   // Hooks
   const router = useRouter();
   const { user, isUserLoading } = useUser();
+  const { userProfile, isLoading: isProfileLoading } = useUserProfile();
   const firestore = useFirestore();
   const { toast } = useToast();
 
@@ -237,7 +238,7 @@ export default function BookAppointmentPage() {
   }
 
   const handleConfirmBooking = async () => {
-      if (!user || !firestore || !selectedService || !selectedDate || !selectedTime || !finalProfessional) {
+      if (!user || !userProfile || !firestore || !selectedService || !selectedDate || !selectedTime || !finalProfessional) {
         toast({ title: 'Erro', description: 'Faltam informações para o agendamento.', variant: 'destructive'});
         return;
       }
@@ -249,8 +250,10 @@ export default function BookAppointmentPage() {
 
       const newAppointment = {
         customerId: user.uid,
-        customerName: user.displayName || 'Cliente',
-        customerPhotoURL: user.photoURL || '',
+        customerName: userProfile.name || user.displayName || 'Cliente',
+        customerPhotoURL: userProfile.photoURL || user.photoURL || '',
+        customerEmail: userProfile.email || user.email!,
+        customerPhoneNumber: userProfile.phoneNumber || '',
         serviceId: selectedService.id,
         professionalId: finalProfessional.id,
         startTime: Timestamp.fromDate(startTime),
@@ -292,7 +295,7 @@ export default function BookAppointmentPage() {
   );
 
   const areSlotsLoading = areAppointmentsLoading || areBlockedTimesLoading;
-  const isLoading = isUserLoading || areServicesLoading || areProfessionalsLoading || areEstablishmentSettingsLoading || areCategoriesLoading;
+  const isLoading = isUserLoading || isProfileLoading || areServicesLoading || areProfessionalsLoading || areEstablishmentSettingsLoading || areCategoriesLoading;
 
   if (isLoading) {
       return (
@@ -444,5 +447,3 @@ export default function BookAppointmentPage() {
     </div>
   );
 }
-
-    

@@ -50,6 +50,8 @@ interface Appointment {
   professionalName: string;
   customerName: string;
   customerPhotoURL?: string;
+  customerEmail?: string;
+  customerPhoneNumber?: string;
   serviceDuration: string;
   servicePrice: number;
   notes: string;
@@ -267,8 +269,8 @@ function ProfessionalDashboard() {
         <CardContent>
           {isLoading ? (
             <div className="space-y-4">
-              <Skeleton className="h-20 w-full" />
-              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-24 w-full" />
             </div>
           ) : error ? (
             <p className="text-destructive text-center py-4">
@@ -294,7 +296,16 @@ function ProfessionalDashboard() {
                            </Avatar>
                            <div>
                                 <p className="font-semibold">{apt.customerName}</p>
-                                <p className="text-sm text-muted-foreground">Cliente</p>
+                                {apt.customerEmail && (
+                                    <a href={`mailto:${apt.customerEmail}`} className="text-sm text-muted-foreground hover:underline">
+                                        {apt.customerEmail}
+                                    </a>
+                                )}
+                                {apt.customerPhoneNumber && (
+                                    <a href={`tel:${apt.customerPhoneNumber}`} className="block text-sm text-muted-foreground hover:underline">
+                                        {apt.customerPhoneNumber}
+                                    </a>
+                                )}
                            </div>
                         </div>
                     </div>
@@ -538,5 +549,3 @@ function ClientDashboard() {
     </div>
   );
 }
-
-    
