@@ -296,15 +296,19 @@ function ProfessionalDashboard() {
                            </Avatar>
                            <div>
                                 <p className="font-semibold">{apt.customerName}</p>
-                                {apt.customerEmail && (
+                                {apt.customerEmail ? (
                                     <a href={`mailto:${apt.customerEmail}`} className="text-sm text-muted-foreground hover:underline">
                                         {apt.customerEmail}
                                     </a>
+                                ) : (
+                                    <p className="block text-sm text-muted-foreground/70 italic">Email não informado</p>
                                 )}
-                                {apt.customerPhoneNumber && (
+                                {apt.customerPhoneNumber ? (
                                     <a href={`tel:${apt.customerPhoneNumber}`} className="block text-sm text-muted-foreground hover:underline">
                                         {apt.customerPhoneNumber}
                                     </a>
+                                ) : (
+                                    <p className="block text-sm text-muted-foreground/70 italic">Telefone não informado</p>
                                 )}
                            </div>
                         </div>
