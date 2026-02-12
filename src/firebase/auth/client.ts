@@ -61,7 +61,7 @@ export async function createAccount(name: string, email: string, pass: string) {
 
     return null;
   } catch (e: any) {
-    console.error(e);
+    // The error is returned to be handled by the UI, no need to log it here.
     return {
       code: e.code,
       message: e.message,
@@ -115,13 +115,12 @@ export async function loginWithEmail(email: string, pass: string) {
               requestResourceData: userData,
           });
           errorEmitter.emit('permission-error', permissionError);
-          console.error("Failed to self-heal user profile:", serverError);
       }
     }
     
     return null;
   } catch (e: any) {
-    console.error(e);
+    // The error is returned to be handled by the UI, no need to log it here.
     return {
       code: e.code,
       message: e.message,
@@ -181,7 +180,7 @@ export async function signInWithGoogle() {
 
         return null;
     } catch (e: any) {
-        console.error(e);
+        // The error is returned to be handled by the UI, no need to log it here.
         return {
             code: e.code,
             message: e.message,
@@ -221,7 +220,7 @@ export async function createAccountByAdmin(data: { name: string, email: string, 
       
       return { user: userData, error: null };
   } catch (e: any) {
-      console.error('Error creating user by admin:', e);
+      // The error is returned to be handled by the UI, no need to log it here.
       return { user: null, error: { code: e.code, message: e.message } };
   }
 }
@@ -243,7 +242,7 @@ export async function resetPassword(email: string) {
     await sendPasswordResetEmail(auth, email);
     return null;
   } catch (e: any) {
-    console.error(e);
+    // The error is returned to be handled by the UI, no need to log it here.
     return {
       code: e.code,
       message: e.message,
