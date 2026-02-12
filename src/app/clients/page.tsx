@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   useFirestore,
   useCollection,
@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, ContactRound } from "lucide-react";
+import { MoreHorizontal, ContactRound, Search } from "lucide-react";
 import { Skeleton } from '@/components/ui/skeleton';
 import type { UserProfile } from '@/firebase';
 import {
@@ -23,12 +23,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { Input } from '@/components/ui/input';
 
 export default function ClientsPage() {
   const firestore = useFirestore();
   const { userProfile, isLoading: isProfileLoading } = useUserProfile();
   const router = useRouter();
+  const [searchTerm, setSearchTerm] = useState('');
 
   const clientsQuery = useMemoFirebase(
     () =>
@@ -38,6 +39,17 @@ export default function ClientsPage() {
     [firestore, userProfile]
   );
   const { data: clients, isLoading: areClientsLoading } = useCollection<UserProfile>(clientsQuery);
+
+  const filteredClients = useMemo(() => {
+    if (!clients) {
+      return [];
+    }
+    return clients.filter(
+      (client) =>
+        client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        client.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [clients, searchTerm]);
 
   useEffect(() => {
     if (!isProfileLoading && userProfile?.role !== 'admin') {
@@ -107,6 +119,15 @@ export default function ClientsPage() {
         <CardHeader>
             <CardTitle className="font-headline">Todos os Clientes</CardTitle>
             <CardDescription>Gerencie o acesso e visualize os detalhes dos seus clientes.</CardDescription>
+             <div className="relative pt-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome ou e-mail..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 w-full md:w-1/2 lg:w-1/3"
+              />
+            </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -133,7 +154,7 @@ export default function ClientsPage() {
                   <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                 </TableRow>
               ))}
-              {!(isProfileLoading || areClientsLoading) && clients?.map((client) => (
+              {!(isProfileLoading || areClientsLoading) && filteredClients.map((client) => (
                 <TableRow key={client.id}>
                   <TableCell>
                     <div className="flex items-center gap-4">
@@ -166,6 +187,13 @@ export default function ClientsPage() {
                   </TableCell>
                 </TableRow>
               ))}
+               {!areClientsLoading && filteredClients.length === 0 && (
+                <TableRow>
+                    <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                        Nenhum cliente encontrado.
+                    </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>

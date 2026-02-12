@@ -21,7 +21,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, Users } from 'lucide-react';
+import { Loader2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { Label } from '@/components/ui/label';
 
@@ -168,7 +168,16 @@ export default function EditUserPage() {
   if (isLoading || (adminProfile?.role === 'admin' && !user)) {
     return (
        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-        <Skeleton className="h-10 w-64" />
+        <div className="flex items-center gap-4 mb-6">
+            <Button variant="outline" size="icon" asChild>
+                <Link href="/customers">
+                    <ArrowLeft className="h-4 w-4" />
+                </Link>
+            </Button>
+            <h1 className="text-3xl font-headline font-bold tracking-tight">
+                Editar Membro
+            </h1>
+        </div>
         <Card>
           <CardHeader>
             <Skeleton className="h-6 w-48" />
@@ -203,9 +212,13 @@ export default function EditUserPage() {
 
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
        <div className="flex items-center gap-4">
-        <Users className="w-8 h-8 text-secondary"/>
+         <Button variant="outline" size="icon" asChild>
+            <Link href="/customers">
+                <ArrowLeft className="h-4 w-4" />
+            </Link>
+        </Button>
         <h1 className="text-3xl font-headline font-bold tracking-tight">
           Editar Membro
         </h1>

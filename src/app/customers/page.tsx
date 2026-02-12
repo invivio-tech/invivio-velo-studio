@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   useFirestore,
   useCollection,
@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Users, PlusCircle } from "lucide-react";
+import { MoreHorizontal, Users, PlusCircle, Search } from "lucide-react";
 import { Skeleton } from '@/components/ui/skeleton';
 import type { UserProfile } from '@/firebase';
 import {
@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Input } from '@/components/ui/input';
 
 const roleDisplay: Record<UserProfile['role'], string> = {
   admin: 'Admin',
@@ -42,12 +43,24 @@ export default function UsersPage() {
   const firestore = useFirestore();
   const { userProfile, isLoading: isProfileLoading } = useUserProfile();
   const router = useRouter();
+  const [searchTerm, setSearchTerm] = useState('');
 
   const usersQuery = useMemoFirebase(
     () => (firestore && userProfile?.role === 'admin' ? query(collection(firestore, 'users'), where('role', 'in', ['admin', 'professional'])) : null),
     [firestore, userProfile]
   );
   const { data: users, isLoading: areUsersLoading } = useCollection<UserProfile>(usersQuery);
+
+  const filteredUsers = useMemo(() => {
+    if (!users) {
+      return [];
+    }
+    return users.filter(
+      (user) =>
+        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [users, searchTerm]);
 
   useEffect(() => {
     if (!isProfileLoading && userProfile?.role !== 'admin') {
@@ -125,6 +138,15 @@ export default function UsersPage() {
         <CardHeader>
             <CardTitle className="font-headline">Membros da Equipe</CardTitle>
             <CardDescription>Gerencie as funções e permissões dos administradores e profissionais.</CardDescription>
+            <div className="relative pt-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome ou e-mail..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 w-full md:w-1/2 lg:w-1/3"
+              />
+            </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -151,7 +173,7 @@ export default function UsersPage() {
                   <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                 </TableRow>
               ))}
-              {!(isProfileLoading || areUsersLoading) && users?.map((user) => (
+              {!(isProfileLoading || areUsersLoading) && filteredUsers.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell>
                     <div className="flex items-center gap-4">
@@ -185,6 +207,9 @@ export default function UsersPage() {
                             <DropdownMenuItem onSelect={() => router.push(`/customers/${user.id}/schedule`)}>
                               Gerenciar Agenda
                             </DropdownMenuItem>
+                             <DropdownMenuItem onSelect={() => router.push(`/customers/${user.id}/appointments`)}>
+                              Ver Agenda
+                            </DropdownMenuItem>
                           </>
                         )}
                       </DropdownMenuContent>
@@ -192,6 +217,13 @@ export default function UsersPage() {
                   </TableCell>
                 </TableRow>
               ))}
+               {!areUsersLoading && filteredUsers.length === 0 && (
+                <TableRow>
+                    <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                        Nenhum membro da equipe encontrado.
+                    </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>

@@ -26,6 +26,11 @@ interface Appointment {
   serviceId: string;
   startTime: Timestamp;
   endTime: Timestamp;
+  customerName: string;
+  customerEmail: string;
+  customerPhotoURL?: string;
+  serviceName: string;
+  serviceDuration: string;
 }
 
 interface AppointmentWithDetails extends Appointment {
@@ -63,26 +68,13 @@ export default function ProfessionalAppointmentsPage() {
           orderBy('startTime', 'asc')
       );
   }, [firestore, userId, queryStartDate]);
-  const { data: appointments, isLoading: areAppointmentsLoading } = useCollection<Appointment>(appointmentsQuery);
+  const { data: appointments, isLoading: areAppointmentsLoading } = useCollection<AppointmentWithDetails>(appointmentsQuery);
 
-  // Fetch all services and clients to enrich appointment data
-  const servicesCollection = useMemoFirebase(() => firestore ? collection(firestore, 'services') : null, [firestore]);
-  const { data: allServices, isLoading: areServicesLoading } = useCollection<ServiceWithId>(servicesCollection);
-
-  const clientsQuery = useMemoFirebase(() => firestore && adminProfile?.role === 'admin' ? query(collection(firestore, 'users'), where('role', '==', 'client')) : null, [firestore, adminProfile]);
-  const { data: allClients, isLoading: areClientsLoading } = useCollection<UserProfile>(clientsQuery);
-
-  // Memoize enriched and grouped appointments
+  // Memoize grouped appointments
   const groupedAppointments = useMemo(() => {
-    if (!appointments || !allServices || !allClients) return [];
+    if (!appointments) return [];
 
-    const enriched = appointments.map(apt => ({
-        ...apt,
-        client: allClients.find(c => c.id === apt.customerId),
-        service: allServices.find(s => s.id === apt.serviceId),
-    }));
-
-    const groups = enriched.reduce((acc, apt) => {
+    const groups = appointments.reduce((acc, apt) => {
         const dateKey = format(apt.startTime.toDate(), 'yyyy-MM-dd');
         if (!acc[dateKey]) {
             acc[dateKey] = [];
@@ -93,9 +85,9 @@ export default function ProfessionalAppointmentsPage() {
     
     return Object.entries(groups).sort(([dateA], [dateB]) => new Date(dateA).getTime() - new Date(dateB).getTime());
 
-  }, [appointments, allServices, allClients]);
+  }, [appointments]);
   
-  const isLoading = isAdminLoading || isProfessionalLoading || areAppointmentsLoading || areServicesLoading || areClientsLoading;
+  const isLoading = isAdminLoading || isProfessionalLoading || areAppointmentsLoading;
 
   if (isLoading) {
     return (
@@ -163,18 +155,18 @@ export default function ProfessionalAppointmentsPage() {
                                       <div className="flex items-center gap-3">
                                           <Scissors className="w-5 h-5 text-muted-foreground shrink-0"/>
                                           <div>
-                                              <p className="font-semibold">{apt.service?.name || 'Serviço não encontrado'}</p>
-                                              <p className="text-sm text-muted-foreground">{apt.service?.duration}</p>
+                                              <p className="font-semibold">{apt.serviceName || 'Serviço não encontrado'}</p>
+                                              <p className="text-sm text-muted-foreground">{apt.serviceDuration}</p>
                                           </div>
                                       </div>
                                       <div className="flex items-center gap-3">
                                           <Avatar className="w-9 h-9">
-                                              <AvatarImage src={apt.client?.photoURL || ''} alt={apt.client?.name} />
-                                              <AvatarFallback>{apt.client?.name.charAt(0)}</AvatarFallback>
+                                              <AvatarImage src={apt.customerPhotoURL || ''} alt={apt.customerName} />
+                                              <AvatarFallback>{apt.customerName?.charAt(0)}</AvatarFallback>
                                           </Avatar>
                                           <div>
-                                              <p className="font-semibold">{apt.client?.name || 'Cliente não encontrado'}</p>
-                                              <p className="text-sm text-muted-foreground">{apt.client?.email}</p>
+                                              <p className="font-semibold">{apt.customerName || 'Cliente não encontrado'}</p>
+                                              <p className="text-sm text-muted-foreground">{apt.customerEmail}</p>
                                           </div>
                                       </div>
                                   </CardContent>

@@ -29,7 +29,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         return true;
     }
     return false;
-  }) || /^\/customers\/[^/]+\/(edit|schedule)$/.test(pathname) || /^\/clients\/[^/]+\/edit$/.test(pathname)
+  }) || /^\/customers\/[^/]+\/(edit|schedule|appointments)$/.test(pathname) || /^\/clients\/[^/]+\/edit$/.test(pathname)
 
   // A more specific check for the root to not include it in the app shell
    if(pathname === '/') {
