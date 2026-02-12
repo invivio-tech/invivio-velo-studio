@@ -43,6 +43,8 @@ export async function createAccount(name: string, email: string, pass: string) {
       birthDate: '',
       address: '',
       notes: '',
+      loyaltyPoints: 0,
+      serviceIds: [],
     };
 
     try {
@@ -85,10 +87,9 @@ export async function loginWithEmail(email: string, pass: string) {
         };
       }
     } else {
-      // Self-healing: Check for and create profile if it's missing.
-      const isAdmin = user.email === 'admin@barbearia.com';
-      const isProfessional = user.email?.endsWith('@barbearia.com') && !isAdmin;
-      const role = isAdmin ? 'admin' : isProfessional ? 'professional' : 'client';
+      // Self-healing: If a user profile is missing, create a new one with the 'client' role.
+      // Role elevation (to professional or admin) must be done by an existing admin.
+      const role = 'client';
 
       const userData = {
         id: user.uid,
@@ -100,8 +101,9 @@ export async function loginWithEmail(email: string, pass: string) {
         phoneNumber: user.phoneNumber || '',
         birthDate: '',
         address: '',
-        notes: role === 'client' ? '' : undefined,
-        serviceIds: role === 'professional' ? [] : undefined
+        notes: '',
+        loyaltyPoints: 0,
+        serviceIds: [],
       };
 
       try {
@@ -161,6 +163,8 @@ export async function signInWithGoogle() {
             birthDate: '',
             address: '',
             notes: '',
+            loyaltyPoints: 0,
+            serviceIds: [],
         };
 
         try {
@@ -210,6 +214,7 @@ export async function createAccountByAdmin(data: { name: string, email: string, 
           birthDate: birthDate || '',
           notes: notes || '',
           address: address || '',
+          loyaltyPoints: 0,
       };
       
       await setDoc(userRef, userData);
