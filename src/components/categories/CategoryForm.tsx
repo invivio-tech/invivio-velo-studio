@@ -55,13 +55,11 @@ export default function CategoryForm({ isOpen, setIsOpen, category, onSave }: Ca
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSaving(true);
     try {
-        const categoryData = category ? { ...category, ...values } : values;
-        await onSave(categoryData as Category | CategoryWithId);
-        setIsOpen(false);
-    } catch(err) {
-        console.error("Erro ao salvar categoria:", err);
+      const categoryData = category ? { ...category, ...values } : values;
+      await onSave(categoryData as Category | CategoryWithId);
+      setIsOpen(false);
     } finally {
-        setIsSaving(false);
+      setIsSaving(false);
     }
   }
   
@@ -104,5 +102,3 @@ export default function CategoryForm({ isOpen, setIsOpen, category, onSave }: Ca
     </Dialog>
   );
 }
-
-    

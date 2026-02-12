@@ -103,13 +103,11 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSaving(true);
     try {
-        const serviceData = service ? { ...service, ...values } : values;
-        await onSave(serviceData as Service | ServiceWithId);
-        setIsOpen(false);
-    } catch(err) {
-        console.error("Erro ao salvar serviço:", err);
+      const serviceData = service ? { ...service, ...values } : values;
+      await onSave(serviceData as Service | ServiceWithId);
+      setIsOpen(false);
     } finally {
-        setIsSaving(false);
+      setIsSaving(false);
     }
   }
 
@@ -293,5 +291,3 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
     </Dialog>
   );
 }
-
-    
