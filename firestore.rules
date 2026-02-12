@@ -133,7 +133,7 @@ service cloud.firestore {
       // A professional can update only the loyalty points of a client profile.
       allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role) || 
                        isAdmin() ||
-                       (resource.data.role == 'client' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['loyaltyPoints']) && isProfessional());
+                       (resource.data.role == 'client' && isProfessional() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['loyaltyPoints']));
       allow delete: if isAdmin();
 
       /**
