@@ -258,10 +258,10 @@ function ProfessionalDashboard() {
     appointment: Appointment,
     newStatus: 'completed' | 'no-show'
   ) => {
-    if (!firestore || !settings) {
+    if (!firestore || !settings || !user) {
       toast({
         title: 'Erro',
-        description: 'Configurações do sistema não carregadas.',
+        description: 'Usuário ou configurações não carregadas.',
         variant: 'destructive',
       });
       return;
@@ -270,12 +270,22 @@ function ProfessionalDashboard() {
 
     const appointmentRef = doc(firestore, 'appointments', appointment.id);
     const clientProfileRef = doc(firestore, 'users', appointment.customerId);
+    const professionalProfileRef = doc(firestore, 'users', user.uid); // The professional's own profile
 
     try {
       await runTransaction(firestore, async (transaction) => {
-        const clientProfileDoc = await transaction.get(clientProfileRef);
+        // Read all necessary documents at the beginning of the transaction
+        const [clientProfileDoc, professionalProfileDoc] = await Promise.all([
+          transaction.get(clientProfileRef),
+          transaction.get(professionalProfileRef)
+        ]);
+
         if (!clientProfileDoc.exists()) {
-          throw new Error("Client profile does not exist.");
+          throw new Error("Perfil do cliente não existe.");
+        }
+        
+        if (!professionalProfileDoc.exists() || professionalProfileDoc.data().role !== 'professional') {
+          throw new Error("O usuário atual não é um profissional autorizado.");
         }
 
         const currentPoints = clientProfileDoc.data().loyaltyPoints || 0;
@@ -287,6 +297,7 @@ function ProfessionalDashboard() {
           newPoints = Math.max(0, currentPoints - (settings.pointsPenaltyForNoShow || 5));
         }
 
+        // Perform write operations
         transaction.update(appointmentRef, { status: newStatus });
         transaction.update(clientProfileRef, { loyaltyPoints: newPoints });
       });
@@ -301,13 +312,20 @@ function ProfessionalDashboard() {
         (prev) => prev?.filter((apt) => apt.id !== appointment.id) || null
       );
     } catch (e: any) {
-      console.error("Failed to update status or points in transaction", e);
+      toast({
+        variant: 'destructive',
+        title: 'Falha na Atualização',
+        description: e.message.includes('permission-denied') 
+          ? 'Você não tem permissão para realizar esta ação.' 
+          : e.message || 'Não foi possível atualizar o agendamento.',
+      });
+
       const permissionError = new FirestorePermissionError({
         path: `appointments/${appointment.id} or users/${appointment.customerId}`,
         operation: 'update',
-        requestResourceData: { 
+        requestResourceData: {
           appointmentUpdate: { status: newStatus },
-          clientProfileUpdate: { loyaltyPoints: '...calculated value' }
+          clientProfileUpdate: { loyaltyPoints: '...calculated value' },
         },
       });
       errorEmitter.emit('permission-error', permissionError);
