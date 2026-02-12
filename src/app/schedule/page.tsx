@@ -255,58 +255,68 @@ function ProfessionalDashboard() {
   }, [user, firestore, isAuthLoading, toast]);
 
   const handleUpdateAppointmentStatus = async (
-    appointment: Appointment, 
+    appointment: Appointment,
     newStatus: 'completed' | 'no-show'
   ) => {
     if (!firestore || !settings) {
-        toast({ title: 'Erro', description: 'Configurações do sistema não carregadas.', variant: 'destructive'});
-        return;
-    };
+      toast({
+        title: 'Erro',
+        description: 'Configurações do sistema não carregadas.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setIsUpdating(appointment.id);
-    
+
     const appointmentRef = doc(firestore, 'appointments', appointment.id);
     const clientProfileRef = doc(firestore, 'users', appointment.customerId);
 
-    try {
-      await runTransaction(firestore, async (transaction) => {
-        const clientProfileDoc = await transaction.get(clientProfileRef);
-        if (!clientProfileDoc.exists()) {
-          throw new Error("Documento do cliente não encontrado!");
-        }
-
-        const currentPoints = clientProfileDoc.data().loyaltyPoints || 0;
-        let newPoints = currentPoints;
-
-        if (newStatus === 'completed') {
-          newPoints += settings.pointsForCompletion || 10;
-        } else if (newStatus === 'no-show') {
-          newPoints -= settings.pointsPenaltyForNoShow || 5;
-        }
-
-        transaction.update(appointmentRef, { status: newStatus });
-        transaction.update(clientProfileRef, { loyaltyPoints: newPoints });
-      });
-
-      toast({
-        title: 'Status Atualizado!',
-        description: `O agendamento foi marcado como ${newStatus === 'completed' ? 'concluído' : 'não comparecimento'}.`
-      });
-
-      setUpcomingAppointments(prev => prev?.filter(apt => apt.id !== appointment.id) || null);
-
-    } catch (e: any) {
-      console.error("Error updating appointment status:", e);
-      // Let the global error emitter handle permission errors
-      if (!(e instanceof FirestorePermissionError)) {
-          toast({
-            variant: 'destructive',
-            title: 'Erro ao atualizar',
-            description: e.message || 'Não foi possível atualizar o status. Tente novamente.'
-          });
+    runTransaction(firestore, async (transaction) => {
+      const clientProfileDoc = await transaction.get(clientProfileRef);
+      if (!clientProfileDoc.exists()) {
+        throw new Error('Documento do cliente não encontrado!');
       }
-    } finally {
-      setIsUpdating(null);
-    }
+
+      const currentPoints = clientProfileDoc.data().loyaltyPoints || 0;
+      let newPoints = currentPoints;
+
+      if (newStatus === 'completed') {
+        newPoints += settings.pointsForCompletion || 10;
+      } else if (newStatus === 'no-show') {
+        newPoints = Math.max(0, newPoints - (settings.pointsPenaltyForNoShow || 5));
+      }
+
+      transaction.update(appointmentRef, { status: newStatus });
+      transaction.update(clientProfileRef, { loyaltyPoints: newPoints });
+    })
+      .then(() => {
+        toast({
+          title: 'Status Atualizado!',
+          description: `O agendamento foi marcado como ${
+            newStatus === 'completed' ? 'concluído' : 'não comparecimento'
+          }.`,
+        });
+        setUpcomingAppointments(
+          (prev) => prev?.filter((apt) => apt.id !== appointment.id) || null
+        );
+      })
+      .catch((e: any) => {
+        console.error("Error in transaction:", e);
+        // Create a detailed error for debugging, focusing on the most likely failure point.
+        const permissionError = new FirestorePermissionError({
+          path: `appointments/${appointment.id} or users/${appointment.customerId}`,
+          operation: 'update',
+          requestResourceData: {
+            appointmentUpdate: { status: newStatus },
+            clientProfileUpdate: { loyaltyPoints: '...calculated value' },
+          },
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        // The global listener will throw the error to the dev overlay.
+      })
+      .finally(() => {
+        setIsUpdating(null);
+      });
   };
   
   const isLoading = isAuthLoading || areUpcomingLoading || areSettingsLoading;
@@ -629,5 +639,3 @@ function ClientDashboard() {
     </div>
   );
 }
-
-    
