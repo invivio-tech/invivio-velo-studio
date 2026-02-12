@@ -15,7 +15,7 @@ import { useUser, useUserProfile, useFirestore, useCollection, useMemoFirebase, 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { collection, query, where, orderBy, Timestamp, getDocs, doc, updateDoc, runTransaction } from 'firebase/firestore';
+import { collection, query, where, orderBy, Timestamp, getDocs, doc, updateDoc, runTransaction, getDoc } from 'firebase/firestore';
 import { format, startOfDay, isBefore, subHours } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -271,65 +271,62 @@ function ProfessionalDashboard() {
     const appointmentRef = doc(firestore, 'appointments', appointment.id);
     const clientProfileRef = doc(firestore, 'users', appointment.customerId);
 
-    // DEBUGGING STEP: Temporarily breaking the transaction to pinpoint the error.
     try {
-        // Step 1: Update Appointment Status
-        await updateDoc(appointmentRef, { status: newStatus });
-    } catch(e) {
-        const permissionError = new FirestorePermissionError({
-          path: appointmentRef.path,
-          operation: 'update',
-          requestResourceData: { status: newStatus },
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        setIsUpdating(null);
-        return; // Stop here if it fails
-    }
+      await updateDoc(appointmentRef, { status: newStatus });
 
-    try {
-        // Step 2: Update Loyalty Points
-        // We need to re-fetch the document since we are not in a transaction
-        const clientProfileDoc = await getDoc(clientProfileRef);
-        if (!clientProfileDoc.exists()) {
-            throw new Error("Client profile does not exist.");
-        }
+      // Step 2: Update Loyalty Points
+      // We need to re-fetch the document since we are not in a transaction
+      const clientProfileDoc = await getDoc(clientProfileRef);
+      if (!clientProfileDoc.exists()) {
+        throw new Error("Client profile does not exist.");
+      }
 
-        const currentPoints = clientProfileDoc.data().loyaltyPoints || 0;
-        let newPoints = currentPoints;
+      const currentPoints = clientProfileDoc.data().loyaltyPoints || 0;
+      let newPoints = currentPoints;
 
-        if (newStatus === 'completed') {
-            newPoints += settings.pointsForCompletion || 10;
-        } else if (newStatus === 'no-show') {
-            newPoints = Math.max(0, newPoints - (settings.pointsPenaltyForNoShow || 5));
-        }
-        
-        await updateDoc(clientProfileRef, { loyaltyPoints: newPoints });
+      if (newStatus === 'completed') {
+        newPoints += settings.pointsForCompletion || 10;
+      } else if (newStatus === 'no-show') {
+        newPoints = Math.max(0, newPoints - (settings.pointsPenaltyForNoShow || 5));
+      }
+      
+      await updateDoc(clientProfileRef, { loyaltyPoints: newPoints });
 
-        // If both succeeded
-        toast({
-          title: 'Status Atualizado!',
-          description: `O agendamento foi marcado como ${
-            newStatus === 'completed' ? 'concluído' : 'não comparecimento'
-          }.`,
-        });
-        setUpcomingAppointments(
-          (prev) => prev?.filter((apt) => apt.id !== appointment.id) || null
-        );
+      // If both succeeded
+      toast({
+        title: 'Status Atualizado!',
+        description: `O agendamento foi marcado como ${
+          newStatus === 'completed' ? 'concluído' : 'não comparecimento'
+        }.`,
+      });
+      setUpcomingAppointments(
+        (prev) => prev?.filter((apt) => apt.id !== appointment.id) || null
+      );
+    } catch (e: any) {
+      console.error("Failed to update status or points", e);
+      // Determine which operation likely failed for better error reporting
+      let failedOp = 'update';
+      let failedPath = 'unknown';
+      let reqData: any = {};
+      
+      // A simple way to guess which one failed
+      const clientProfileDocExists = await getDoc(clientProfileRef).then(d => d.exists()).catch(() => false);
+      if(!clientProfileDocExists) {
+        failedPath = clientProfileRef.path;
+        reqData = { loyaltyPoints: '...calculated value' };
+      } else {
+        failedPath = appointmentRef.path;
+        reqData = { status: newStatus };
+      }
 
-    } catch (e) {
-        // If points update fails, we should ideally roll back the appointment status.
-        // This is a temporary state for debugging.
-        console.error("Failed to update points, data might be inconsistent.", e);
-        await updateDoc(appointmentRef, { status: "scheduled" }); // Best-effort rollback
-
-        const permissionError = new FirestorePermissionError({
-          path: clientProfileRef.path,
-          operation: 'update',
-          requestResourceData: { loyaltyPoints: '...calculated value' },
-        });
-        errorEmitter.emit('permission-error', permissionError);
+      const permissionError = new FirestorePermissionError({
+        path: failedPath,
+        operation: 'update',
+        requestResourceData: reqData,
+      });
+      errorEmitter.emit('permission-error', permissionError);
     } finally {
-        setIsUpdating(null);
+      setIsUpdating(null);
     }
   };
   
