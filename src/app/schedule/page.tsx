@@ -8,7 +8,7 @@ import {
   CardDescription,
   CardFooter
 } from '@/components/ui/card';
-import { DollarSign, Users, CalendarCheck, Lock, Calendar, MoreHorizontal, Pencil, Trash2, Check, X, Loader2 } from 'lucide-react';
+import { DollarSign, Users, CalendarCheck, Lock, Calendar, MoreHorizontal, Pencil, Trash2, Check, X, Loader2, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUser, useUserProfile, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
@@ -209,7 +209,9 @@ function ProfessionalDashboard() {
   const { toast } = useToast();
 
   const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[] | null>(null);
+  const [pendingAppointments, setPendingAppointments] = useState<Appointment[] | null>(null);
   const [areUpcomingLoading, setAreUpcomingLoading] = useState(true);
+  const [arePendingLoading, setArePendingLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
 
@@ -219,10 +221,11 @@ function ProfessionalDashboard() {
   useEffect(() => {
     if (!isAuthLoading && user && firestore) {
       const fetchAppointments = async () => {
-        setAreUpcomingLoading(true);
         setError(null);
-        
-        const upcomingAppointmentsQuery = query(
+        setAreUpcomingLoading(true);
+        setArePendingLoading(true);
+
+        const upcomingQuery = query(
           collection(firestore, 'appointments'),
           where('professionalId', '==', user.uid),
           where('status', '==', 'scheduled'),
@@ -230,27 +233,46 @@ function ProfessionalDashboard() {
           orderBy('startTime', 'asc')
         );
 
+        const pendingQuery = query(
+            collection(firestore, 'appointments'),
+            where('professionalId', '==', user.uid),
+            where('status', '==', 'scheduled'),
+            where('startTime', '<', startOfDay(new Date())),
+            orderBy('startTime', 'desc')
+        );
+
         try {
-          const querySnapshot = await getDocs(upcomingAppointmentsQuery);
-          const appointments = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
-          setUpcomingAppointments(appointments);
+          const [upcomingSnapshot, pendingSnapshot] = await Promise.all([
+            getDocs(upcomingQuery),
+            getDocs(pendingQuery)
+          ]);
+          
+          const upcoming = upcomingSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
+          const pending = pendingSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
+
+          setUpcomingAppointments(upcoming);
+          setPendingAppointments(pending);
+
         } catch (err: any) {
           console.error("Error fetching professional appointments:", err);
           setError(err);
           toast({
             variant: 'destructive',
             title: 'Erro ao buscar agendamentos',
-            description: 'Não foi possível carregar seus próximos agendamentos. Tente recarregar a página.',
+            description: 'Não foi possível carregar seus agendamentos. Tente recarregar a página.',
           });
           setUpcomingAppointments(null);
+          setPendingAppointments(null);
         } finally {
           setAreUpcomingLoading(false);
+          setArePendingLoading(false);
         }
       };
 
       fetchAppointments();
     } else if (!isAuthLoading && !user) {
         setAreUpcomingLoading(false);
+        setArePendingLoading(false);
     }
   }, [user, firestore, isAuthLoading, toast]);
 
@@ -270,11 +292,10 @@ function ProfessionalDashboard() {
 
     const appointmentRef = doc(firestore, 'appointments', appointment.id);
     const clientProfileRef = doc(firestore, 'users', appointment.customerId);
-    const professionalProfileRef = doc(firestore, 'users', user.uid); // The professional's own profile
+    const professionalProfileRef = doc(firestore, 'users', user.uid);
 
     try {
       await runTransaction(firestore, async (transaction) => {
-        // Read all necessary documents at the beginning of the transaction
         const [clientProfileDoc, professionalProfileDoc] = await Promise.all([
           transaction.get(clientProfileRef),
           transaction.get(professionalProfileRef)
@@ -297,7 +318,6 @@ function ProfessionalDashboard() {
           newPoints = Math.max(0, currentPoints - (settings.pointsPenaltyForNoShow || 5));
         }
 
-        // Perform write operations
         transaction.update(appointmentRef, { status: newStatus });
         transaction.update(clientProfileRef, { loyaltyPoints: newPoints });
       });
@@ -308,33 +328,82 @@ function ProfessionalDashboard() {
           newStatus === 'completed' ? 'concluído' : 'não comparecimento'
         }.`,
       });
+      // Update UI by removing the appointment from both lists
       setUpcomingAppointments(
         (prev) => prev?.filter((apt) => apt.id !== appointment.id) || null
       );
+      setPendingAppointments(
+        (prev) => prev?.filter((apt) => apt.id !== appointment.id) || null
+      );
     } catch (e: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Falha na Atualização',
-        description: e.message.includes('permission-denied') 
-          ? 'Você não tem permissão para realizar esta ação.' 
-          : e.message || 'Não foi possível atualizar o agendamento.',
-      });
-
+      console.error("Failed to update status or points in transaction", e);
       const permissionError = new FirestorePermissionError({
         path: `appointments/${appointment.id} or users/${appointment.customerId}`,
         operation: 'update',
-        requestResourceData: {
+        requestResourceData: { 
           appointmentUpdate: { status: newStatus },
-          clientProfileUpdate: { loyaltyPoints: '...calculated value' },
+          clientProfileUpdate: { loyaltyPoints: '...calculated value' }
         },
       });
       errorEmitter.emit('permission-error', permissionError);
+      toast({
+        variant: 'destructive',
+        title: 'Falha na Atualização',
+        description: e.message || 'Não foi possível atualizar o agendamento.',
+      });
     } finally {
       setIsUpdating(null);
     }
   };
   
-  const isLoading = isAuthLoading || areUpcomingLoading || areSettingsLoading;
+  const isLoading = isAuthLoading || areUpcomingLoading || areSettingsLoading || arePendingLoading;
+
+  const AppointmentItem = ({ appointment }: { appointment: Appointment }) => (
+     <div key={appointment.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-lg border">
+        <div className="flex items-center gap-4">
+            <Calendar className="h-6 w-6 text-primary" />
+            <div>
+                <p className="font-semibold">{appointment.serviceName}</p>
+                <p className="text-sm text-muted-foreground capitalize">
+                    {format(appointment.startTime.toDate(), "EEEE, dd/MM 'às' HH:mm", { locale: ptBR })}
+                </p>
+            </div>
+        </div>
+        <div className="flex items-center gap-3">
+            <Avatar>
+                <AvatarImage src={appointment.customerPhotoURL || ''} alt={appointment.customerName} />
+                <AvatarFallback>{appointment.customerName?.charAt(0).toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <div>
+                <p className="font-semibold">{appointment.customerName}</p>
+                {appointment.customerEmail ? (
+                    <a href={`mailto:${appointment.customerEmail}`} className="text-sm text-muted-foreground hover:underline">
+                        {appointment.customerEmail}
+                    </a>
+                ) : (
+                    <p className="block text-sm text-muted-foreground/70 italic">Email não informado</p>
+                )}
+            </div>
+        </div>
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" disabled={isUpdating === appointment.id}>
+                    {isUpdating === appointment.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <MoreHorizontal className="h-4 w-4" />}
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+                <DropdownMenuItem onSelect={() => handleUpdateAppointmentStatus(appointment, 'completed')}>
+                    <Check className="mr-2 h-4 w-4" />
+                    Serviço Concluído
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => handleUpdateAppointmentStatus(appointment, 'no-show')} className="text-destructive focus:text-destructive">
+                    <X className="mr-2 h-4 w-4" />
+                    Não Compareceu
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    </div>
+  );
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
@@ -342,8 +411,33 @@ function ProfessionalDashboard() {
         <h1 className="text-3xl font-headline font-bold tracking-tight">
           {isAuthLoading ? <Skeleton className="h-9 w-48" /> : `Olá, ${user?.displayName}!`}
         </h1>
-        <p className="text-muted-foreground">Aqui estão seus próximos atendimentos.</p>
+        <p className="text-muted-foreground">Aqui estão seus atendimentos.</p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-headline flex items-center gap-2">
+            <AlertCircle className="text-amber-500" />
+            Ações Necessárias
+          </CardTitle>
+          <CardDescription>Agendamentos passados que precisam ser marcados como concluídos ou não comparecimento.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-20 w-full" />
+            </div>
+          ) : error ? (
+            <p className="text-destructive text-center py-4">Não foi possível carregar as ações pendentes.</p>
+          ) : pendingAppointments && pendingAppointments.length > 0 ? (
+            <div className="space-y-4">
+                {pendingAppointments.map((apt) => <AppointmentItem key={apt.id} appointment={apt} />)}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-center py-4">Nenhuma ação pendente. Bom trabalho!</p>
+          )}
+        </CardContent>
+      </Card>
       
       <Card>
         <CardHeader>
@@ -353,68 +447,16 @@ function ProfessionalDashboard() {
         <CardContent>
           {isLoading ? (
             <div className="space-y-4">
-              <Skeleton className="h-24 w-full" />
-              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
             </div>
           ) : error ? (
             <p className="text-destructive text-center py-4">
-              Não foi possível carregar seus agendamentos. Por favor, recarregue a página.
+              Não foi possível carregar seus agendamentos.
             </p>
           ) : upcomingAppointments && upcomingAppointments.length > 0 ? (
             <div className="space-y-4">
-                {upcomingAppointments.map((apt) => (
-                    <div key={apt.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-lg border">
-                        <div className="flex items-center gap-4">
-                            <Calendar className="h-6 w-6 text-primary" />
-                            <div>
-                                <p className="font-semibold">{apt.serviceName}</p>
-                                <p className="text-sm text-muted-foreground capitalize">
-                                    {format(apt.startTime.toDate(), "EEEE, dd/MM 'às' HH:mm", { locale: ptBR })}
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                           <Avatar>
-                             <AvatarImage src={apt.customerPhotoURL || ''} alt={apt.customerName} />
-                             <AvatarFallback>{apt.customerName?.charAt(0).toUpperCase()}</AvatarFallback>
-                           </Avatar>
-                           <div>
-                                <p className="font-semibold">{apt.customerName}</p>
-                                {apt.customerEmail ? (
-                                    <a href={`mailto:${apt.customerEmail}`} className="text-sm text-muted-foreground hover:underline">
-                                        {apt.customerEmail}
-                                    </a>
-                                ) : (
-                                    <p className="block text-sm text-muted-foreground/70 italic">Email não informado</p>
-                                )}
-                                {apt.customerPhoneNumber ? (
-                                    <a href={`tel:${apt.customerPhoneNumber}`} className="block text-sm text-muted-foreground hover:underline">
-                                        {apt.customerPhoneNumber}
-                                    </a>
-                                ) : (
-                                     <p className="block text-sm text-muted-foreground/70 italic">Telefone não informado</p>
-                                )}
-                           </div>
-                        </div>
-                         <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" disabled={isUpdating === apt.id}>
-                                    {isUpdating === apt.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <MoreHorizontal className="h-4 w-4" />}
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                <DropdownMenuItem onSelect={() => handleUpdateAppointmentStatus(apt, 'completed')}>
-                                    <Check className="mr-2 h-4 w-4" />
-                                    Serviço Concluído
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => handleUpdateAppointmentStatus(apt, 'no-show')} className="text-destructive focus:text-destructive">
-                                    <X className="mr-2 h-4 w-4" />
-                                    Não Compareceu
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
-                ))}
+                {upcomingAppointments.map((apt) => <AppointmentItem key={apt.id} appointment={apt} />)}
             </div>
           ) : (
             <p className="text-muted-foreground text-center py-4">
