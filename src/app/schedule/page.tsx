@@ -15,7 +15,7 @@ import { useUser, useUserProfile, useFirestore, useCollection, useMemoFirebase, 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { collection, query, where, orderBy, Timestamp, getDocs, doc, updateDoc, runTransaction, getDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, Timestamp, getDocs, doc, updateDoc, runTransaction } from 'firebase/firestore';
 import { format, startOfDay, isBefore, subHours } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -254,7 +254,6 @@ function ProfessionalDashboard() {
           setPendingAppointments(pending);
 
         } catch (err: any) {
-          console.error("Error fetching professional appointments:", err);
           setError(err);
           toast({
             variant: 'destructive',
@@ -336,7 +335,6 @@ function ProfessionalDashboard() {
         (prev) => prev?.filter((apt) => apt.id !== appointment.id) || null
       );
     } catch (e: any) {
-      console.error("Failed to update status or points in transaction", e);
       const permissionError = new FirestorePermissionError({
         path: `appointments/${appointment.id} or users/${appointment.customerId}`,
         operation: 'update',
@@ -506,7 +504,6 @@ function ClientDashboard() {
           const appointments = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
           setUpcomingAppointments(appointments);
         } catch (err: any) {
-          console.error("Error fetching upcoming appointments:", err);
           setError(err);
           toast({
             variant: 'destructive',
