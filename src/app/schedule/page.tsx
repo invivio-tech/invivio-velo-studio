@@ -238,7 +238,7 @@ function ProfessionalDashboard() {
             where('professionalId', '==', user.uid),
             where('status', '==', 'scheduled'),
             where('startTime', '<', startOfDay(new Date())),
-            orderBy('startTime', 'desc')
+            orderBy('startTime', 'asc')
         );
 
         try {
@@ -248,7 +248,7 @@ function ProfessionalDashboard() {
           ]);
           
           const upcoming = upcomingSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
-          const pending = pendingSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
+          const pending = pendingSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment)).reverse();
 
           setUpcomingAppointments(upcoming);
           setPendingAppointments(pending);
