@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -15,7 +16,7 @@ import { useUser, useUserProfile, useFirestore, useCollection, useMemoFirebase, 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { collection, query, where, orderBy, Timestamp, getDocs, doc, updateDoc, runTransaction } from 'firebase/firestore';
+import { collection, query, where, orderBy, Timestamp, getDocs, doc, updateDoc, runTransaction, getDoc } from 'firebase/firestore';
 import { format, startOfDay, isBefore, subHours } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -30,7 +31,6 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 
-// Type for global blocked times (for admin/pro dashboard)
 interface BlockedTime {
   id: string;
   startTime: Timestamp;
@@ -38,7 +38,6 @@ interface BlockedTime {
   reason: string;
 }
 
-// Type for appointments, now with denormalized data
 interface Appointment {
   id: string;
   customerId: string;
@@ -88,7 +87,6 @@ export default function SchedulePage() {
     );
   }
 
-  // Render dashboard based on user role
   if (userProfile.role === 'admin') {
     return <AdminDashboard />;
   }
@@ -101,15 +99,12 @@ export default function SchedulePage() {
     return <ClientDashboard />;
   }
 
-  // Fallback for any other case or if profile is still loading
   return null;
 }
 
-// Dashboard for Admin
 function AdminDashboard() {
   const firestore = useFirestore();
   
-  // Fetch global blocked times
   const blockedTimesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     return query(
@@ -202,7 +197,6 @@ function AdminDashboard() {
   );
 }
 
-// NEW Dashboard for Professional role
 function ProfessionalDashboard() {
   const { user, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
@@ -212,7 +206,6 @@ function ProfessionalDashboard() {
   const [pendingAppointments, setPendingAppointments] = useState<Appointment[] | null>(null);
   const [areUpcomingLoading, setAreUpcomingLoading] = useState(true);
   const [arePendingLoading, setArePendingLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
 
   const settingsRef = useMemoFirebase(() => firestore ? doc(firestore, 'establishmentSettings', 'main') : null, [firestore]);
@@ -221,7 +214,6 @@ function ProfessionalDashboard() {
   useEffect(() => {
     if (!isAuthLoading && user && firestore) {
       const fetchAppointments = async () => {
-        setError(null);
         setAreUpcomingLoading(true);
         setArePendingLoading(true);
 
@@ -254,12 +246,10 @@ function ProfessionalDashboard() {
           setPendingAppointments(pending);
 
         } catch (err: any) {
-          setError(err);
-          toast({
-            variant: 'destructive',
-            title: 'Erro ao buscar agendamentos',
-            description: 'Não foi possível carregar seus agendamentos. Tente recarregar a página.',
-          });
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+              path: 'appointments',
+              operation: 'list'
+          }));
           setUpcomingAppointments(null);
           setPendingAppointments(null);
         } finally {
@@ -273,20 +263,14 @@ function ProfessionalDashboard() {
         setAreUpcomingLoading(false);
         setArePendingLoading(false);
     }
-  }, [user, firestore, isAuthLoading, toast]);
+  }, [user, firestore, isAuthLoading]);
 
   const handleUpdateAppointmentStatus = async (
     appointment: Appointment,
     newStatus: 'completed' | 'no-show'
   ) => {
-    if (!firestore || !settings || !user) {
-      toast({
-        title: 'Erro',
-        description: 'Usuário ou configurações não carregadas.',
-        variant: 'destructive',
-      });
-      return;
-    }
+    if (!firestore || !settings || !user) return;
+    
     setIsUpdating(appointment.id);
 
     const appointmentRef = doc(firestore, 'appointments', appointment.id);
@@ -295,20 +279,15 @@ function ProfessionalDashboard() {
 
     try {
       await runTransaction(firestore, async (transaction) => {
-        const [clientProfileDoc, professionalProfileDoc] = await Promise.all([
-          transaction.get(clientProfileRef),
-          transaction.get(professionalProfileRef)
+        const [profDoc, clientDoc] = await Promise.all([
+          transaction.get(professionalProfileRef),
+          transaction.get(clientProfileRef)
         ]);
 
-        if (!clientProfileDoc.exists()) {
-          throw new Error("Perfil do cliente não existe.");
-        }
-        
-        if (!professionalProfileDoc.exists() || professionalProfileDoc.data().role !== 'professional') {
-          throw new Error("O usuário atual não é um profissional autorizado.");
-        }
+        if (!profDoc.exists()) throw new Error("Perfil do profissional não encontrado.");
+        if (!clientDoc.exists()) throw new Error("Perfil do cliente não encontrado.");
 
-        const currentPoints = clientProfileDoc.data().loyaltyPoints || 0;
+        const currentPoints = clientDoc.data().loyaltyPoints || 0;
         let newPoints = currentPoints;
 
         if (newStatus === 'completed') {
@@ -323,32 +302,18 @@ function ProfessionalDashboard() {
 
       toast({
         title: 'Status Atualizado!',
-        description: `O agendamento foi marcado como ${
-          newStatus === 'completed' ? 'concluído' : 'não comparecimento'
-        }.`,
+        description: `O agendamento foi marcado como ${newStatus === 'completed' ? 'concluído' : 'não comparecimento'}.`,
       });
-      // Update UI by removing the appointment from both lists
-      setUpcomingAppointments(
-        (prev) => prev?.filter((apt) => apt.id !== appointment.id) || null
-      );
-      setPendingAppointments(
-        (prev) => prev?.filter((apt) => apt.id !== appointment.id) || null
-      );
+      
+      setUpcomingAppointments(prev => prev?.filter(apt => apt.id !== appointment.id) || null);
+      setPendingAppointments(prev => prev?.filter(apt => apt.id !== appointment.id) || null);
+      
     } catch (e: any) {
-      const permissionError = new FirestorePermissionError({
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: `appointments/${appointment.id} or users/${appointment.customerId}`,
         operation: 'update',
-        requestResourceData: { 
-          appointmentUpdate: { status: newStatus },
-          clientProfileUpdate: { loyaltyPoints: '...calculated value' }
-        },
-      });
-      errorEmitter.emit('permission-error', permissionError);
-      toast({
-        variant: 'destructive',
-        title: 'Falha na Atualização',
-        description: e.message || 'Não foi possível atualizar o agendamento.',
-      });
+        requestResourceData: { status: newStatus }
+      }));
     } finally {
       setIsUpdating(null);
     }
@@ -374,12 +339,10 @@ function ProfessionalDashboard() {
             </Avatar>
             <div>
                 <p className="font-semibold">{appointment.customerName}</p>
-                {appointment.customerEmail ? (
+                {appointment.customerEmail && (
                     <a href={`mailto:${appointment.customerEmail}`} className="text-sm text-muted-foreground hover:underline">
                         {appointment.customerEmail}
                     </a>
-                ) : (
-                    <p className="block text-sm text-muted-foreground/70 italic">Email não informado</p>
                 )}
             </div>
         </div>
@@ -418,21 +381,19 @@ function ProfessionalDashboard() {
             <AlertCircle className="text-amber-500" />
             Ações Necessárias
           </CardTitle>
-          <CardDescription>Agendamentos passados que precisam ser marcados como concluídos ou não comparecimento.</CardDescription>
+          <CardDescription>Agendamentos passados que precisam de baixa.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="space-y-4">
               <Skeleton className="h-20 w-full" />
             </div>
-          ) : error ? (
-            <p className="text-destructive text-center py-4">Não foi possível carregar as ações pendentes.</p>
           ) : pendingAppointments && pendingAppointments.length > 0 ? (
             <div className="space-y-4">
                 {pendingAppointments.map((apt) => <AppointmentItem key={apt.id} appointment={apt} />)}
             </div>
           ) : (
-            <p className="text-muted-foreground text-center py-4">Nenhuma ação pendente. Bom trabalho!</p>
+            <p className="text-muted-foreground text-center py-4">Nenhuma ação pendente.</p>
           )}
         </CardContent>
       </Card>
@@ -440,7 +401,7 @@ function ProfessionalDashboard() {
       <Card>
         <CardHeader>
           <CardTitle className="font-headline">Próximos Agendamentos</CardTitle>
-          <CardDescription>Seus horários confirmados para hoje e os próximos dias.</CardDescription>
+          <CardDescription>Seus horários confirmados para os próximos dias.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -448,18 +409,12 @@ function ProfessionalDashboard() {
               <Skeleton className="h-20 w-full" />
               <Skeleton className="h-20 w-full" />
             </div>
-          ) : error ? (
-            <p className="text-destructive text-center py-4">
-              Não foi possível carregar seus agendamentos.
-            </p>
           ) : upcomingAppointments && upcomingAppointments.length > 0 ? (
             <div className="space-y-4">
                 {upcomingAppointments.map((apt) => <AppointmentItem key={apt.id} appointment={apt} />)}
             </div>
           ) : (
-            <p className="text-muted-foreground text-center py-4">
-              Você não tem nenhum agendamento futuro.
-            </p>
+            <p className="text-muted-foreground text-center py-4">Você não tem nenhum agendamento futuro.</p>
           )}
         </CardContent>
       </Card>
@@ -467,7 +422,6 @@ function ProfessionalDashboard() {
   );
 }
 
-// Dashboard for Client role
 function ClientDashboard() {
   const { user, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
@@ -476,12 +430,10 @@ function ClientDashboard() {
 
   const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[] | null>(null);
   const [areUpcomingLoading, setAreUpcomingLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
   const [appointmentToCancel, setAppointmentToCancel] = useState<Appointment | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancellableStates, setCancellableStates] = useState<Record<string, boolean>>({});
 
-  // Fetch establishment settings
   const settingsRef = useMemoFirebase(() => firestore ? doc(firestore, 'establishmentSettings', 'main') : null, [firestore]);
   const { data: settings, isLoading: areSettingsLoading } = useDoc<EstablishmentSettings>(settingsRef);
 
@@ -489,8 +441,6 @@ function ClientDashboard() {
     if (!isAuthLoading && user && firestore) {
       const fetchAppointments = async () => {
         setAreUpcomingLoading(true);
-        setError(null);
-        
         const upcomingAppointmentsQuery = query(
           collection(firestore, 'appointments'),
           where('customerId', '==', user.uid),
@@ -504,27 +454,19 @@ function ClientDashboard() {
           const appointments = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
           setUpcomingAppointments(appointments);
         } catch (err: any) {
-          setError(err);
-          toast({
-            variant: 'destructive',
-            title: 'Erro ao buscar agendamentos',
-            description: 'Não foi possível carregar seus próximos agendamentos. Tente recarregar a página.',
-          });
           setUpcomingAppointments(null);
         } finally {
           setAreUpcomingLoading(false);
         }
       };
-
       fetchAppointments();
     } else if (!isAuthLoading && !user) {
         setAreUpcomingLoading(false);
     }
-  }, [user, firestore, isAuthLoading, toast]);
+  }, [user, firestore, isAuthLoading]);
   
   useEffect(() => {
     if (!upcomingAppointments || areSettingsLoading) return;
-
     const timeLimitHours = settings?.cancellationTimeLimitHours ?? 24;
     const newStates: Record<string, boolean> = {};
     upcomingAppointments.forEach(apt => {
@@ -536,24 +478,14 @@ function ClientDashboard() {
 
   const handleConfirmCancel = async () => {
     if (!appointmentToCancel || !firestore) return;
-
     setIsCancelling(true);
     const docRef = doc(firestore, 'appointments', appointmentToCancel.id);
-
     try {
         await updateDoc(docRef, { status: 'cancelled' });
-        toast({
-            title: 'Agendamento Cancelado!',
-            description: 'Seu horário foi removido da agenda.'
-        });
+        toast({ title: 'Agendamento Cancelado!', description: 'Seu horário foi removido da agenda.' });
         setUpcomingAppointments(prev => prev?.filter(apt => apt.id !== appointmentToCancel.id) || null);
     } catch(e) {
         errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'update', requestResourceData: { status: 'cancelled' }}));
-        toast({
-            title: 'Erro ao Cancelar',
-            description: 'Não foi possível cancelar o agendamento. Pode ser tarde demais ou você não tem permissão.',
-            variant: 'destructive'
-        });
     } finally {
         setIsCancelling(false);
         setAppointmentToCancel(null);
@@ -565,18 +497,10 @@ function ClientDashboard() {
     const docRef = doc(firestore, 'appointments', appointment.id);
     try {
         await updateDoc(docRef, { status: 'cancelled' });
-        toast({
-            title: 'Horário Liberado',
-            description: 'Seu agendamento anterior foi cancelado. Escolha um novo horário.'
-        });
+        toast({ title: 'Horário Liberado', description: 'Seu agendamento anterior foi cancelado. Escolha um novo horário.' });
         router.push('/book-appointment');
     } catch (e) {
         errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'update', requestResourceData: { status: 'cancelled' }}));
-        toast({
-            title: 'Erro ao Reagendar',
-            description: 'Não foi possível cancelar o horário anterior. Verifique suas permissões.',
-            variant: 'destructive'
-        });
     }
   };
 
@@ -596,68 +520,44 @@ function ClientDashboard() {
       <Card>
         <CardHeader>
           <CardTitle className="font-headline">Próximos Agendamentos</CardTitle>
-          <CardDescription>Seus horários confirmados. Você pode cancelar ou reagendar com até {settings?.cancellationTimeLimitHours ?? 24} horas de antecedência.</CardDescription>
+          <CardDescription>Sua agenda confirmada. Limite de alteração: {settings?.cancellationTimeLimitHours ?? 24}h.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="space-y-4">
-              <Skeleton className="h-20 w-full" />
-              <Skeleton className="h-20 w-full" />
-            </div>
-          ) : error ? (
-            <p className="text-destructive text-center py-4">
-              Não foi possível carregar seus agendamentos. Por favor, recarregue a página.
-            </p>
+            <div className="space-y-4"><Skeleton className="h-20 w-full" /><Skeleton className="h-20 w-full" /></div>
           ) : upcomingAppointments && upcomingAppointments.length > 0 ? (
             <TooltipProvider>
               <div className="space-y-4">
                 {upcomingAppointments.map((apt) => {
                   const canCancel = cancellableStates[apt.id] ?? false;
-                  const tooltipMessage = canCancel ? '' : `Não é possível alterar com menos de ${settings?.cancellationTimeLimitHours ?? 24}h de antecedência.`;
-
                   return (
                       <div key={apt.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-lg border">
                           <div className="flex items-center gap-4">
                           <Calendar className="h-6 w-6 text-primary" />
                           <div>
                               <p className="font-semibold">{apt.serviceName}</p>
-                              <p className="text-sm text-muted-foreground">
-                              Com {apt.professionalName}
-                              </p>
+                              <p className="text-sm text-muted-foreground">Com {apt.professionalName}</p>
                           </div>
                           </div>
                           <div className="text-left sm:text-right">
-                          <p className="font-semibold capitalize">
-                              {format(apt.startTime.toDate(), "EEEE, dd/MM", { locale: ptBR })}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                              às {format(apt.startTime.toDate(), "HH:mm")}
-                          </p>
+                          <p className="font-semibold capitalize">{format(apt.startTime.toDate(), "EEEE, dd/MM", { locale: ptBR })}</p>
+                          <p className="text-sm text-muted-foreground">às {format(apt.startTime.toDate(), "HH:mm")}</p>
                           </div>
                           <Tooltip delayDuration={100}>
                               <TooltipTrigger asChild>
-                                  {/* This div is necessary to allow the tooltip to work on a disabled button */}
                                   <div> 
                                   <DropdownMenu>
                                       <DropdownMenuTrigger asChild>
-                                          <Button variant="ghost" size="icon" disabled={!canCancel}>
-                                              <MoreHorizontal className="h-4 w-4" />
-                                          </Button>
+                                          <Button variant="ghost" size="icon" disabled={!canCancel}><MoreHorizontal className="h-4 w-4" /></Button>
                                       </DropdownMenuTrigger>
                                       <DropdownMenuContent>
-                                          <DropdownMenuItem onSelect={() => handleReschedule(apt)}>
-                                              <Pencil className="mr-2 h-4 w-4" />
-                                              Reagendar
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem onSelect={() => setAppointmentToCancel(apt)} className="text-destructive">
-                                              <Trash2 className="mr-2 h-4 w-4" />
-                                              Cancelar
-                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onSelect={() => handleReschedule(apt)}><Pencil className="mr-2 h-4 w-4" />Reagendar</DropdownMenuItem>
+                                          <DropdownMenuItem onSelect={() => setAppointmentToCancel(apt)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Cancelar</DropdownMenuItem>
                                       </DropdownMenuContent>
                                   </DropdownMenu>
                                   </div>
                               </TooltipTrigger>
-                              {!canCancel && <TooltipContent><p>{tooltipMessage}</p></TooltipContent>}
+                              {!canCancel && <TooltipContent><p>Não é possível alterar com menos de {settings?.cancellationTimeLimitHours ?? 24}h de antecedência.</p></TooltipContent>}
                           </Tooltip>
                       </div>
                   )
@@ -665,9 +565,7 @@ function ClientDashboard() {
               </div>
             </TooltipProvider>
           ) : (
-            <p className="text-muted-foreground text-center py-4">
-              Você não tem nenhum agendamento futuro.
-            </p>
+            <p className="text-muted-foreground text-center py-4">Você não tem nenhum agendamento futuro.</p>
           )}
         </CardContent>
       </Card>
@@ -677,16 +575,12 @@ function ClientDashboard() {
             <AlertDialogHeader>
                 <AlertDialogTitle>Confirmar Cancelamento</AlertDialogTitle>
                 <AlertDialogDescription>
-                    Você tem certeza que deseja cancelar seu agendamento para <strong>{appointmentToCancel?.serviceName}</strong> no dia{' '}
-                    <strong>{appointmentToCancel && format(appointmentToCancel.startTime.toDate(), "dd/MM 'às' HH:mm")}</strong>?
-                    Esta ação não pode ser desfeita.
+                    Você tem certeza que deseja cancelar seu agendamento para <strong>{appointmentToCancel?.serviceName}</strong>?
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
                 <AlertDialogCancel>Voltar</AlertDialogCancel>
-                <AlertDialogAction onClick={handleConfirmCancel} disabled={isCancelling}>
-                    {isCancelling ? 'Cancelando...' : 'Sim, cancelar'}
-                </AlertDialogAction>
+                <AlertDialogAction onClick={handleConfirmCancel} disabled={isCancelling}>{isCancelling ? 'Cancelando...' : 'Sim, cancelar'}</AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -1,26 +1,4 @@
-/**
- * Core Philosophy: This ruleset implements a flexible, role-based security model.
- * It distinguishes between 'admin', 'professional', and 'client' roles to grant
- * appropriate data access levels.
- *
- * Data Structure: User profiles are stored in the top-level `/users` collection.
- * Global data like services, appointments, and invoices are also in top-level
- * collections to allow for flexible and secure querying by different roles.
- * This avoids deep nesting and complex path-based security.
- *
- * Key Security Decisions:
- * - Admin Supremacy: Users with the 'admin' role have broad read and write access
- *   across most of the database for management purposes. This is checked using the `isAdmin()` function.
- * - Professional Access: Professionals can read their own profile and the appointments
- *   assigned to them. They can also manage their own schedule settings and blocked times.
- * - Client (Owner) Access: Standard users (clients) can only access their own
- *   user profile and appointments/invoices where their UID is listed. This is
- *   enforced using the `isOwner()` function.
- * - Secured Queries: Listing documents (e.g., all users, all appointments) is
- *   generally restricted to admins. Clients and professionals must query for data
- *   relevant to them (e.g., `where('customerId', '==', uid)`), which is then
- *   validated by the security rules.
- */
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -29,78 +7,46 @@ service cloud.firestore {
     // Helper Functions
     // ----------------------------------------------------------------------
 
-    /**
-     * Checks if a user is authenticated.
-     */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * Checks if the currently authenticated user's UID matches the provided userId.
-     * This is the core function for enforcing document ownership for generic documents.
-     */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
     
-    /**
-     * Checks if the currently authenticated user has the 'admin' role
-     * by looking up their profile document.
-     */
     function isAdmin() {
       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    /**
-     * Checks if the currently authenticated user has the 'professional' role
-     * by looking up their profile document.
-     */
     function isProfessional() {
       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'professional';
     }
 
-    /**
-     * Checks if the user making the request is the owner of the appointment.
-     */
     function isAppointmentOwner(appointment) {
       return isSignedIn() && request.auth.uid == appointment.customerId;
     }
 
-    /**
-     * Checks if the professional making the request is assigned to the appointment.
-     */
     function isProfessionalAssignedToAppointment(appointment) {
       return isProfessional() && request.auth.uid == appointment.professionalId;
     }
 
-    /**
-     * Checks if a client is allowed to modify their appointment based on the configured time limit.
-     */
     function canClientCancel(appointment) {
       let settings = get(/databases/$(database)/documents/establishmentSettings/main).data;
-      let limitHours = 24; // Default value
+      let limitHours = 24; 
 
       if (settings != null && settings.cancellationTimeLimitHours != null) {
         limitHours = settings.cancellationTimeLimitHours;
       }
       
-      // Check if the current time plus the cancellation window is still before the appointment start time.
       return request.time + duration.value(limitHours, 'h') < appointment.startTime;
     }
 
-    /**
-     * Verifies that the only field being changed in an update request is the 'status' field,
-     * and its new value is 'cancelled'.
-     */
     function isOnlyStatusChangingToCancelled(request, resource) {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
              request.resource.data.status == 'cancelled';
     }
 
-    /**
-     * Verifies that a professional is only changing the status from 'scheduled' to 'completed' or 'no-show'.
-     */
     function isProfessionalUpdatingStatus(request, resource) {
       let allowedNewStatuses = ['completed', 'no-show'];
       let isStatusFieldOnly = request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
@@ -115,156 +61,74 @@ service cloud.firestore {
     // Collection Rules
     // ----------------------------------------------------------------------
 
-    /**
-     * @description Manages user profiles (clients, professionals, admins).
-     * @path /users/{userId}
-     */
     match /users/{userId} {
-      // A user can read their own profile. An admin can read any profile.
-      // A professional can read any user's profile to see details for appointments.
       allow get: if isOwner(userId) || isAdmin() || isProfessional();
-      // Allow signed-in users to perform queries (e.g., to find professionals).
-      // The `get` rule above secures the individual documents returned by the query.
       allow list: if isSignedIn();
-      // An unauthenticated user can create their own 'client' profile upon signing up.
-      // An admin can create any user.
       allow create: if (isOwner(userId) && request.resource.data.role == 'client') || isAdmin();
-      // A user can update their own profile (but not role). An admin can update any profile.
-      // A professional can update only the loyalty points of a client profile.
+      
       allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role) || 
                        isAdmin() ||
                        (isProfessional() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['loyaltyPoints']));
+      
       allow delete: if isAdmin();
 
-      /**
-       * @description Manages a professional's specific working hours.
-       * @path /users/{userId}/scheduleSettings/main
-       * @allow (read) Any signed-in user can see a professional's schedule.
-       * @allow (write) Only the professional themself or an admin can change the schedule.
-       */
       match /scheduleSettings/main {
         allow get, list: if isSignedIn();
         allow write: if isAdmin() || isOwner(userId);
       }
 
-      /**
-       * @description Manages a professional's specific blocked time slots.
-       * @path /users/{userId}/blockedTimes/{blockedTimeId}
-       * @allow (read) Any signed-in user can see a professional's blocks.
-       * @allow (write) Only the professional themself or an admin can manage blocks.
-       */
       match /blockedTimes/{blockedTimeId} {
         allow get, list: if isSignedIn();
         allow write: if isAdmin() || isOwner(userId);
       }
     }
 
-    /**
-     * @description Manages all appointments in the system.
-     * @path /appointments/{appointmentId}
-     */
     match /appointments/{appointmentId} {
-      // READ: A user can get their own appointment, a professional can get theirs, or an admin can get any.
       allow get: if isSignedIn();
-      // LIST: Allows LIST queries (e.g., with `where`), which are then secured by the `get` rule per document.
       allow list: if isSignedIn();
-
-      // CREATE: A client can create their own appointment, or an admin can create any.
       allow create: if isAppointmentOwner(request.resource.data) || isAdmin();
-
-      // UPDATE: Admin can always update. 
-      // A client can only update their own appointment to change the status to 'cancelled' within the allowed time window.
-      // A professional can update the status of their assigned appointment.
       allow update: if isAdmin() || 
                        (isAppointmentOwner(resource.data) && canClientCancel(resource.data) && isOnlyStatusChangingToCancelled(request, resource)) ||
                        (isProfessionalAssignedToAppointment(resource.data) && isProfessionalUpdatingStatus(request, resource));
-      
-      // DELETE: Only admins can permanently delete records.
       allow delete: if isAdmin();
     }
 
-    /**
-     * @description Manages all invoices in the system.
-     * @path /invoices/{invoiceId}
-     * @allow (get) A client can get their own invoice. An admin can get any.
-     * @allow (list) Signed-in users can list invoices (queries must be used to filter).
-     * @allow (create, update, delete) Admin-only for creating/managing invoices.
-     */
     match /invoices/{invoiceId} {
       allow get: if isAdmin() || isOwner(resource.data.customerId);
-      allow list: if isSignedIn(); // Requires secure queries in the app
+      allow list: if isSignedIn();
       allow create: if isOwner(request.resource.data.customerId) || isAdmin();
       allow update, delete: if isAdmin();
     }
 
-    /**
-     * @description Publicly lists the categories for services.
-     * @path /serviceCategories/{serviceCategoryId}
-     * @allow (get, list) Any user, signed in or not, can read the list of categories.
-     * @allow (write) Only authenticated admins can create, update, or delete categories.
-     */
     match /serviceCategories/{serviceCategoryId} {
       allow get, list: if true;
       allow write: if isAdmin();
     }
 
-    /**
-     * @description Publicly lists the services offered by the business.
-     * @path /services/{serviceId}
-     * @allow (get, list) Any user, signed in or not, can read the list of services.
-     * @allow (write) Only authenticated admins can create, update, or delete services.
-     * @principle Provides public read access for global data while securing modifications to admins only.
-     */
     match /services/{serviceId} {
       allow get: if true;
       allow list: if true;
       allow write: if isAdmin();
     }
 
-    /**
-     * @description Publicly lists the promotions offered by the business.
-     * @path /promotions/{promotionId}
-     * @allow (get, list) Any user, signed in or not, can view promotional offers.
-     * @allow (write) Only admins can manage promotions.
-     */
     match /promotions/{promotionId} {
       allow get: if true;
       allow list: if true;
       allow write: if isAdmin();
     }
     
-    /**
-     * @description Manages the barbershop's general operating schedule.
-     * @path /scheduleSettings/{docId}
-     * @allow (get, list) Any user can read the schedule settings to check for availability.
-     * @allow (write) Only authenticated admins can create, update, or delete schedule settings.
-     * @principle Provides public read access for global configuration while securing modifications to admins only.
-     */
     match /scheduleSettings/{docId} {
       allow get: if true;
       allow list: if true;
       allow write: if isAdmin();
     }
 
-    /**
-     * @description Manages globally blocked time slots on the schedule (e.g., holidays).
-     * @path /blockedTimes/{blockedTimeId}
-     * @allow (get, list) Any user can read blocked times to see availability.
-     * @allow (write) Only authenticated admins can create, update, or delete blocked time slots.
-     * @principle Provides public read access for global configuration while securing modifications to admins only.
-     */
     match /blockedTimes/{blockedTimeId} {
       allow get: if true;
       allow list: if true;
       allow write: if isAdmin();
     }
 
-    /**
-     * @description Manages the establishment's public information (name, about text, etc.).
-     * @path /establishmentSettings/{docId}
-     * @allow (get, list) Any user can read the establishment settings for the landing page.
-     * @allow (write) Only authenticated admins can create, update, or delete settings.
-     */
     match /establishmentSettings/{docId} {
       allow get: if true;
       allow list: if true;
