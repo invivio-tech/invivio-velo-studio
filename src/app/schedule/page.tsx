@@ -240,6 +240,7 @@ function ProfessionalDashboard() {
           ]);
           
           const upcoming = upcomingSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
+          // For pending, we show most recent first
           const pending = pendingSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment)).reverse();
 
           setUpcomingAppointments(upcoming);
@@ -279,6 +280,8 @@ function ProfessionalDashboard() {
 
     try {
       await runTransaction(firestore, async (transaction) => {
+        // CRITICAL: We must read the professional profile inside the transaction
+        // so that the security rules (which use isProfessional()) have the necessary context.
         const [profDoc, clientDoc] = await Promise.all([
           transaction.get(professionalProfileRef),
           transaction.get(clientProfileRef)
@@ -309,10 +312,14 @@ function ProfessionalDashboard() {
       setPendingAppointments(prev => prev?.filter(apt => apt.id !== appointment.id) || null);
       
     } catch (e: any) {
+      // Do not use console.error to avoid "Application error" overlay in dev
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: `appointments/${appointment.id} or users/${appointment.customerId}`,
         operation: 'update',
-        requestResourceData: { status: newStatus }
+        requestResourceData: { 
+            appointmentUpdate: { status: newStatus },
+            clientProfileUpdate: { loyaltyPoints: '...calculated value' }
+        }
       }));
     } finally {
       setIsUpdating(null);

@@ -66,6 +66,10 @@ service cloud.firestore {
       allow list: if isSignedIn();
       allow create: if (isOwner(userId) && request.resource.data.role == 'client') || isAdmin();
       
+      // Update logic:
+      // 1. Owners can update their data (but not their role)
+      // 2. Admins can update anything
+      // 3. Professionals can update ONLY the loyaltyPoints of any user (specifically clients)
       allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role) || 
                        isAdmin() ||
                        (isProfessional() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['loyaltyPoints']));
