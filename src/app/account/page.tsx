@@ -34,6 +34,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { logout } from '@/firebase/auth/client';
 import { Loader2 } from 'lucide-react';
+import ProfessionalScheduleSettings from '@/components/schedule/ProfessionalScheduleSettings';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'O nome é obrigatório.' }),
@@ -45,7 +46,7 @@ const formSchema = z.object({
 type ProfileFormValues = z.infer<typeof formSchema>;
 
 export default function AccountPage() {
-  const { user, isLoading: isUserLoading } = useUser();
+  const { user, isUserLoading } = useUser();
   const { userProfile, isLoading: isProfileLoading } = useUserProfile();
   const firestore = useFirestore();
   const router = useRouter();
@@ -72,7 +73,7 @@ export default function AccountPage() {
       });
     }
   }, [userProfile, form]);
-  
+
   const handleLogout = async () => {
     await logout();
     router.push('/login');
@@ -89,7 +90,7 @@ export default function AccountPage() {
       birthDate: values.birthDate,
       address: values.address,
     };
-    
+
     // Update Firestore document
     const updateFirestorePromise = updateDoc(userRef, updatedData)
       .catch((serverError) => {
@@ -107,26 +108,26 @@ export default function AccountPage() {
     // Update Firebase Auth profile if name changed
     if (user.displayName !== values.name) {
       const auth = getAuth();
-      if(auth.currentUser){
-          const updateAuthProfilePromise = updateProfile(auth.currentUser, { displayName: values.name });
-          promises.push(updateAuthProfilePromise);
+      if (auth.currentUser) {
+        const updateAuthProfilePromise = updateProfile(auth.currentUser, { displayName: values.name });
+        promises.push(updateAuthProfilePromise);
       }
     }
 
     try {
-        await Promise.all(promises);
-        toast({
-          title: 'Perfil atualizado!',
-          description: 'Suas informações foram salvas com sucesso.',
-        });
-    } catch(error) {
-        toast({
-            variant: 'destructive',
-            title: 'Erro ao atualizar',
-            description: 'Não foi possível salvar suas informações. Tente novamente.',
-        });
+      await Promise.all(promises);
+      toast({
+        title: 'Perfil atualizado!',
+        description: 'Suas informações foram salvas com sucesso.',
+      });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao atualizar',
+        description: 'Não foi possível salvar suas informações. Tente novamente.',
+      });
     } finally {
-        setIsSaving(false);
+      setIsSaving(false);
     }
   }
 
@@ -158,7 +159,7 @@ export default function AccountPage() {
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-10 w-full" />
               </div>
-               <div className="space-y-2">
+              <div className="space-y-2">
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-10 w-full" />
               </div>
@@ -177,7 +178,7 @@ export default function AccountPage() {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                   <p className="text-lg font-semibold">{userProfile.name}</p>
+                  <p className="text-lg font-semibold">{userProfile.name}</p>
                   <p className="text-muted-foreground">{userProfile.email}</p>
                 </div>
               </div>
@@ -248,10 +249,16 @@ export default function AccountPage() {
               </Form>
             </>
           ) : (
-             <p className="text-muted-foreground text-center">Nenhum usuário logado.</p>
+            <p className="text-muted-foreground text-center">Nenhum usuário logado.</p>
           )}
         </CardContent>
       </Card>
+
+      {userProfile?.role === 'professional' && (
+        <div className="w-full max-w-2xl mx-auto mt-6">
+          <ProfessionalScheduleSettings />
+        </div>
+      )}
     </div>
   );
 }

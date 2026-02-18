@@ -28,6 +28,7 @@ import {
   Building,
   PlusCircle,
   LayoutGrid,
+  Trash2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -44,18 +45,19 @@ const adminMenuItems = [
   { href: '/schedule', label: 'Painel', icon: Calendar },
   { href: '/services', label: 'Serviços', icon: BookOpen },
   { href: '/categories', label: 'Categorias', icon: LayoutGrid },
-  { href: '/customers', label: 'Equipe', icon: Users },
+  { href: '/team', label: 'Equipe', icon: Users },
   { href: '/clients', label: 'Clientes', icon: ContactRound },
   { href: '/invoices', label: 'Faturas', icon: FileText },
   { href: '/promotions', label: 'Marketing com IA', icon: Sparkles },
   { href: '/establishment', label: 'Estabelecimento', icon: Building },
   { href: '/schedule/settings', label: 'Horário do Estabelecimento', icon: Settings },
   { href: '/schedule/block', label: 'Bloquear Agenda (Geral)', icon: Lock },
+  { href: '/admin/cleanup', label: 'Limpeza de Dados', icon: Trash2 },
 ];
 
 const professionalMenuItems = [
   { href: '/schedule', label: 'Painel', icon: Calendar },
-  { href: '/book-appointment', label: 'Agendar', icon: PlusCircle },
+  { href: '/book-appointment', label: 'Novo Agendamento', icon: PlusCircle },
   { href: '/services', label: 'Serviços', icon: BookOpen },
 ];
 
@@ -94,7 +96,7 @@ export default function AppSidebar() {
   if (isMobile === undefined) {
     return null;
   }
-  
+
   let menuItems = clientMenuItems;
   if (userProfile?.role === 'admin') {
     menuItems = adminMenuItems;
@@ -149,7 +151,7 @@ export default function AppSidebar() {
               ))}
             </SidebarMenu>
           ) : (
-             <SidebarMenu>
+            <SidebarMenu>
               {unauthenticatedMenuItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
@@ -171,32 +173,32 @@ export default function AppSidebar() {
         </SidebarContent>
         <SidebarFooter>
           <SidebarSeparator />
-           {(isUserLoading || isProfileLoading) ? (
-             <div className="flex items-center gap-2 p-2">
-                <Skeleton className="h-8 w-8 rounded-full" />
-                <Skeleton className="h-4 w-24" />
-             </div>
-           ) : user ? (
+          {(isUserLoading || isProfileLoading) ? (
+            <div className="flex items-center gap-2 p-2">
+              <Skeleton className="h-8 w-8 rounded-full" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+          ) : user ? (
             <SidebarMenu>
               <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Minha Conta">
-                    <Link href="/account">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={user.photoURL ?? ''} />
-                        <AvatarFallback>{user.displayName?.charAt(0).toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                      <span className='truncate'>{user.displayName}</span>
-                    </Link>
-                  </SidebarMenuButton>
+                <SidebarMenuButton asChild tooltip="Minha Conta">
+                  <Link href="/account">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user.photoURL ?? ''} />
+                      <AvatarFallback>{user.displayName?.charAt(0).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <span className='truncate'>{user.displayName}</span>
+                  </Link>
+                </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton onClick={handleLogout} tooltip="Sair">
-                    <LogOut />
-                    <span>Sair</span>
+                  <LogOut />
+                  <span>Sair</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
-           ) : (
+          ) : (
             <div className="p-2 text-xs text-center text-muted-foreground">
               {areSettingsLoading ? (
                 <Skeleton className="h-4 w-32 mx-auto" />
@@ -204,7 +206,7 @@ export default function AppSidebar() {
                 <p>&copy; 2024 {establishmentName}</p>
               )}
             </div>
-           )}
+          )}
         </SidebarFooter>
       </Sidebar>
     </>

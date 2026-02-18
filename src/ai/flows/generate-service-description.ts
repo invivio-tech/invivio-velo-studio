@@ -7,8 +7,8 @@
  * - ServiceDescriptionOutput - The return type for the generateServiceDescription function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { ai } from '@/ai/genkit';
+import { z } from 'genkit';
 
 const ServiceDescriptionInputSchema = z.object({
   name: z.string().describe('The name of the barbershop service.'),
@@ -28,18 +28,23 @@ export async function generateServiceDescription(input: ServiceDescriptionInput)
 
 const prompt = ai.definePrompt({
   name: 'serviceDescriptionPrompt',
-  input: {schema: ServiceDescriptionInputSchema},
-  output: {schema: ServiceDescriptionOutputSchema},
-  prompt: `Você é um redator de marketing especialista em barbearias.
-  Sua tarefa é criar uma descrição curta, atraente e convidativa para um serviço de barbearia.
-  A descrição deve destacar a qualidade e a experiência, e ter no máximo 150 caracteres.
+  input: { schema: ServiceDescriptionInputSchema },
+  output: { schema: ServiceDescriptionOutputSchema },
+  prompt: `Você é um copywriter sênior especializado em marcas de luxo masculinas.
+  Escreva uma descrição sofisticada e atraente para um serviço da "Barbearia Inteligente".
 
-  Detalhes do Serviço:
+  Dados do Serviço:
   - Nome: {{{name}}}
   - Preço: R$ {{{price}}}
   - Duração: {{{duration}}}
 
-  Gere apenas a descrição do serviço.
+  Requisitos:
+  - Máximo de 180 caracteres.
+  - Destaque a experiência (relaxamento, precisão, estilo).
+  - Use linguagem moderna e elegante.
+  - Não mencione o preço na descrição.
+
+  Gere apenas o texto da descrição.
   `,
 });
 
@@ -50,7 +55,7 @@ const generateServiceDescriptionFlow = ai.defineFlow(
     outputSchema: ServiceDescriptionOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const { output } = await prompt(input);
     return output!;
   }
 );

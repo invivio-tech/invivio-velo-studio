@@ -8,8 +8,8 @@
  * - PromotionalOfferOutput - The return type for the generatePromotionalOffers function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { ai } from '@/ai/genkit';
+import { z } from 'genkit';
 
 const PromotionalOfferInputSchema = z.object({
   serviceCatalog: z.string().describe('Uma descrição dos serviços oferecidos pela barbearia, incluindo preços.'),
@@ -31,17 +31,22 @@ export async function generatePromotionalOffers(input: PromotionalOfferInput): P
 
 const prompt = ai.definePrompt({
   name: 'promotionalOfferPrompt',
-  input: {schema: PromotionalOfferInputSchema},
-  output: {schema: PromotionalOfferOutputSchema},
-  prompt: `Você é um especialista em marketing para uma barbearia.
-  Seu objetivo é gerar ofertas promocionais eficazes e sugerir o melhor momento para lançá-las para atrair mais clientes e aumentar a receita.
+  input: { schema: PromotionalOfferInputSchema },
+  output: { schema: PromotionalOfferOutputSchema },
+  prompt: `Você é um estrategista de marketing digital para uma barbearia de alto padrão, a "Barbearia Inteligente".
+  Seu objetivo é criar uma campanha promocional exclusiva e altamente eficaz para aumentar o faturamento e a fidelização.
 
-  Considere as seguintes informações:
-  Catálogo de Serviços: {{{serviceCatalog}}}
-  Histórico de Clientes: {{{customerHistory}}}
-  Promoções Atuais: {{{currentPromotions}}}
+  Analise os dados abaixo:
+  - **Catálogo de Serviços:** {{{serviceCatalog}}}
+  - **Comportamento dos Clientes:** {{{customerHistory}}}
+  - **Promoções Ativas:** {{{currentPromotions}}}
 
-  Gere uma oferta promocional e sugira o momento mais eficaz para lançá-la, explicando seu raciocínio.
+  Sua tarefa:
+  1. **Crie uma Oferta Irresistível:** Um título chamativo e uma descrição curta e persuasiva. Use gatilhos mentais de exclusividade ou urgência.
+  2. **Sugira o Momento Ideal:** Qual dia da semana e horário disparar essa oferta? Por que?
+  3. **Justifique a Estratégia:** Explique brevemente por que essa oferta funcionará com base nos dados fornecidos.
+
+  Tom de voz: Premium, confiante e convidativo.
   `,
 });
 
@@ -52,7 +57,7 @@ const generatePromotionalOffersFlow = ai.defineFlow(
     outputSchema: PromotionalOfferOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const { output } = await prompt(input);
     return output!;
   }
 );

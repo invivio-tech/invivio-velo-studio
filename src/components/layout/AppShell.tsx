@@ -5,16 +5,16 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import AppSidebar from '@/components/layout/sidebar';
 
 const appRoutes = [
-    '/schedule',
-    '/services',
-    '/customers',
-    '/clients',
-    '/invoices',
-    '/promotions',
-    '/account',
-    '/establishment',
-    '/categories',
-    '/book-appointment',
+  '/schedule',
+  '/services',
+  '/team',
+  '/clients',
+  '/invoices',
+  '/promotions',
+  '/account',
+  '/establishment',
+  '/categories',
+  '/book-appointment',
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -26,15 +26,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
     // Handle root path separately
     if (route === '/' && pathname === '/') {
-        return true;
+      return true;
     }
     return false;
-  }) || /^\/customers\/[^/]+\/(edit|schedule|appointments)$/.test(pathname) || /^\/clients\/[^/]+\/edit$/.test(pathname)
+  }) || /^\/team\/[^/]+\/(edit|schedule|appointments)$/.test(pathname) || /^\/clients\/[^/]+\/edit$/.test(pathname)
 
   // A more specific check for the root to not include it in the app shell
-   if(pathname === '/') {
-      return <>{children}</>;
-   }
+  if (pathname === '/') {
+    return <>{children}</>;
+  }
 
 
   if (isAppPage) {

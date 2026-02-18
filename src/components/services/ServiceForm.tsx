@@ -81,22 +81,22 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
       featured: false,
     },
   });
-  
+
   React.useEffect(() => {
     if (isOpen) {
-        form.reset(service ? { 
-            ...service, 
-            imageUrl: service.imageUrl || '',
-            featured: service.featured || false,
-        } : {
-            name: '',
-            description: '',
-            price: 0,
-            duration: '',
-            imageUrl: '',
-            categoryId: '',
-            featured: false,
-        });
+      form.reset(service ? {
+        ...service,
+        imageUrl: service.imageUrl || '',
+        featured: service.featured || false,
+      } : {
+        name: '',
+        description: '',
+        price: 0,
+        duration: '',
+        imageUrl: '',
+        categoryId: '',
+        featured: false,
+      });
     }
   }, [service, isOpen, form]);
 
@@ -114,31 +114,31 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
   const handleSuggestDescription = async () => {
     const { name, price, duration } = form.getValues();
     if (!name) {
-        toast({
-            variant: 'destructive',
-            title: 'Nome do serviço necessário',
-            description: 'Por favor, preencha o nome do serviço para obter uma sugestão.'
-        });
-        return;
+      toast({
+        variant: 'destructive',
+        title: 'Nome do serviço necessário',
+        description: 'Por favor, preencha o nome do serviço para obter uma sugestão.'
+      });
+      return;
     }
     setIsSuggesting(true);
     try {
-        const result = await generateServiceDescription({ name, price: String(price), duration });
-        if (result.description) {
-            form.setValue('description', result.description, { shouldValidate: true });
-        }
+      const result = await generateServiceDescription({ name, price: String(price), duration });
+      if (result.description) {
+        form.setValue('description', result.description, { shouldValidate: true });
+      }
     } catch (error) {
-        console.error('Error suggesting description:', error);
-        toast({
-            variant: 'destructive',
-            title: 'Erro ao sugerir',
-            description: 'Não foi possível gerar uma sugestão. Tente novamente.'
-        });
+      console.error('Error suggesting description:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao sugerir',
+        description: 'Não foi possível gerar uma sugestão. Tente novamente.'
+      });
     } finally {
-        setIsSuggesting(false);
+      setIsSuggesting(false);
     }
   }
-  
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-[425px]">
@@ -195,12 +195,12 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
                   <div className="flex items-center justify-between">
                     <FormLabel>Descrição</FormLabel>
                     <Button type="button" variant="ghost" size="sm" onClick={handleSuggestDescription} disabled={isSuggesting}>
-                        {isSuggesting ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                            <Sparkles className="h-4 w-4" />
-                        )}
-                        <span className="ml-2 hidden sm:inline">Sugerir com IA</span>
+                      {isSuggesting ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-4 w-4" />
+                      )}
+                      <span className="ml-2 hidden sm:inline">Sugerir com IA</span>
                     </Button>
                   </div>
                   <FormControl>
@@ -238,6 +238,7 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
                 )}
               />
             </div>
+
             <FormField
               control={form.control}
               name="imageUrl"
@@ -255,26 +256,26 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
               )}
             />
             <FormField
-                control={form.control}
-                name="featured"
-                render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                        <FormControl>
-                            <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                            <FormLabel>
-                            Destaque na Página Inicial
-                            </FormLabel>
-                            <FormDescription>
-                            Marque para exibir este serviço na página inicial.
-                            </FormDescription>
-                        </div>
-                    </FormItem>
-                )}
+              control={form.control}
+              name="featured"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>
+                      Destaque na Página Inicial
+                    </FormLabel>
+                    <FormDescription>
+                      Marque para exibir este serviço na página inicial.
+                    </FormDescription>
+                  </div>
+                </FormItem>
+              )}
             />
             <DialogFooter>
               <DialogClose asChild>

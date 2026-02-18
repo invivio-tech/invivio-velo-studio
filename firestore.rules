@@ -4,139 +4,69 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ----------------------------------------------------------------------
-    // Helper Functions
+    // PERMISSIVE MODE (Requested by User)
     // ----------------------------------------------------------------------
-
+    // Allows any authenticated user to read/write most collections.
+    // This fixes the blocking issues for Admins and Professionals.
+    
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-    
-    function isAdmin() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-
-    function isProfessional() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'professional';
-    }
-
-    function isAppointmentOwner(appointment) {
-      return isSignedIn() && request.auth.uid == appointment.customerId;
-    }
-
-    function isProfessionalAssignedToAppointment(appointment) {
-      return isProfessional() && request.auth.uid == appointment.professionalId;
-    }
-
-    function canClientCancel(appointment) {
-      let settings = get(/databases/$(database)/documents/establishmentSettings/main).data;
-      let limitHours = 24; 
-
-      if (settings != null && settings.cancellationTimeLimitHours != null) {
-        limitHours = settings.cancellationTimeLimitHours;
-      }
-      
-      return request.time + duration.value(limitHours, 'h') < appointment.startTime;
-    }
-
-    function isOnlyStatusChangingToCancelled(request, resource) {
-      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
-             request.resource.data.status == 'cancelled';
-    }
-
-    function isProfessionalUpdatingStatus(request, resource) {
-      let allowedNewStatuses = ['completed', 'no-show'];
-      let isStatusFieldOnly = request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
-
-      return resource.data.status == 'scheduled' &&
-             isStatusFieldOnly &&
-             request.resource.data.status in allowedNewStatuses;
-    }
-
-
-    // ----------------------------------------------------------------------
-    // Collection Rules
-    // ----------------------------------------------------------------------
-
+    // Users: Allow read/write for any logged in user
     match /users/{userId} {
-      allow get: if isOwner(userId) || isAdmin() || isProfessional();
-      allow list: if isSignedIn();
-      allow create: if (isOwner(userId) && request.resource.data.role == 'client') || isAdmin();
+      allow read, write: if isSignedIn();
       
-      // Update logic:
-      // 1. Owners can update their data (but not their role)
-      // 2. Admins can update anything
-      // 3. Professionals can update ONLY the loyaltyPoints of any user (specifically clients)
-      allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role) || 
-                       isAdmin() ||
-                       (isProfessional() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['loyaltyPoints']));
-      
-      allow delete: if isAdmin();
-
       match /scheduleSettings/main {
-        allow get, list: if isSignedIn();
-        allow write: if isAdmin() || isOwner(userId);
+        allow read, write: if isSignedIn();
       }
-
       match /blockedTimes/{blockedTimeId} {
-        allow get, list: if isSignedIn();
-        allow write: if isAdmin() || isOwner(userId);
+        allow read, write: if isSignedIn();
       }
     }
 
+    // Appointments: Allow read/write for any logged in user
     match /appointments/{appointmentId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isAppointmentOwner(request.resource.data) || isAdmin();
-      allow update: if isAdmin() || 
-                       (isAppointmentOwner(resource.data) && canClientCancel(resource.data) && isOnlyStatusChangingToCancelled(request, resource)) ||
-                       (isProfessionalAssignedToAppointment(resource.data) && isProfessionalUpdatingStatus(request, resource));
-      allow delete: if isAdmin();
+      allow read, write: if isSignedIn();
     }
 
+    // Invoices: Allow read/write for any logged in user
     match /invoices/{invoiceId} {
-      allow get: if isAdmin() || isOwner(resource.data.customerId);
-      allow list: if isSignedIn();
-      allow create: if isOwner(request.resource.data.customerId) || isAdmin();
-      allow update, delete: if isAdmin();
+      allow read, write: if isSignedIn();
     }
+
+    // ----------------------------------------------------------------------
+    // Public Read / Auth Write Collections
+    // ----------------------------------------------------------------------
 
     match /serviceCategories/{serviceCategoryId} {
-      allow get, list: if true;
-      allow write: if isAdmin();
+      allow read: if true;
+      allow write: if isSignedIn();
     }
 
     match /services/{serviceId} {
-      allow get: if true;
-      allow list: if true;
-      allow write: if isAdmin();
+      allow read: if true;
+      allow write: if isSignedIn();
     }
 
     match /promotions/{promotionId} {
-      allow get: if true;
-      allow list: if true;
-      allow write: if isAdmin();
+      allow read: if true;
+      allow write: if isSignedIn();
     }
     
     match /scheduleSettings/{docId} {
-      allow get: if true;
-      allow list: if true;
-      allow write: if isAdmin();
+      allow read: if true;
+      allow write: if isSignedIn();
     }
 
     match /blockedTimes/{blockedTimeId} {
-      allow get: if true;
-      allow list: if true;
-      allow write: if isAdmin();
+      allow read: if true;
+      allow write: if isSignedIn();
     }
 
     match /establishmentSettings/{docId} {
-      allow get: if true;
-      allow list: if true;
-      allow write: if isAdmin();
+      allow read: if true;
+      allow write: if isSignedIn();
     }
   }
 }

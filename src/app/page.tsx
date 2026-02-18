@@ -15,7 +15,7 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Badge } from '@/components/ui/badge';
 import { BarberPoleIcon } from '@/components/icons/barber-pole-icon';
 
-import { collection, doc, query, where, limit } from 'firebase/firestore';
+import { collection, doc, query, where, limit, orderBy } from 'firebase/firestore';
 import {
   useFirestore,
   useCollection,
@@ -32,10 +32,10 @@ export default function LandingPage() {
   const aboutImage = PlaceHolderImages.find((p) => p.id === 'landing-about');
 
   const firestore = useFirestore();
-  
+
   // Fetch Featured Services
   const servicesCollectionRef = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'services'), where('featured', '==', true), limit(6)) : null),
+    () => (firestore ? query(collection(firestore, 'services'), where('featured', '==', true), orderBy('name', 'asc'), limit(6)) : null),
     [firestore]
   );
   const { data: services, isLoading: areServicesLoading } = useCollection<Service>(
@@ -48,9 +48,9 @@ export default function LandingPage() {
     [firestore]
   );
   const { data: settings, isLoading: areSettingsLoading } = useDoc<EstablishmentSettings>(settingsRef);
-  
+
   const isLoading = areServicesLoading || areSettingsLoading;
-  
+
   const defaultSettings: EstablishmentSettings = {
     name: 'Barbearia Inteligente',
     about: 'Fundada em 2024, nossa barbearia nasceu com o propósito de resgatar a essência das barbearias clássicas, incorporando tecnologia para oferecer uma experiência única e conveniente. Nossos profissionais são artistas apaixonados, dedicados a entregar o melhor resultado para cada cliente. Utilizamos produtos de alta qualidade e as técnicas mais apuradas para garantir que seu cabelo e barba estejam sempre impecáveis. Venha nos visitar e descubra por que somos a escolha inteligente para o homem moderno.',
@@ -62,7 +62,7 @@ export default function LandingPage() {
     whatsapp: '5511999998888',
     instagram: 'barbearia.inteligente',
   };
-  
+
   const establishmentName = settings?.name || defaultSettings.name;
   const establishmentAbout = settings?.about || defaultSettings.about;
   const establishmentHeroTitle = settings?.heroTitle || defaultSettings.heroTitle;
@@ -137,20 +137,20 @@ export default function LandingPage() {
           <div className="absolute inset-0 bg-gradient-to-r from-background via-background/30 to-transparent" />
           <div className="relative z-10 container text-left">
             {isLoading ? (
-                <div className='space-y-4'>
-                    <Skeleton className="h-12 w-3/4 lg:h-16" />
-                    <Skeleton className="h-4 w-1/2" />
-                    <Skeleton className="h-4 w-2/3" />
-                </div>
+              <div className='space-y-4'>
+                <Skeleton className="h-12 w-3/4 lg:h-16" />
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-4 w-2/3" />
+              </div>
             ) : (
-                <>
-                    <h1 className="text-4xl font-extrabold tracking-tight font-headline lg:text-6xl max-w-2xl">
-                        {establishmentHeroTitle}
-                    </h1>
-                    <p className="mt-4 max-w-xl text-lg text-muted-foreground">
-                        {establishmentHeroSubtitle}
-                    </p>
-                </>
+              <>
+                <h1 className="text-4xl font-extrabold tracking-tight font-headline lg:text-6xl max-w-2xl">
+                  {establishmentHeroTitle}
+                </h1>
+                <p className="mt-4 max-w-xl text-lg text-muted-foreground">
+                  {establishmentHeroSubtitle}
+                </p>
+              </>
             )}
             <Button size="lg" className="mt-6" asChild>
               <Link href="/signup">Agendar Meu Horário</Link>
@@ -162,19 +162,19 @@ export default function LandingPage() {
         <section id="services" className="container py-16 md:py-24">
           <div className="text-center mb-12">
             {isLoading ? (
-                <div className="space-y-2">
-                    <Skeleton className="h-8 w-1/2 mx-auto" />
-                    <Skeleton className="h-4 w-3/4 mx-auto" />
-                </div>
+              <div className="space-y-2">
+                <Skeleton className="h-8 w-1/2 mx-auto" />
+                <Skeleton className="h-4 w-3/4 mx-auto" />
+              </div>
             ) : (
-                <>
-                    <h2 className="text-3xl font-headline font-bold">
-                        {establishmentServicesTitle}
-                    </h2>
-                    <p className="text-muted-foreground mt-2">
-                        {establishmentServicesSubtitle}
-                    </p>
-                </>
+              <>
+                <h2 className="text-3xl font-headline font-bold">
+                  {establishmentServicesTitle}
+                </h2>
+                <p className="text-muted-foreground mt-2">
+                  {establishmentServicesSubtitle}
+                </p>
+              </>
             )}
           </div>
 
@@ -245,10 +245,10 @@ export default function LandingPage() {
             <div>
               {isLoading ? (
                 <div className="space-y-4">
-                    <Skeleton className="h-8 w-64" />
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-5/6" />
+                  <Skeleton className="h-8 w-64" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-5/6" />
                 </div>
               ) : (
                 <>
@@ -256,7 +256,7 @@ export default function LandingPage() {
                     {`Sobre ${establishmentName}`}
                   </h2>
                   <p className="text-muted-foreground mt-4 leading-relaxed whitespace-pre-wrap">
-                      {establishmentAbout}
+                    {establishmentAbout}
                   </p>
                 </>
               )}
@@ -279,26 +279,26 @@ export default function LandingPage() {
       <footer id="contact" className="bg-card border-t">
         <div className="container py-8 text-center text-sm text-muted-foreground">
           {establishmentInstagram && (
-              <div className="flex justify-center gap-6 mb-4">
-                 <a href={`https://instagram.com/${establishmentInstagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
-                    <Instagram className="h-6 w-6" />
-                    <span className="sr-only">Instagram</span>
-                 </a>
-              </div>
+            <div className="flex justify-center gap-6 mb-4">
+              <a href={`https://instagram.com/${establishmentInstagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Instagram className="h-6 w-6" />
+                <span className="sr-only">Instagram</span>
+              </a>
+            </div>
           )}
           {isLoading ? (
             <div className="space-y-2">
-                <Skeleton className="h-4 w-1/2 mx-auto" />
-                <Skeleton className="h-4 w-3/4 mx-auto" />
+              <Skeleton className="h-4 w-1/2 mx-auto" />
+              <Skeleton className="h-4 w-3/4 mx-auto" />
             </div>
           ) : (
             <>
-                <p>
-                    &copy; 2024 {establishmentName}. Todos os direitos reservados.
-                </p>
-                <p className="mt-2">
-                    {establishmentAddress}
-                </p>
+              <p>
+                &copy; 2024 {establishmentName}. Todos os direitos reservados.
+              </p>
+              <p className="mt-2">
+                {establishmentAddress}
+              </p>
             </>
           )}
         </div>
@@ -307,4 +307,3 @@ export default function LandingPage() {
   );
 }
 
-    

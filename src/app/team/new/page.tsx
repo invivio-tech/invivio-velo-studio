@@ -43,7 +43,7 @@ export default function NewUserPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
-  
+
   const servicesCollection = useMemoFirebase(() => (firestore ? collection(firestore, 'services') : null), [firestore]);
   const { data: allServices, isLoading: areServicesLoading } = useCollection<ServiceWithId>(servicesCollection);
 
@@ -74,34 +74,34 @@ export default function NewUserPage() {
   async function onSubmit(values: NewUserFormValues) {
     setIsSaving(true);
     const { error } = await createAccountByAdmin({
-        name: values.name,
-        email: values.email,
-        pass: values.password,
-        role: values.role as 'professional' | 'admin' | 'client',
-        serviceIds: values.role === 'professional' ? values.serviceIds : [],
-        phoneNumber: values.phoneNumber,
-        birthDate: values.birthDate,
-        address: values.address,
-        notes: values.notes,
+      name: values.name,
+      email: values.email,
+      pass: values.password,
+      role: values.role as 'professional' | 'admin' | 'client',
+      serviceIds: values.role === 'professional' ? values.serviceIds : [],
+      phoneNumber: values.phoneNumber,
+      birthDate: values.birthDate,
+      address: values.address,
+      notes: values.notes,
     });
-    
+
     setIsSaving(false);
 
     if (error) {
-        toast({
-            variant: 'destructive',
-            title: 'Erro ao criar membro',
-            description: error.code === 'auth/email-already-in-use' ? 'Este e-mail já está em uso.' : 'Não foi possível criar o membro.',
-        });
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao criar membro',
+        description: error.code === 'auth/email-already-in-use' ? 'Este e-mail já está em uso.' : 'Não foi possível criar o membro.',
+      });
     } else {
-        toast({
-            title: 'Membro criado!',
-            description: `O membro ${values.name} foi criado com sucesso.`,
-        });
-        router.push('/customers');
+      toast({
+        title: 'Membro criado!',
+        description: `O membro ${values.name} foi criado com sucesso.`,
+      });
+      router.push('/team');
     }
   }
-  
+
   const isLoading = isAdminLoading || areServicesLoading;
 
   if (isLoading || !adminProfile || adminProfile.role !== 'admin' || !allServices) {
@@ -115,20 +115,20 @@ export default function NewUserPage() {
           </CardHeader>
           <CardContent className="space-y-8">
             <div className="space-y-2">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-10 w-full" />
             </div>
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-10 w-full" />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-10 w-full" />
             </div>
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-10 w-full" />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-10 w-full" />
             </div>
             <div className="flex justify-end gap-2">
-                <Skeleton className="h-10 w-24" />
-                <Skeleton className="h-10 w-24" />
+              <Skeleton className="h-10 w-24" />
+              <Skeleton className="h-10 w-24" />
             </div>
           </CardContent>
         </Card>
@@ -138,8 +138,8 @@ export default function NewUserPage() {
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-        <div className="flex items-center gap-4">
-        <UserPlus className="w-8 h-8 text-secondary"/>
+      <div className="flex items-center gap-4">
+        <UserPlus className="w-8 h-8 text-secondary" />
         <h1 className="text-3xl font-headline font-bold tracking-tight">
           Adicionar Novo Membro
         </h1>
@@ -150,35 +150,35 @@ export default function NewUserPage() {
           <CardDescription>Crie uma conta para um novo profissional, administrador ou cliente.</CardDescription>
         </CardHeader>
         <CardContent>
-            <Form {...form}>
+          <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField control={form.control} name="name" render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Nome Completo</FormLabel>
-                        <FormControl>
-                            <Input placeholder="Nome do usuário" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                )} />
-                  <FormField control={form.control} name="email" render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>E-mail</FormLabel>
-                        <FormControl>
-                            <Input type="email" placeholder="email@exemplo.com" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                )} />
-                  <FormField control={form.control} name="password" render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Senha</FormLabel>
-                        <FormControl>
-                            <Input type="password" placeholder="Senha com no mínimo 6 caracteres" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                )} />
+              <FormField control={form.control} name="name" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nome Completo</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Nome do usuário" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="email" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>E-mail</FormLabel>
+                  <FormControl>
+                    <Input type="email" placeholder="email@exemplo.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="password" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Senha</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="Senha com no mínimo 6 caracteres" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
 
               <FormField
                 control={form.control}
@@ -205,61 +205,61 @@ export default function NewUserPage() {
 
               {(watchedRole === 'client' || watchedRole === 'professional') && (
                 <div className="space-y-6 rounded-md border p-4">
-                     <h3 className="text-sm font-medium text-muted-foreground">Dados Pessoais (Opcional)</h3>
-                     <FormField
-                        control={form.control}
-                        name="phoneNumber"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Telefone</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="(99) 99999-9999" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="birthDate"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Data de Nascimento</FormLabel>
-                                <FormControl>
-                                    <Input type="date" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="address"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Endereço</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="Endereço completo" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    {watchedRole === 'client' && (
-                        <FormField
-                            control={form.control}
-                            name="notes"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Notas Internas sobre o Cliente</FormLabel>
-                                    <FormControl>
-                                        <Textarea placeholder="Preferências, alergias, ou outras anotações sobre o cliente." {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                  <h3 className="text-sm font-medium text-muted-foreground">Dados Pessoais (Opcional)</h3>
+                  <FormField
+                    control={form.control}
+                    name="phoneNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Telefone</FormLabel>
+                        <FormControl>
+                          <Input placeholder="(99) 99999-9999" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="birthDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Data de Nascimento</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Endereço</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Endereço completo" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  {watchedRole === 'client' && (
+                    <FormField
+                      control={form.control}
+                      name="notes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Notas Internas sobre o Cliente</FormLabel>
+                          <FormControl>
+                            <Textarea placeholder="Preferências, alergias, ou outras anotações sobre o cliente." {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </div>
               )}
 
@@ -277,25 +277,25 @@ export default function NewUserPage() {
                       </div>
                       <ScrollArea className="h-48 rounded-md border p-4">
                         {allServices.map((service) => (
-                            <FormItem key={service.id} className="flex flex-row items-start space-x-3 space-y-0 mb-4">
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value?.includes(service.id)}
-                                  onCheckedChange={(checked) => {
-                                    return checked
-                                      ? field.onChange([...(field.value || []), service.id])
-                                      : field.onChange(
-                                          (field.value || []).filter(
-                                            (value) => value !== service.id
-                                          )
-                                        );
-                                  }}
-                                />
-                              </FormControl>
-                              <FormLabel className="font-normal">
-                                {service.name}
-                              </FormLabel>
-                            </FormItem>
+                          <FormItem key={service.id} className="flex flex-row items-start space-x-3 space-y-0 mb-4">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value?.includes(service.id)}
+                                onCheckedChange={(checked) => {
+                                  return checked
+                                    ? field.onChange([...(field.value || []), service.id])
+                                    : field.onChange(
+                                      (field.value || []).filter(
+                                        (value) => value !== service.id
+                                      )
+                                    );
+                                }}
+                              />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              {service.name}
+                            </FormLabel>
+                          </FormItem>
                         ))}
                       </ScrollArea>
                       <FormMessage />
@@ -306,7 +306,7 @@ export default function NewUserPage() {
 
               <div className="flex justify-end gap-2 pt-4">
                 <Button type="button" variant="ghost" asChild>
-                    <Link href="/customers">Cancelar</Link>
+                  <Link href="/team">Cancelar</Link>
                 </Button>
                 <Button type="submit" disabled={isSaving}>
                   {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

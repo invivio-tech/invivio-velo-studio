@@ -38,10 +38,11 @@ export function useUserProfile() {
     }
 
     const userRef = doc(firestore, 'users', user.uid);
-    const unsubscribe = onSnapshot(userRef, 
+    const unsubscribe = onSnapshot(userRef,
       (docSnap) => {
         if (docSnap.exists()) {
-          setUserProfile(docSnap.data() as UserProfile);
+          const data = docSnap.data() as UserProfile;
+          setUserProfile(data);
         } else {
           setUserProfile(null);
         }
@@ -61,4 +62,3 @@ export function useUserProfile() {
   return { userProfile, isLoading };
 }
 
-    

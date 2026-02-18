@@ -23,6 +23,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+
+
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
@@ -34,9 +36,9 @@ const roleDisplay: Record<UserProfile['role'], string> = {
 };
 
 const roleVariant: Record<UserProfile['role'], 'default' | 'secondary' | 'outline'> = {
-    admin: 'default',
-    professional: 'secondary',
-    client: 'outline',
+  admin: 'default',
+  professional: 'secondary',
+  client: 'outline',
 };
 
 export default function UsersPage() {
@@ -73,15 +75,15 @@ export default function UsersPage() {
     return (
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="flex items-center gap-4">
-          <Users className="w-8 h-8 text-secondary"/>
+          <Users className="w-8 h-8 text-secondary" />
           <h1 className="text-3xl font-headline font-bold tracking-tight">
             Gestão de Equipe
           </h1>
         </div>
         <Card>
           <CardHeader>
-              <CardTitle className="font-headline">Membros da Equipe</CardTitle>
-              <CardDescription>Gerencie as funções e permissões dos administradores e profissionais.</CardDescription>
+            <CardTitle className="font-headline">Membros da Equipe</CardTitle>
+            <CardDescription>Gerencie as funções e permissões dos administradores e profissionais.</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
@@ -120,33 +122,33 @@ export default function UsersPage() {
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Users className="w-8 h-8 text-secondary"/>
+          <Users className="w-8 h-8 text-secondary" />
           <h1 className="text-3xl font-headline font-bold tracking-tight">
             Gestão de Equipe
           </h1>
         </div>
         {userProfile?.role === 'admin' && (
-            <Button asChild>
-                <Link href="/customers/new">
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Novo Membro
-                </Link>
-            </Button>
+          <Button asChild>
+            <Link href="/team/new">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Novo Membro
+            </Link>
+          </Button>
         )}
       </div>
       <Card>
         <CardHeader>
-            <CardTitle className="font-headline">Membros da Equipe</CardTitle>
-            <CardDescription>Gerencie as funções e permissões dos administradores e profissionais.</CardDescription>
-            <div className="relative pt-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome ou e-mail..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 w-full md:w-1/2 lg:w-1/3"
-              />
-            </div>
+          <CardTitle className="font-headline">Membros da Equipe</CardTitle>
+          <CardDescription>Gerencie as funções e permissões dos administradores e profissionais.</CardDescription>
+          <div className="relative pt-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nome ou e-mail..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 w-full md:w-1/2 lg:w-1/3"
+            />
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -198,16 +200,16 @@ export default function UsersPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        <DropdownMenuItem onSelect={() => router.push(`/customers/${user.id}/edit`)}>
+                        <DropdownMenuItem onSelect={() => router.push(`/team/${user.id}/edit`)}>
                           Gerenciar Membro
                         </DropdownMenuItem>
                         {user.role === 'professional' && (
                           <>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onSelect={() => router.push(`/customers/${user.id}/schedule`)}>
-                              Gerenciar Agenda
+                            <DropdownMenuItem onSelect={() => router.push(`/team/${user.id}/schedule`)}>
+                              Gestão de Horários
                             </DropdownMenuItem>
-                             <DropdownMenuItem onSelect={() => router.push(`/customers/${user.id}/appointments`)}>
+                            <DropdownMenuItem onSelect={() => router.push(`/team/${user.id}/appointments`)}>
                               Ver Agenda
                             </DropdownMenuItem>
                           </>
@@ -217,11 +219,11 @@ export default function UsersPage() {
                   </TableCell>
                 </TableRow>
               ))}
-               {!areUsersLoading && filteredUsers.length === 0 && (
+              {!areUsersLoading && filteredUsers.length === 0 && (
                 <TableRow>
-                    <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
-                        Nenhum membro da equipe encontrado.
-                    </TableCell>
+                  <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                    Nenhum membro da equipe encontrado.
+                  </TableCell>
                 </TableRow>
               )}
             </TableBody>

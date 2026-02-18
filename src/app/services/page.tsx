@@ -90,21 +90,21 @@ export default function ServicesPage() {
 
   const servicesByCategory = useMemo(() => {
     if (!services || !categories) return [];
-    
+
     const categoryMap = new Map(categories.map(cat => [cat.id, { ...cat, services: [] as ServiceWithId[] }]));
     const uncategorized = { id: 'uncategorized', name: 'Sem Categoria', services: [] as ServiceWithId[] };
 
     services.forEach(service => {
-        if (service.categoryId && categoryMap.has(service.categoryId)) {
-            categoryMap.get(service.categoryId)!.services.push(service);
-        } else {
-            uncategorized.services.push(service);
-        }
+      if (service.categoryId && categoryMap.has(service.categoryId)) {
+        categoryMap.get(service.categoryId)!.services.push(service);
+      } else {
+        uncategorized.services.push(service);
+      }
     });
 
     const result = Array.from(categoryMap.values()).filter(cat => cat.services.length > 0);
-    if(uncategorized.services.length > 0) {
-        result.push(uncategorized);
+    if (uncategorized.services.length > 0) {
+      result.push(uncategorized);
     }
     return result;
   }, [services, categories]);
@@ -244,62 +244,62 @@ export default function ServicesPage() {
           {services.length > 0 && categories ? (
             <Accordion type="multiple" className="w-full" defaultValue={(categories?.map(c => c.id) || []).concat(['uncategorized'])}>
               {servicesByCategory.map(category => (
-                  <AccordionItem value={category.id} key={category.id}>
-                      <AccordionTrigger className="text-2xl font-headline hover:no-underline">{category.name} ({category.services.length})</AccordionTrigger>
-                      <AccordionContent>
-                          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
-                              {category.services.map((service) => {
-                                  const image = service.imageUrl;
-                                  return (
-                                  <Card key={service.id} className="flex flex-col overflow-hidden">
-                                      <CardHeader className="p-0 relative">
-                                      {image ? (
-                                          <div className="relative aspect-[16/9] w-full">
-                                          <Image
-                                              src={image}
-                                              alt={service.name}
-                                              fill
-                                              className="object-cover"
-                                          />
-                                          </div>
-                                      ) : (
-                                          <div className="aspect-[16/9] w-full bg-muted" />
-                                      )}
-                                      {isAdmin && (
-                                          <div className="absolute top-2 right-2 flex gap-2">
-                                          <Button size="icon" variant="secondary" onClick={() => openServiceForm(service)}>
-                                              <Pencil className="h-4 w-4" />
-                                          </Button>
-                                          <Button size="icon" variant="destructive" onClick={() => openDeleteAlert(service)}>
-                                              <Trash2 className="h-4 w-4" />
-                                          </Button>
-                                          </div>
-                                      )}
-                                      {service.featured && (
-                                        <Badge variant="secondary" className="absolute top-2 left-2 flex items-center gap-1 border-primary bg-primary/10 text-primary">
-                                            <Star className="h-3 w-3" />
-                                            Destaque
-                                        </Badge>
-                                      )}
-                                      </CardHeader>
-                                      <div className="flex flex-col flex-grow p-6">
-                                      <CardTitle className="font-headline text-2xl mb-2">{service.name}</CardTitle>
-                                      <CardDescription className="flex-grow">{service.description}</CardDescription>
-                                      </div>
-                                      <CardFooter className="flex justify-between items-center">
-                                      <span className="text-xl font-bold font-headline text-primary">
-                                          {`R$${service.price.toFixed(2).replace('.', ',')}`}
-                                      </span>
-                                      <Badge variant="secondary">{service.duration}</Badge>
-                                      </CardFooter>
-                                  </Card>
-                                  );
-                              })}
-                          </div>
-                      </AccordionContent>
-                  </AccordionItem>
+                <AccordionItem value={category.id} key={category.id}>
+                  <AccordionTrigger className="text-2xl font-headline hover:no-underline">{category.name} ({category.services.length})</AccordionTrigger>
+                  <AccordionContent>
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
+                      {category.services.map((service) => {
+                        const image = service.imageUrl;
+                        return (
+                          <Card key={service.id} className="flex flex-col overflow-hidden">
+                            <CardHeader className="p-0 relative">
+                              {image ? (
+                                <div className="relative aspect-[16/9] w-full">
+                                  <Image
+                                    src={image}
+                                    alt={service.name}
+                                    fill
+                                    className="object-cover"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="aspect-[16/9] w-full bg-muted" />
+                              )}
+                              {isAdmin && (
+                                <div className="absolute top-2 right-2 flex gap-2">
+                                  <Button size="icon" variant="secondary" onClick={() => openServiceForm(service)}>
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <Button size="icon" variant="destructive" onClick={() => openDeleteAlert(service)}>
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              )}
+                              {service.featured && (
+                                <Badge variant="secondary" className="absolute top-2 left-2 flex items-center gap-1 border-primary bg-primary/10 text-primary">
+                                  <Star className="h-3 w-3" />
+                                  Destaque
+                                </Badge>
+                              )}
+                            </CardHeader>
+                            <div className="flex flex-col flex-grow p-6">
+                              <CardTitle className="font-headline text-2xl mb-2">{service.name}</CardTitle>
+                              <CardDescription className="flex-grow">{service.description}</CardDescription>
+                            </div>
+                            <CardFooter className="flex justify-between items-center">
+                              <span className="text-xl font-bold font-headline text-primary">
+                                {`R$${service.price.toFixed(2).replace('.', ',')}`}
+                              </span>
+                              <Badge variant="secondary">{service.duration}</Badge>
+                            </CardFooter>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
               ))}
-          </Accordion>
+            </Accordion>
           ) : (
             <Card className="text-center p-8">
               <CardContent>
@@ -336,4 +336,3 @@ export default function ServicesPage() {
   );
 }
 
-    

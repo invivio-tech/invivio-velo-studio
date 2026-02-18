@@ -14,7 +14,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { useToast } from '@/hooks/use-toast';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -32,6 +32,7 @@ const formSchema = z.object({
   phoneNumber: z.string().optional(),
   birthDate: z.string().optional(),
   address: z.string().optional(),
+
 });
 
 type UserManagementFormValues = z.infer<typeof formSchema>;
@@ -40,11 +41,11 @@ export default function EditUserPage() {
   const router = useRouter();
   const params = useParams();
   const userId = params.id as string;
-  
+
   const { userProfile: adminProfile, isLoading: isAdminLoading } = useUserProfile();
   const firestore = useFirestore();
   const { toast } = useToast();
-  
+
   const [isSaving, setIsSaving] = useState(false);
   const [isDisabling, setIsDisabling] = useState(false);
 
@@ -54,7 +55,7 @@ export default function EditUserPage() {
     }
     return null;
   }, [firestore, userId, adminProfile]);
-  
+
   const { data: user, isLoading: isUserLoading, error: userError } = useDoc<UserProfile>(userRef);
 
   const servicesCollection = useMemoFirebase(() => (firestore ? collection(firestore, 'services') : null), [firestore]);
@@ -69,15 +70,16 @@ export default function EditUserPage() {
       phoneNumber: '',
       birthDate: '',
       address: '',
+
     },
   });
 
   useEffect(() => {
     if (!isAdminLoading && adminProfile?.role !== 'admin') {
-      router.push('/customers');
+      router.push('/team');
     }
   }, [isAdminLoading, adminProfile, router]);
-  
+
   useEffect(() => {
     if (user) {
       form.reset({
@@ -87,6 +89,7 @@ export default function EditUserPage() {
         phoneNumber: user.phoneNumber || '',
         birthDate: user.birthDate || '',
         address: user.address || '',
+
       });
     }
   }, [user, form]);
@@ -96,7 +99,7 @@ export default function EditUserPage() {
   async function onSubmit(values: UserManagementFormValues) {
     if (!firestore || !user) return;
     setIsSaving(true);
-    
+
     const userToUpdateRef = doc(firestore, 'users', user.id);
     const updatedData: Partial<UserProfile> = {
       name: values.name,
@@ -105,15 +108,16 @@ export default function EditUserPage() {
       phoneNumber: values.phoneNumber,
       birthDate: values.birthDate,
       address: values.address,
+
     };
-    
+
     updateDoc(userToUpdateRef, updatedData)
       .then(() => {
         toast({
           title: 'Membro atualizado!',
           description: `Os dados de ${user.name} foram atualizados.`,
         });
-        router.push('/customers');
+        router.push('/team');
       })
       .catch((serverError) => {
         const permissionError = new FirestorePermissionError({
@@ -138,7 +142,7 @@ export default function EditUserPage() {
     setIsDisabling(true);
     const userToUpdateRef = doc(firestore, 'users', user.id);
     const newDisabledState = !user.disabled;
-    
+
     updateDoc(userToUpdateRef, { disabled: newDisabledState })
       .then(() => {
         toast({
@@ -162,21 +166,21 @@ export default function EditUserPage() {
         setIsDisabling(false);
       });
   };
-  
+
   const isLoading = isAdminLoading || (adminProfile?.role === 'admin' && (isUserLoading || areServicesLoading));
 
   if (isLoading || (adminProfile?.role === 'admin' && !user)) {
     return (
-       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="flex items-center gap-4 mb-6">
-            <Button variant="outline" size="icon" asChild>
-                <Link href="/customers">
-                    <ArrowLeft className="h-4 w-4" />
-                </Link>
-            </Button>
-            <h1 className="text-3xl font-headline font-bold tracking-tight">
-                Editar Membro
-            </h1>
+          <Button variant="outline" size="icon" asChild>
+            <Link href="/team">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <h1 className="text-3xl font-headline font-bold tracking-tight">
+            Editar Membro
+          </h1>
         </div>
         <Card>
           <CardHeader>
@@ -185,39 +189,39 @@ export default function EditUserPage() {
           </CardHeader>
           <CardContent className="space-y-8">
             <div className="space-y-2">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-10 w-full" />
             </div>
             <div className="flex justify-end gap-2">
-                <Skeleton className="h-10 w-24" />
-                <Skeleton className="h-10 w-24" />
+              <Skeleton className="h-10 w-24" />
+              <Skeleton className="h-10 w-24" />
             </div>
           </CardContent>
         </Card>
       </div>
     );
   }
-  
+
   if (userError) {
-     return <div className="p-8 text-center text-destructive">Erro ao carregar os dados do membro. Verifique suas permissões.</div>;
+    return <div className="p-8 text-center text-destructive">Erro ao carregar os dados do membro. Verifique suas permissões.</div>;
   }
-  
+
   if (!user && adminProfile?.role === 'admin' && !isUserLoading) {
     return <div className="p-8 text-center text-destructive">Membro não encontrado.</div>;
   }
-  
+
   if (!user) {
-     return null;
+    return null;
   }
 
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
-       <div className="flex items-center gap-4">
-         <Button variant="outline" size="icon" asChild>
-            <Link href="/customers">
-                <ArrowLeft className="h-4 w-4" />
-            </Link>
+      <div className="flex items-center gap-4">
+        <Button variant="outline" size="icon" asChild>
+          <Link href="/team">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
         </Button>
         <h1 className="text-3xl font-headline font-bold tracking-tight">
           Editar Membro
@@ -229,60 +233,60 @@ export default function EditUserPage() {
           <CardDescription>Altere o nome, função e as permissões do membro.</CardDescription>
         </CardHeader>
         <CardContent>
-           <Form {...form}>
+          <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" value={user.email || ''} readOnly disabled />
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" value={user.email || ''} readOnly disabled />
               </div>
-               <FormField control={form.control} name="name" render={({ field }) => (
-                  <FormItem>
-                      <FormLabel>Nome Completo</FormLabel>
-                      <FormControl>
-                          <Input placeholder="Nome do usuário" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                  </FormItem>
+              <FormField control={form.control} name="name" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nome Completo</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Nome do usuário" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )} />
-                <FormField
-                    control={form.control}
-                    name="phoneNumber"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Telefone</FormLabel>
-                            <FormControl>
-                                <Input placeholder="(99) 99999-9999" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="birthDate"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Data de Nascimento</FormLabel>
-                            <FormControl>
-                                <Input type="date" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="address"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Endereço</FormLabel>
-                            <FormControl>
-                                <Input placeholder="Endereço completo" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
+              <FormField
+                control={form.control}
+                name="phoneNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Telefone</FormLabel>
+                    <FormControl>
+                      <Input placeholder="(99) 99999-9999" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="birthDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Data de Nascimento</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="address"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Endereço</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Endereço completo" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="role"
@@ -320,25 +324,25 @@ export default function EditUserPage() {
                       </div>
                       <ScrollArea className="h-48 rounded-md border p-4">
                         {allServices.map((service) => (
-                           <FormItem key={service.id} className="flex flex-row items-start space-x-3 space-y-0 mb-4">
-                             <FormControl>
-                               <Checkbox
-                                 checked={field.value?.includes(service.id)}
-                                 onCheckedChange={(checked) => {
-                                   return checked
-                                     ? field.onChange([...(field.value || []), service.id])
-                                     : field.onChange(
-                                         (field.value || []).filter(
-                                           (value) => value !== service.id
-                                         )
-                                       );
-                                 }}
-                               />
-                             </FormControl>
-                             <FormLabel className="font-normal">
-                               {service.name}
-                             </FormLabel>
-                           </FormItem>
+                          <FormItem key={service.id} className="flex flex-row items-start space-x-3 space-y-0 mb-4">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value?.includes(service.id)}
+                                onCheckedChange={(checked) => {
+                                  return checked
+                                    ? field.onChange([...(field.value || []), service.id])
+                                    : field.onChange(
+                                      (field.value || []).filter(
+                                        (value) => value !== service.id
+                                      )
+                                    );
+                                }}
+                              />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              {service.name}
+                            </FormLabel>
+                          </FormItem>
                         ))}
                       </ScrollArea>
                       <FormMessage />
@@ -347,9 +351,11 @@ export default function EditUserPage() {
                 />
               )}
 
+
+
               <div className="flex justify-end gap-2 pt-4">
                 <Button type="button" variant="ghost" asChild>
-                    <Link href="/customers">Cancelar</Link>
+                  <Link href="/team">Cancelar</Link>
                 </Button>
                 <Button type="submit" disabled={isSaving}>
                   {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -360,6 +366,8 @@ export default function EditUserPage() {
           </Form>
         </CardContent>
       </Card>
+
+
 
       <Card className="mt-6">
         <CardHeader>
