@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -74,6 +75,12 @@ export default function LandingPage() {
   const establishmentInstagram = settings?.instagram;
   const establishmentLogo = settings?.logoUrl;
   const establishmentAboutImageUrl = settings?.aboutImageUrl;
+
+  useEffect(() => {
+    if (establishmentName) {
+      document.title = establishmentName;
+    }
+  }, [establishmentName]);
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
