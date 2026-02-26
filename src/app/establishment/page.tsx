@@ -37,6 +37,8 @@ export interface EstablishmentSettings {
   loyaltyPercentage?: number;
   pointsPenaltyForNoShow?: number;
   professionalCommissionPercentage?: number;
+  detailedAbout?: string;
+  productImageDescription?: string;
 }
 
 const formSchema = z.object({
@@ -54,6 +56,8 @@ const formSchema = z.object({
   loyaltyPercentage: z.coerce.number().min(0, { message: 'O percentual não pode ser negativo.' }).max(100, { message: 'O máximo é 100%.' }).optional(),
   pointsPenaltyForNoShow: z.coerce.number().min(0, { message: 'A penalidade deve ser um valor positivo.' }).optional(),
   professionalCommissionPercentage: z.coerce.number().min(0, { message: 'A comissão não pode ser negativa.' }).max(100, { message: 'O máximo é 100%.' }).optional(),
+  detailedAbout: z.string().optional(),
+  productImageDescription: z.string().optional(),
 });
 
 type SettingsFormValues = z.infer<typeof formSchema>;
@@ -94,6 +98,8 @@ export default function EstablishmentPage() {
     loyaltyPercentage: 10,
     pointsPenaltyForNoShow: 5,
     professionalCommissionPercentage: 25,
+    detailedAbout: '',
+    productImageDescription: 'Homem moderno, produtos de cuidado pessoal, alta resolução, estética minimalista e premium.',
   };
 
   const form = useForm<SettingsFormValues>({
@@ -114,6 +120,8 @@ export default function EstablishmentPage() {
         loyaltyPercentage: settings.loyaltyPercentage === undefined ? 10 : settings.loyaltyPercentage,
         pointsPenaltyForNoShow: settings.pointsPenaltyForNoShow === undefined ? 5 : settings.pointsPenaltyForNoShow,
         professionalCommissionPercentage: settings.professionalCommissionPercentage === undefined ? 25 : settings.professionalCommissionPercentage,
+        detailedAbout: settings.detailedAbout || '',
+        productImageDescription: settings.productImageDescription || '',
       });
     }
   }, [settings, form]);
@@ -286,6 +294,32 @@ export default function EstablishmentPage() {
                   <FormControl>
                     <Textarea placeholder="Conte a história do seu estabelecimento" className="min-h-32" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+
+              <FormField control={form.control} name="detailedAbout" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Descrição Detalhada para o Site</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Descreva os produtos e experiência em detalhes para o site" className="min-h-32" {...field} />
+                  </FormControl>
+                  <FormDescription>
+                    Pode conter informações extras do seu negócio, os produtos que você utiliza, e uma história mais aprofundada para páginas extras.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )} />
+
+              <FormField control={form.control} name="productImageDescription" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Descrição para Imagens IA de Produtos (Prompt)</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Descreva como devem ser as imagens dos produtos e ambiente" className="min-h-24" {...field} />
+                  </FormControl>
+                  <FormDescription>
+                    Servirá como 'Prompt' (diretriz para Inteligência Artificial) caso use geração automática de banners ou imagens. Ex: "Fotografia realista de barbearia luxuosa iluminada..."
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )} />

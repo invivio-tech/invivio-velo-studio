@@ -58,6 +58,7 @@ export interface Service {
   imageUrl?: string;
   categoryId: string;
   featured?: boolean;
+  imagePrompt?: string;
 }
 
 export type ServiceWithId = Service & { id: string };
@@ -116,7 +117,7 @@ export default function ServicesPage() {
     if ('id' in serviceData && serviceData.id) {
       // Update
       const serviceRef = doc(firestore, 'services', serviceData.id);
-      return updateDoc(serviceRef, serviceData as Service)
+      return updateDoc(serviceRef, { ...serviceData } as Record<string, any>)
         .then(() => {
           toast({
             title: 'Serviço atualizado!',

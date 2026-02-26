@@ -11,14 +11,18 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const ServiceDescriptionInputSchema = z.object({
-  name: z.string().describe('The name of the barbershop service.'),
+  name: z.string().describe('The name of the service.'),
   price: z.string().describe('The price of the service.'),
   duration: z.string().describe('The duration of the service.'),
+  establishmentName: z.string().optional().describe('The name of the establishment.'),
+  nicheContext: z.string().optional().describe('The context or niche of the establishment.'),
+  imageStylePrompt: z.string().optional().describe('The desired visual style for the image prompt.'),
 });
 export type ServiceDescriptionInput = z.infer<typeof ServiceDescriptionInputSchema>;
 
 const ServiceDescriptionOutputSchema = z.object({
   description: z.string().describe('The generated service description.'),
+  imagePrompt: z.string().optional().describe('A detailed prompt for generating an image of this service using an AI image generator (like Midjourney or DALL-E).'),
 });
 export type ServiceDescriptionOutput = z.infer<typeof ServiceDescriptionOutputSchema>;
 
@@ -30,8 +34,10 @@ const prompt = ai.definePrompt({
   name: 'serviceDescriptionPrompt',
   input: { schema: ServiceDescriptionInputSchema },
   output: { schema: ServiceDescriptionOutputSchema },
-  prompt: `Você é um copywriter sênior especializado em marcas de luxo masculinas.
-  Escreva uma descrição sofisticada e atraente para um serviço da "Barbearia Inteligente".
+  prompt: `Você é um copywriter sênior e um excelente direcionador de IA para imagens.
+  Escreva uma descrição sofisticada e atraente para um serviço do estabelecimento "{{{establishmentName}}}".
+  
+  Contexto do Negócio e Público Alvo: {{{nicheContext}}}
 
   Dados do Serviço:
   - Nome: {{{name}}}
@@ -39,12 +45,14 @@ const prompt = ai.definePrompt({
   - Duração: {{{duration}}}
 
   Requisitos:
-  - Máximo de 180 caracteres.
-  - Destaque a experiência (relaxamento, precisão, estilo).
-  - Use linguagem moderna e elegante.
+  - Máximo de 180 caracteres para a descrição comercial.
+  - Destaque a experiência (bem-estar, precisão, estilo, relaxamento) na descrição, focando no nicho.
+  - Use linguagem moderna e elegante e que case com o negócio.
   - Não mencione o preço na descrição.
+  - O 'imagePrompt' deve ser uma descrição altamente detalhada, em inglês, focada na estética, iluminação e composição visual de uma foto profissional para gerar a imagem exata do serviço. 
+  - A imagem deve seguir a seguinte direção de fotografia/estilo visual da marca: {{{imageStylePrompt}}}
 
-  Gere apenas o texto da descrição.
+  Gere a descrição ('description') e o prompt em inglês ('imagePrompt').
   `,
 });
 

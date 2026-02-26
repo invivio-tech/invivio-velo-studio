@@ -31,9 +31,10 @@ import { useState } from 'react';
 import { generateServiceDescription } from '@/ai/flows/generate-service-description';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
 import { Checkbox } from '../ui/checkbox';
+import type { EstablishmentSettings } from '@/app/establishment/page';
 
 interface Category {
   id: string;
@@ -48,6 +49,7 @@ const formSchema = z.object({
   imageUrl: z.string().url({ message: 'Por favor, insira uma URL válida.' }).optional().or(z.literal('')),
   categoryId: z.string().min(1, { message: 'A categoria é obrigatória.' }),
   featured: z.boolean().default(false),
+  imagePrompt: z.string().optional(),
 });
 
 type ServiceFormProps = {
@@ -69,6 +71,12 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
   );
   const { data: categories, isLoading: areCategoriesLoading } = useCollection<Category>(categoriesCollection);
 
+  const settingsRef = useMemoFirebase(
+    () => (firestore ? doc(firestore, 'establishmentSettings', 'main') : null),
+    [firestore]
+  );
+  const { data: settings } = useDoc<EstablishmentSettings>(settingsRef);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -79,6 +87,7 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
       imageUrl: '',
       categoryId: '',
       featured: false,
+      imagePrompt: '',
     },
   });
 
@@ -88,6 +97,7 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
         ...service,
         imageUrl: service.imageUrl || '',
         featured: service.featured || false,
+        imagePrompt: service.imagePrompt || '',
       } : {
         name: '',
         description: '',
@@ -96,6 +106,7 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
         imageUrl: '',
         categoryId: '',
         featured: false,
+        imagePrompt: '',
       });
     }
   }, [service, isOpen, form]);
@@ -123,9 +134,19 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
     }
     setIsSuggesting(true);
     try {
-      const result = await generateServiceDescription({ name, price: String(price), duration });
+      const result = await generateServiceDescription({
+        name,
+        price: String(price),
+        duration,
+        establishmentName: settings?.name || '',
+        nicheContext: settings?.context || settings?.about || '',
+        imageStylePrompt: settings?.productImageDescription || '',
+      });
       if (result.description) {
         form.setValue('description', result.description, { shouldValidate: true });
+      }
+      if (result.imagePrompt) {
+        form.setValue('imagePrompt', result.imagePrompt, { shouldValidate: true });
       }
     } catch (error) {
       console.error('Error suggesting description:', error);
@@ -210,6 +231,24 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
                 </FormItem>
               )}
             />
+
+            <FormField
+              control={form.control}
+              name="imagePrompt"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Prompt Imagem IA</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Copie este texto e use em uma IA para gerar uma imagem do serviço (Midjourney, DALL-E, etc)." className="min-h-24 text-sm font-mono" {...field} />
+                  </FormControl>
+                  <FormDescription>
+                    Gerado automaticamente se usar a Sugestão IA.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
