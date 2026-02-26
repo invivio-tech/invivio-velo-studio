@@ -7,8 +7,8 @@
  * - EstablishmentTextsOutput - The return type for the generateEstablishmentTexts function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { ai } from '@/ai/genkit';
+import { z } from 'genkit';
 
 const EstablishmentTextsInputSchema = z.object({
   name: z.string().describe('The name of the establishment.'),
@@ -20,6 +20,7 @@ const EstablishmentTextsOutputSchema = z.object({
   heroTitle: z.string().describe('The generated main hero title for the landing page.'),
   heroSubtitle: z.string().describe('The generated hero subtitle for the landing page.'),
   about: z.string().describe('The generated "about" text for the landing page.'),
+  aboutImagePrompt: z.string().describe('An English prompt for Midjourney/DALL-E to generate an image to accompany the "about" section.'),
   servicesTitle: z.string().describe('The generated title for the services section.'),
   servicesSubtitle: z.string().describe('The generated subtitle for the services section.'),
 });
@@ -31,8 +32,8 @@ export async function generateEstablishmentTexts(input: EstablishmentTextsInput)
 
 const prompt = ai.definePrompt({
   name: 'establishmentTextsPrompt',
-  input: {schema: EstablishmentTextsInputSchema},
-  output: {schema: EstablishmentTextsOutputSchema},
+  input: { schema: EstablishmentTextsInputSchema },
+  output: { schema: EstablishmentTextsOutputSchema },
   prompt: `Você é um redator de marketing e especialista em branding.
   Sua tarefa é criar textos atraentes e profissionais para a página inicial de um estabelecimento.
 
@@ -48,6 +49,7 @@ const prompt = ai.definePrompt({
   3.  Um texto para a seção "Sobre" (about) que conte uma história convincente sobre o negócio, com cerca de 2 a 3 parágrafos.
   4.  Um título para a seção de serviços (servicesTitle).
   5.  Um subtítulo para a seção de serviços (servicesSubtitle).
+  6.  Um "Prompt de Imagem" (aboutImagePrompt) em inglês, detalhado, para uma ferramenta de IA gerar a imagem que ilustra a seção "Sobre" deste estabelecimento (ex. "wide shot of a classic luxury barbershop interior, warm lighting, cinematic, 8k --ar 16:9").
 
   Se o nome for genérico como "Barbearia" e não houver contexto adicional, assuma que é um estabelecimento moderno e de alta qualidade.
   Seja criativo e profissional.
@@ -61,7 +63,7 @@ const generateEstablishmentTextsFlow = ai.defineFlow(
     outputSchema: EstablishmentTextsOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const { output } = await prompt(input);
     return output!;
   }
 );

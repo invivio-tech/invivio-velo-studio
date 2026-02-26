@@ -73,6 +73,7 @@ export default function LandingPage() {
   const establishmentWhatsapp = settings?.whatsapp || defaultSettings.whatsapp;
   const establishmentInstagram = settings?.instagram;
   const establishmentLogo = settings?.logoUrl;
+  const establishmentAboutImageUrl = settings?.aboutImageUrl;
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -267,7 +268,13 @@ export default function LandingPage() {
               )}
             </div>
             <div className="relative aspect-square w-full max-w-md mx-auto">
-              {aboutImage && (
+              {establishmentAboutImageUrl ? (
+                <img
+                  src={establishmentAboutImageUrl}
+                  alt="Sobre o estabelecimento"
+                  className="object-cover w-full h-full rounded-lg shadow-lg"
+                />
+              ) : aboutImage ? (
                 <Image
                   src={aboutImage.imageUrl}
                   alt={aboutImage.description}
@@ -275,7 +282,7 @@ export default function LandingPage() {
                   className="object-cover rounded-lg shadow-lg"
                   data-ai-hint={aboutImage.imageHint}
                 />
-              )}
+              ) : null}
             </div>
           </div>
         </section>

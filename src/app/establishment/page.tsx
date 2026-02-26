@@ -27,6 +27,8 @@ export interface EstablishmentSettings {
   name: string;
   logoUrl?: string;
   about: string;
+  aboutImageUrl?: string;
+  aboutImagePrompt?: string;
   heroTitle: string;
   heroSubtitle: string;
   servicesTitle: string;
@@ -48,6 +50,8 @@ const formSchema = z.object({
   logoUrl: z.string().optional().or(z.literal('')),
   context: z.string().optional(),
   about: z.string().min(10, { message: 'O texto sobre deve ter pelo menos 10 caracteres.' }),
+  aboutImageUrl: z.string().optional().or(z.literal('')),
+  aboutImagePrompt: z.string().optional(),
   heroTitle: z.string().min(10, { message: 'O título principal é obrigatório.' }),
   heroSubtitle: z.string().min(10, { message: 'O subtítulo é obrigatório.' }),
   servicesTitle: z.string().min(5, { message: 'O título dos serviços é obrigatório.' }),
@@ -90,6 +94,8 @@ export default function EstablishmentPage() {
     name: 'Barbearia Inteligente',
     logoUrl: '',
     about: 'Fundada em 2024, nossa barbearia nasceu com o propósito de resgatar a essência das barbearias clássicas, incorporando tecnologia para oferecer uma experiência única e conveniente. Nossos profissionais são artistas apaixonados, dedicados a entregar o melhor resultado para cada cliente. Utilizamos produtos de alta qualidade e as técnicas mais apuradas para garantir que seu cabelo e barba estejam sempre impecáveis. Venha nos visitar e descubra por que somos a escolha inteligente para o homem moderno.',
+    aboutImageUrl: '',
+    aboutImagePrompt: '',
     heroTitle: 'Estilo e Precisão em Cada Corte.',
     heroSubtitle: 'Experimente a combinação perfeita de tradição e modernidade. Na Barbearia Inteligente, cuidamos do seu visual com a maestria que você merece.',
     servicesTitle: 'Nossos Serviços Premium',
@@ -118,6 +124,8 @@ export default function EstablishmentPage() {
         ...defaultValues,
         ...settings,
         logoUrl: settings.logoUrl || '',
+        aboutImageUrl: settings.aboutImageUrl || '',
+        aboutImagePrompt: settings.aboutImagePrompt || '',
         whatsapp: settings.whatsapp || '',
         instagram: settings.instagram || '',
         context: settings.context || '',
@@ -166,6 +174,44 @@ export default function EstablishmentPage() {
       });
     } finally {
       setIsUploadingLogo(false);
+    }
+  };
+
+  const [isUploadingAboutImage, setIsUploadingAboutImage] = useState(false);
+
+  const handleAboutImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingAboutImage(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const result = await uploadImage(formData);
+
+      if (result.error) {
+        toast({
+          variant: 'destructive',
+          title: 'Erro',
+          description: result.error,
+        });
+      } else if (result.url) {
+        form.setValue('aboutImageUrl', result.url, { shouldValidate: true });
+        toast({
+          title: 'Upload concluído',
+          description: 'A imagem da seção Sobre foi salva com sucesso.',
+        });
+      }
+    } catch (error) {
+      console.error('Error uploading about image:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Erro no Upload',
+        description: 'Não foi possível enviar a imagem.',
+      });
+    } finally {
+      setIsUploadingAboutImage(false);
     }
   };
 
@@ -218,6 +264,7 @@ export default function EstablishmentPage() {
         form.setValue('heroTitle', result.heroTitle, { shouldValidate: true });
         form.setValue('heroSubtitle', result.heroSubtitle, { shouldValidate: true });
         form.setValue('about', result.about, { shouldValidate: true });
+        if (result.aboutImagePrompt) form.setValue('aboutImagePrompt', result.aboutImagePrompt, { shouldValidate: true });
         form.setValue('servicesTitle', result.servicesTitle, { shouldValidate: true });
         form.setValue('servicesSubtitle', result.servicesSubtitle, { shouldValidate: true });
         toast({
@@ -376,6 +423,69 @@ export default function EstablishmentPage() {
                   <FormLabel>Seção "Sobre"</FormLabel>
                   <FormControl>
                     <Textarea placeholder="Conte a história do seu estabelecimento" className="min-h-32" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+
+              <FormField control={form.control} name="aboutImagePrompt" render={({ field }) => (
+                <FormItem>
+                  <div className="flex items-center justify-between">
+                    <FormLabel>Prompt Imagem IA ("Sobre")</FormLabel>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const v = form.getValues('aboutImagePrompt');
+                        if (v) {
+                          navigator.clipboard.writeText(v);
+                          toast({ title: 'Copiado!', description: 'O texto do prompt foi copiado para sua área de transferência.' });
+                        }
+                      }}
+                    >
+                      Copiar
+                    </Button>
+                  </div>
+                  <FormControl>
+                    <Textarea placeholder="Prompt gerado para criar a imagem da seção Sobre" className="min-h-24 text-sm font-mono" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+
+              <FormField control={form.control} name="aboutImageUrl" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Imagem da Seção "Sobre"</FormLabel>
+                  <FormControl>
+                    <div className="flex gap-4 items-center">
+                      <div className="relative flex-1">
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                          onChange={handleAboutImageUpload}
+                          disabled={isUploadingAboutImage}
+                        />
+                        <Button type="button" variant="outline" className="w-full justify-start" disabled={isUploadingAboutImage}>
+                          {isUploadingAboutImage ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+                          {field.value ? 'Trocar Imagem' : 'Fazer Upload da Imagem'}
+                        </Button>
+                      </div>
+                      {field.value && (
+                        <div className="h-10 w-16 relative overflow-hidden rounded-md border bg-muted flex-shrink-0">
+                          <img src={field.value} alt="About" className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => form.setValue('aboutImageUrl', '', { shouldValidate: true })}
+                        disabled={!field.value || isUploadingAboutImage}
+                      >
+                        Remover
+                      </Button>
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
