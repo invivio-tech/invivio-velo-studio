@@ -78,12 +78,12 @@ export default function LandingPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 md:h-20 items-center">
+        <div className="container flex h-20 md:h-24 items-center">
           <Link href="/" className="mr-6 flex items-center space-x-2">
             {establishmentLogo ? (
-              <img src={establishmentLogo} alt={establishmentName} className="h-10 md:h-14 max-w-[180px] object-contain" />
+              <img src={establishmentLogo} alt={establishmentName} className="h-14 md:h-20 max-w-[240px] object-contain" />
             ) : (
-              <BarberPoleIcon className="h-8 md:h-10 w-8 md:w-10 text-primary" />
+              <BarberPoleIcon className="h-10 md:h-12 w-10 md:w-12 text-primary" />
             )}
             {isLoading ? (
               <Skeleton className="h-5 w-40" />
