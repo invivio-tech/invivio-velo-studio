@@ -4,21 +4,22 @@
 import {
   Card,
   CardContent,
+  CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
-  CardDescription,
-  CardFooter
 } from '@/components/ui/card';
 import { DollarSign, Users, CalendarCheck, Lock, Calendar as CalendarIcon, MoreHorizontal, Pencil, Trash2, Check, X, Loader2, AlertCircle, Filter, Download, RefreshCw, BarChart, ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useUser, useUserProfile, useFirestore, useCollection, useMemoFirebase, useDoc, type UserProfile } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { collection, query, where, orderBy, Timestamp, getDocs, doc, updateDoc, runTransaction, getDoc } from 'firebase/firestore';
 import { format, startOfDay, isBefore, subHours, startOfMonth, endOfMonth, endOfDay, addMonths, subMonths, isSameMonth } from 'date-fns';
@@ -112,6 +113,12 @@ function AdminDashboard() {
   const [periodType, setPeriodType] = useState<'day' | 'month'>('month');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedMonth, setSelectedMonth] = useState<Date>(startOfMonth(new Date()));
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedService, setSelectedService] = useState('all');
+
+  // Fetch Settings
+  const settingsRef = useMemoFirebase(() => firestore ? doc(firestore, 'establishmentSettings', 'main') : null, [firestore]);
+  const { data: settings } = useDoc<EstablishmentSettings>(settingsRef);
 
   // Fetch Professionals
   const professionalsQuery = useMemoFirebase(() =>
@@ -159,9 +166,59 @@ function AdminDashboard() {
   // Format Currency
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
+  // Derived state for filtered history
+  const filteredHistory = useMemo(() => {
+    if (!appointments) return [];
+    return appointments.filter(apt => {
+      const matchesSearch = apt.customerName.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesService = selectedService === 'all' || apt.serviceName === selectedService;
+      return matchesSearch && matchesService;
+    });
+  }, [appointments, searchTerm, selectedService]);
+
+  // Unique services for the filter dropdown
+  const uniqueServices = useMemo(() => {
+    if (!appointments) return [];
+    return Array.from(new Set(appointments.map(a => a.serviceName)));
+  }, [appointments]);
+
   // Month Navigation
   const handlePrevMonth = () => setSelectedMonth(prev => subMonths(prev, 1));
   const handleNextMonth = () => setSelectedMonth(prev => addMonths(prev, 1));
+
+  const handleExportCSV = () => {
+    if (!filteredHistory || filteredHistory.length === 0) return;
+
+    const commissionRate = (settings?.professionalCommissionPercentage || 25) / 100;
+
+    const headers = ['Data', 'Hora', 'Cliente', 'Serviço', 'Profissional', 'Valor (R$)', 'Comissão Profissional (R$)'];
+    const csvContent = [
+      headers.join(','),
+      ...filteredHistory.map(apt => {
+        const date = apt.startTime.toDate();
+        const price = apt.servicePrice || 0;
+        const commission = price * commissionRate;
+        return [
+          format(date, 'dd/MM/yyyy'),
+          format(date, 'HH:mm'),
+          `"${apt.customerName}"`,
+          `"${apt.serviceName}"`,
+          `"${apt.professionalName}"`,
+          price.toFixed(2),
+          commission.toFixed(2)
+        ].join(',');
+      })
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `relatorio_admin_${format(new Date(), 'yyyyMMdd_HHmm')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -263,14 +320,40 @@ function AdminDashboard() {
       <Card className="col-span-4">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Histórico de Agendamentos</CardTitle>
-            {!areStatsLoading && appointments && appointments.length > 0 && (
-              <div className="text-sm text-muted-foreground">
-                {appointments.length} registros encontrados
-              </div>
-            )}
+            <CardTitle>Histórico de Serviços</CardTitle>
+            <div className="flex items-center gap-4">
+              {!areStatsLoading && filteredHistory && filteredHistory.length > 0 && (
+                <div className="text-sm text-muted-foreground mr-2">
+                  {filteredHistory.length} registros encontrados
+                </div>
+              )}
+              <Button size="sm" variant="outline" onClick={handleExportCSV} disabled={!filteredHistory || filteredHistory.length === 0}>
+                <Download className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Exportar CSV</span>
+              </Button>
+            </div>
           </div>
           <CardDescription>Lista detalhada de serviços realizados.</CardDescription>
+
+          <div className="mt-4 flex flex-col sm:flex-row gap-4">
+            <Input
+              placeholder="Buscar por cliente..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="max-w-xs"
+            />
+            <Select value={selectedService} onValueChange={setSelectedService}>
+              <SelectTrigger className="max-w-xs">
+                <SelectValue placeholder="Filtrar por serviço" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os serviços</SelectItem>
+                {uniqueServices.map(service => (
+                  <SelectItem key={service} value={service}>{service}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent>
           {areStatsLoading ? (
@@ -279,9 +362,9 @@ function AdminDashboard() {
               <Skeleton className="h-12 w-full" />
               <Skeleton className="h-12 w-full" />
             </div>
-          ) : appointments && appointments.length > 0 ? (
+          ) : filteredHistory && filteredHistory.length > 0 ? (
             <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
-              {appointments.map(apt => (
+              {filteredHistory.map(apt => (
                 <div key={apt.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg gap-4">
                   <div className="flex items-center gap-4">
                     <Avatar>
@@ -307,7 +390,7 @@ function AdminDashboard() {
           ) : (
             <div className="text-center py-10 text-muted-foreground flex flex-col items-center">
               <CalendarCheck className="h-10 w-10 mb-2 opacity-20" />
-              <p>Nenhum agendamento concluído encontrado para este período.</p>
+              <p>Nenhum serviço encontrado com os filtros selecionados.</p>
             </div>
           )}
         </CardContent>
@@ -323,6 +406,12 @@ function ProfessionalDashboard() {
 
   const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[] | null>(null);
   const [pendingAppointments, setPendingAppointments] = useState<Appointment[] | null>(null);
+  const [monthCompletedAppointments, setMonthCompletedAppointments] = useState<Appointment[] | null>(null);
+
+  // Filters for the history
+  const [selectedMonth, setSelectedMonth] = useState<Date>(startOfMonth(new Date()));
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedService, setSelectedService] = useState('all');
   const [todayRevenue, setTodayRevenue] = useState(0);
   const [monthRevenue, setMonthRevenue] = useState(0);
   const [todayCommission, setTodayCommission] = useState(0);
@@ -368,7 +457,9 @@ function ProfessionalDashboard() {
           collection(firestore, 'appointments'),
           where('professionalId', '==', user.uid),
           where('status', '==', 'completed'),
-          where('startTime', '>=', startOfCurrentMonth)
+          where('startTime', '>=', startOfMonth(selectedMonth)),
+          where('startTime', '<=', endOfMonth(selectedMonth)),
+          orderBy('startTime', 'desc')
         );
 
         try {
@@ -380,9 +471,11 @@ function ProfessionalDashboard() {
 
           const upcoming = upcomingSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
           const pending = pendingSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
+          const monthCompleted = monthStatsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
 
           setUpcomingAppointments(upcoming);
           setPendingAppointments(pending);
+          setMonthCompletedAppointments(monthCompleted);
 
           // Calculate Stats
           let dayRev = 0;
@@ -391,8 +484,7 @@ function ProfessionalDashboard() {
 
           const commissionRate = (settings.professionalCommissionPercentage || 25) / 100;
 
-          monthStatsSnapshot.docs.forEach(doc => {
-            const data = doc.data() as Appointment;
+          monthCompleted.forEach(data => {
             const price = data.servicePrice || 0;
             const date = data.startTime.toDate();
 
@@ -431,7 +523,57 @@ function ProfessionalDashboard() {
       setArePendingLoading(false);
       setAreStatsLoading(false);
     }
-  }, [user, firestore, isAuthLoading, settings]);
+  }, [user, firestore, isAuthLoading, settings, selectedMonth]);
+
+  // Derived state for filtered history
+  const filteredHistory = useMemo(() => {
+    if (!monthCompletedAppointments) return [];
+    return monthCompletedAppointments.filter(apt => {
+      const matchesSearch = apt.customerName.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesService = selectedService === 'all' || apt.serviceName === selectedService;
+      return matchesSearch && matchesService;
+    });
+  }, [monthCompletedAppointments, searchTerm, selectedService]);
+
+  // Unique services for the filter dropdown
+  const uniqueServices = useMemo(() => {
+    if (!monthCompletedAppointments) return [];
+    return Array.from(new Set(monthCompletedAppointments.map(a => a.serviceName)));
+  }, [monthCompletedAppointments]);
+
+  const handlePrevMonth = () => setSelectedMonth(prev => subMonths(prev, 1));
+  const handleNextMonth = () => setSelectedMonth(prev => addMonths(prev, 1));
+
+  const handleExportCSV = () => {
+    if (!filteredHistory || filteredHistory.length === 0) return;
+
+    const headers = ['Data', 'Hora', 'Cliente', 'Serviço', 'Comissão (R$)', 'Valor Total (R$)'];
+    const csvContent = [
+      headers.join(','),
+      ...filteredHistory.map(apt => {
+        const date = apt.startTime.toDate();
+        const price = apt.servicePrice || 0;
+        const commission = price * ((settings?.professionalCommissionPercentage || 25) / 100);
+        return [
+          format(date, 'dd/MM/yyyy'),
+          format(date, 'HH:mm'),
+          `"${apt.customerName}"`,
+          `"${apt.serviceName}"`,
+          commission.toFixed(2),
+          price.toFixed(2)
+        ].join(',');
+      })
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `minhas_comissoes_${format(new Date(), 'yyyyMMdd_HHmm')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const handleUpdateAppointmentStatus = async (
     appointment: Appointment,
@@ -488,8 +630,10 @@ function ProfessionalDashboard() {
         setTodayCommission(prev => prev + (price * commissionRate));
         setMonthCommission(prev => prev + (price * commissionRate));
         setTodayAppointmentsCount(prev => prev + 1);
-      }
 
+        const completedAppointment = { ...appointment, status: 'completed' as const };
+        setMonthCompletedAppointments(prev => prev ? [completedAppointment, ...prev].sort((a, b) => b.startTime.toMillis() - a.startTime.toMillis()) : [completedAppointment]);
+      }
     } catch (e: any) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: `appointments/${appointment.id}`,
@@ -672,6 +816,95 @@ function ProfessionalDashboard() {
             </div>
           ) : (
             <p className="text-muted-foreground text-center py-4">Você não tem nenhum agendamento futuro.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <CardTitle className="font-headline">Histórico de Serviços</CardTitle>
+              <CardDescription>
+                Detalhes dos serviços em {format(selectedMonth, 'MMMM yyyy', { locale: ptBR })}. Total ganho: R$ {monthCommission.toFixed(2).replace('.', ',')}
+              </CardDescription>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+              <Button size="sm" variant="outline" onClick={handleExportCSV} disabled={!filteredHistory || filteredHistory.length === 0} className="mr-2">
+                <Download className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Exportar CSV</span>
+              </Button>
+              <div className="flex items-center gap-2 border rounded-md p-1 bg-background">
+                <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="h-8 w-8"><ChevronLeft className="h-4 w-4" /></Button>
+                <span className="text-sm font-medium w-[120px] text-center capitalize">{format(selectedMonth, 'MMMM yyyy', { locale: ptBR })}</span>
+                <Button variant="ghost" size="icon" onClick={handleNextMonth} className="h-8 w-8" disabled={isSameMonth(selectedMonth, new Date())}><ChevronRight className="h-4 w-4" /></Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Filters row */}
+          <div className="mt-4 flex flex-col sm:flex-row gap-4">
+            <Input
+              placeholder="Buscar por cliente..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="max-w-xs"
+            />
+            <Select value={selectedService} onValueChange={setSelectedService}>
+              <SelectTrigger className="max-w-xs">
+                <SelectValue placeholder="Filtrar por serviço" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os serviços</SelectItem>
+                {uniqueServices.map(service => (
+                  <SelectItem key={service} value={service}>{service}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {areStatsLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          ) : filteredHistory && filteredHistory.length > 0 ? (
+            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+              {filteredHistory.map(apt => (
+                <div key={apt.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg gap-4">
+                  <div className="flex items-center gap-4">
+                    <Avatar>
+                      <AvatarImage src={apt.customerPhotoURL} />
+                      <AvatarFallback>{apt.customerName?.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium">{apt.serviceName}</p>
+                      <div className="text-sm text-muted-foreground flex flex-col sm:flex-row sm:gap-2">
+                        <span>Cliente: {apt.customerName}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-left sm:text-right">
+                    <p className="font-bold text-emerald-600">
+                      + R$ {((apt.servicePrice || 0) * ((settings?.professionalCommissionPercentage || 25) / 100)).toFixed(2).replace('.', ',')}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Serviço: R$ {(apt.servicePrice || 0).toFixed(2).replace('.', ',')}
+                    </p>
+                    <p className="text-xs text-muted-foreground capitalize mt-1">
+                      {format(apt.startTime.toDate(), "dd 'de' MMM 'às' HH:mm", { locale: ptBR })}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-10 text-muted-foreground flex flex-col items-center">
+              <CalendarCheck className="h-10 w-10 mb-2 opacity-20" />
+              <p>Nenhum serviço encontrado com os filtros selecionados.</p>
+            </div>
           )}
         </CardContent>
       </Card>
