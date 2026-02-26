@@ -31,11 +31,11 @@ import { useState } from 'react';
 import { generateServiceDescription } from '@/ai/flows/generate-service-description';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { useCollection, useFirestore, useMemoFirebase, useDoc, useStorage } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Checkbox } from '../ui/checkbox';
 import type { EstablishmentSettings } from '@/app/establishment/page';
+import { uploadImage } from '@/app/actions/uploadImage';
 
 interface Category {
   id: string;
@@ -67,7 +67,6 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
   const { toast } = useToast();
 
   const firestore = useFirestore();
-  const storage = useStorage();
   const categoriesCollection = useMemoFirebase(
     () => (firestore ? collection(firestore, 'serviceCategories') : null),
     [firestore]
@@ -129,25 +128,26 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!storage) {
-      toast({
-        variant: 'destructive',
-        title: 'Erro',
-        description: 'Serviço de armazenamento não disponível.',
-      });
-      return;
-    }
-
     setIsUploading(true);
     try {
-      const storageRef = ref(storage, `services/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
-      form.setValue('imageUrl', url, { shouldValidate: true });
-      toast({
-        title: 'Upload concluído',
-        description: 'A imagem foi carregada com sucesso.',
-      });
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const result = await uploadImage(formData);
+
+      if (result.error) {
+        toast({
+          variant: 'destructive',
+          title: 'Erro',
+          description: result.error,
+        });
+      } else if (result.url) {
+        form.setValue('imageUrl', result.url, { shouldValidate: true });
+        toast({
+          title: 'Upload concluído',
+          description: 'A imagem foi salva no servidor com sucesso.',
+        });
+      }
     } catch (error) {
       console.error('Error uploading image:', error);
       toast({
@@ -339,25 +339,36 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Imagem do Serviço</FormLabel>
-                  <div className="flex gap-2">
-                    <FormControl>
+                  <FormControl>
+                    <div className="flex gap-2">
                       <Input placeholder="https://exemplo.com/imagem.jpg" {...field} />
-                    </FormControl>
-                    <div className="relative">
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        onChange={handleImageUpload}
-                        disabled={isUploading}
-                      />
-                      <Button type="button" variant="outline" disabled={isUploading}>
-                        {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Upload className="h-4 w-4 mr-2 hidden sm:block" /> Upload</>}
-                      </Button>
+                      <div className="relative">
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                          onChange={handleImageUpload}
+                          disabled={isUploading}
+                        />
+                        <Button type="button" variant="outline" disabled={isUploading}>
+                          {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Upload className="h-4 w-4 mr-2 hidden sm:block" /> Upload</>}
+                        </Button>
+                      </div>
                     </div>
+                  </FormControl>
+                  <div className="mt-2 text-right">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => form.setValue('imageUrl', '', { shouldValidate: true })}
+                      disabled={!field.value || isUploading}
+                    >
+                      Limpar Imagem
+                    </Button>
                   </div>
                   <FormDescription>
-                    Cole a URL de uma imagem da web ou faça o upload de um arquivo direto do seu dispositivo.
+                    Cole a URL pública da imagem ou faça o upload direto do seu dispositivo. Caso o upload fique carregando infinitamente, certifique-se de que o Firebase Storage tem permissões suficientes.
                   </FormDescription>
                   <FormMessage />
                   {field.value && (
