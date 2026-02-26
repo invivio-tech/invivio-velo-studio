@@ -77,7 +77,7 @@ export default function CategoriesPage() {
     if ('id' in categoryData && categoryData.id) {
       // Update
       const categoryRef = doc(firestore, 'serviceCategories', categoryData.id);
-      return updateDoc(categoryRef, categoryData as Category)
+      return updateDoc(categoryRef, categoryData as any)
         .then(() => {
           toast({
             title: 'Categoria atualizada!',
@@ -193,13 +193,13 @@ export default function CategoriesPage() {
               </TableHeader>
               <TableBody>
                 {[...Array(3)].map((_, i) => (
-                    <TableRow key={i}>
-                        <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                        <TableCell className="text-right space-x-2">
-                            <Skeleton className="h-8 w-8 inline-block" />
-                            <Skeleton className="h-8 w-8 inline-block" />
-                        </TableCell>
-                    </TableRow>
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                    <TableCell className="text-right space-x-2">
+                      <Skeleton className="h-8 w-8 inline-block" />
+                      <Skeleton className="h-8 w-8 inline-block" />
+                    </TableCell>
+                  </TableRow>
                 ))}
               </TableBody>
             </Table>
@@ -213,35 +213,35 @@ export default function CategoriesPage() {
 
           {!isLoading && !error && categories && (
             <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Nome</TableHead>
-                        <TableHead className="text-right">Ações</TableHead>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {categories.length > 0 ? (
+                  categories.map((category) => (
+                    <TableRow key={category.id}>
+                      <TableCell className="font-medium">{category.name}</TableCell>
+                      <TableCell className="text-right">
+                        <Button size="icon" variant="ghost" onClick={() => openCategoryForm(category)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={() => openDeleteAlert(category)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {categories.length > 0 ? (
-                        categories.map((category) => (
-                            <TableRow key={category.id}>
-                                <TableCell className="font-medium">{category.name}</TableCell>
-                                <TableCell className="text-right">
-                                    <Button size="icon" variant="ghost" onClick={() => openCategoryForm(category)}>
-                                        <Pencil className="h-4 w-4" />
-                                    </Button>
-                                    <Button size="icon" variant="ghost" onClick={() => openDeleteAlert(category)}>
-                                        <Trash2 className="h-4 w-4 text-destructive" />
-                                    </Button>
-                                </TableCell>
-                            </TableRow>
-                        ))
-                    ) : (
-                        <TableRow>
-                            <TableCell colSpan={2} className="text-center text-muted-foreground">
-                                Nenhuma categoria cadastrada.
-                            </TableCell>
-                        </TableRow>
-                    )}
-                </TableBody>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={2} className="text-center text-muted-foreground">
+                      Nenhuma categoria cadastrada.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
             </Table>
           )}
         </CardContent>
