@@ -200,213 +200,222 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-headline">{service ? 'Editar Serviço' : 'Novo Serviço'}</DialogTitle>
+          <DialogTitle className="font-headline text-2xl">{service ? 'Editar Serviço' : 'Novo Serviço'}</DialogTitle>
           <DialogDescription>
             {service ? 'Atualize os detalhes do serviço.' : 'Adicione um novo serviço ao seu catálogo.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome do Serviço</FormLabel>
-                  <FormControl>
-                    <Input placeholder="ex: Corte Moderno" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="categoryId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Categoria</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={areCategoriesLoading}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder={areCategoriesLoading ? 'Carregando...' : 'Selecione uma categoria'} />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {categories?.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <div className="flex items-center justify-between">
-                    <FormLabel>Descrição</FormLabel>
-                    <Button type="button" variant="ghost" size="sm" onClick={handleSuggestDescription} disabled={isSuggesting}>
-                      {isSuggesting ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Sparkles className="h-4 w-4" />
-                      )}
-                      <span className="ml-2 hidden sm:inline">Sugerir com IA</span>
-                    </Button>
-                  </div>
-                  <FormControl>
-                    <Textarea placeholder="Descreva o serviço em detalhes" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-2 pb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Left Column */}
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nome do Serviço</FormLabel>
+                      <FormControl>
+                        <Input placeholder="ex: Corte Moderno" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="categoryId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Categoria</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={areCategoriesLoading}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={areCategoriesLoading ? 'Carregando...' : 'Selecione uma categoria'} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {categories?.map((category) => (
+                            <SelectItem key={category.id} value={category.id}>
+                              {category.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="price"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Preço (R$)</FormLabel>
+                        <FormControl>
+                          <Input type="number" step="0.01" placeholder="ex: 55.00" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="duration"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Duração</FormLabel>
+                        <FormControl>
+                          <Input placeholder="ex: 45 min" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
-            <FormField
-              control={form.control}
-              name="imagePrompt"
-              render={({ field }) => (
-                <FormItem>
-                  <div className="flex items-center justify-between">
-                    <FormLabel>Prompt Imagem IA</FormLabel>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        const v = form.getValues('imagePrompt');
-                        if (v) {
-                          navigator.clipboard.writeText(v);
-                          toast({ title: 'Copiado!', description: 'O texto do prompt foi copiado para sua área de transferência.' });
-                        }
-                      }}
-                    >
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copiar
-                    </Button>
-                  </div>
-                  <FormControl>
-                    <Textarea placeholder="Copie este texto e use em uma IA para gerar uma imagem do serviço (Midjourney, DALL-E, etc)." className="min-h-24 text-sm font-mono" {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    Gerado automaticamente se usar a Sugestão IA.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="price"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Preço (R$)</FormLabel>
-                    <FormControl>
-                      <Input type="number" step="0.01" placeholder="ex: 55.00" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="duration"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Duração</FormLabel>
-                    <FormControl>
-                      <Input placeholder="ex: 45 min" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="imageUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Imagem do Serviço</FormLabel>
-                  <FormControl>
-                    <div className="flex gap-2">
-                      <Input placeholder="https://exemplo.com/imagem.jpg" {...field} />
-                      <div className="relative">
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                          onChange={handleImageUpload}
-                          disabled={isUploading}
+                <FormField
+                  control={form.control}
+                  name="featured"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 bg-muted/20">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
                         />
-                        <Button type="button" variant="outline" disabled={isUploading}>
-                          {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Upload className="h-4 w-4 mr-2 hidden sm:block" /> Upload</>}
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>
+                          Destaque na Página Inicial
+                        </FormLabel>
+                        <FormDescription>
+                          Marque para exibir este serviço na página inicial.
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Right Column */}
+              <div className="space-y-4 flex flex-col">
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex items-center justify-between">
+                        <FormLabel>Descrição</FormLabel>
+                        <Button type="button" variant="ghost" size="sm" onClick={handleSuggestDescription} disabled={isSuggesting}>
+                          {isSuggesting ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-4 w-4" />
+                          )}
+                          <span className="ml-2 hidden sm:inline">Sugerir com IA</span>
                         </Button>
                       </div>
-                    </div>
-                  </FormControl>
-                  <div className="mt-2 text-right">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => form.setValue('imageUrl', '', { shouldValidate: true })}
-                      disabled={!field.value || isUploading}
-                    >
-                      Limpar Imagem
-                    </Button>
-                  </div>
-                  <FormDescription>
-                    Cole a URL pública da imagem ou faça o upload direto do seu dispositivo. Caso o upload fique carregando infinitamente, certifique-se de que o Firebase Storage tem permissões suficientes.
-                  </FormDescription>
-                  <FormMessage />
-                  {field.value && (
-                    <div className="mt-4 relative h-[120px] w-full rounded-md overflow-hidden bg-muted border">
-                      {/* Using standard img to avoid Next.js Image domain config issues for arbitrary URLs */}
-                      <img
-                        src={field.value}
-                        alt="Preview do serviço"
-                        className="object-cover w-full h-full"
-                      />
-                    </div>
+                      <FormControl>
+                        <Textarea placeholder="Descreva o serviço em detalhes" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="featured"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>
-                      Destaque na Página Inicial
-                    </FormLabel>
-                    <FormDescription>
-                      Marque para exibir este serviço na página inicial.
-                    </FormDescription>
-                  </div>
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
+                />
+
+                <FormField
+                  control={form.control}
+                  name="imagePrompt"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex items-center justify-between">
+                        <FormLabel>Prompt Imagem IA</FormLabel>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const v = form.getValues('imagePrompt');
+                            if (v) {
+                              navigator.clipboard.writeText(v);
+                              toast({ title: 'Copiado!', description: 'O texto do prompt foi copiado para sua área de transferência.' });
+                            }
+                          }}
+                        >
+                          <Copy className="h-4 w-4 mr-2" />
+                          Copiar
+                        </Button>
+                      </div>
+                      <FormControl>
+                        <Textarea placeholder="Copie este texto e use em uma IA para gerar uma imagem do serviço (Midjourney, DALL-E, etc)." className="min-h-24 text-sm font-mono" {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        Gerado automaticamente se usar a Sugestão IA.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="imageUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Imagem do Serviço</FormLabel>
+                      <FormControl>
+                        <div className="flex gap-2">
+                          <Input placeholder="https://exemplo.com/imagem.jpg" {...field} />
+                          <div className="relative">
+                            <Input
+                              type="file"
+                              accept="image/*"
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                              onChange={handleImageUpload}
+                              disabled={isUploading}
+                            />
+                            <Button type="button" variant="outline" disabled={isUploading}>
+                              {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Upload className="h-4 w-4 mr-2 hidden sm:block" /> Upload</>}
+                            </Button>
+                          </div>
+                        </div>
+                      </FormControl>
+                      <div className="mt-2 text-right">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => form.setValue('imageUrl', '', { shouldValidate: true })}
+                          disabled={!field.value || isUploading}
+                        >
+                          Limpar Imagem
+                        </Button>
+                      </div>
+                      <FormDescription>
+                        Cole a URL da imagem ou faça o upload direto do seu dispositivo para uso no site.
+                      </FormDescription>
+                      <FormMessage />
+                      {field.value && (
+                        <div className="mt-4 relative flex-grow min-h-[140px] w-full rounded-md overflow-hidden bg-muted border">
+                          {/* Using standard img to avoid Next.js Image domain config issues for arbitrary URLs */}
+                          <img
+                            src={field.value}
+                            alt="Preview do serviço"
+                            className="object-cover w-full h-full"
+                          />
+                        </div>
+                      )}
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+            <DialogFooter className="pt-4 border-t mt-6">
               <DialogClose asChild>
                 <Button type="button" variant="ghost">Cancelar</Button>
               </DialogClose>
