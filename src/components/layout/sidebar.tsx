@@ -87,6 +87,7 @@ export default function AppSidebar() {
   );
   const { data: settings, isLoading: areSettingsLoading } = useDoc<EstablishmentSettings>(settingsRef);
   const establishmentName = settings?.name || 'Barbearia Inteligente';
+  const establishmentLogo = settings?.logoUrl;
 
   const handleLogout = async () => {
     await logout();
@@ -115,8 +116,12 @@ export default function AppSidebar() {
       <Sidebar collapsible="icon">
         <SidebarContent>
           <SidebarHeader className="h-20 flex items-center justify-center">
-            <Link href="/schedule" className="flex items-center gap-2 p-2">
-              <BarberPoleIcon className="w-8 h-8 text-primary shrink-0" />
+            <Link href="/schedule" className="flex items-center gap-2 p-2 w-full">
+              {establishmentLogo ? (
+                <img src={establishmentLogo} alt={establishmentName} className="w-10 h-10 object-contain shrink-0" />
+              ) : (
+                <BarberPoleIcon className="w-8 h-8 text-primary shrink-0" />
+              )}
               {areSettingsLoading ? (
                 <Skeleton className="h-6 w-36" />
               ) : (

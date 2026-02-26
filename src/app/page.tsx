@@ -72,13 +72,18 @@ export default function LandingPage() {
   const establishmentAddress = settings?.address || defaultSettings.address;
   const establishmentWhatsapp = settings?.whatsapp || defaultSettings.whatsapp;
   const establishmentInstagram = settings?.instagram;
+  const establishmentLogo = settings?.logoUrl;
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 items-center">
           <Link href="/" className="mr-6 flex items-center space-x-2">
-            <BarberPoleIcon className="h-6 w-6 text-primary" />
+            {establishmentLogo ? (
+              <img src={establishmentLogo} alt={establishmentName} className="h-8 max-w-[120px] object-contain" />
+            ) : (
+              <BarberPoleIcon className="h-6 w-6 text-primary" />
+            )}
             {isLoading ? (
               <Skeleton className="h-5 w-40" />
             ) : (

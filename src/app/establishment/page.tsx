@@ -19,11 +19,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Building, Loader2, Sparkles, Clock, Star, DollarSign } from 'lucide-react';
+import { Building, Loader2, Sparkles, Clock, Star, DollarSign, Upload } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { uploadImage } from '@/app/actions/uploadImage';
 
 export interface EstablishmentSettings {
   name: string;
+  logoUrl?: string;
   about: string;
   heroTitle: string;
   heroSubtitle: string;
@@ -43,6 +45,7 @@ export interface EstablishmentSettings {
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'O nome é obrigatório.' }),
+  logoUrl: z.string().optional().or(z.literal('')),
   context: z.string().optional(),
   about: z.string().min(10, { message: 'O texto sobre deve ter pelo menos 10 caracteres.' }),
   heroTitle: z.string().min(10, { message: 'O título principal é obrigatório.' }),
@@ -85,6 +88,7 @@ export default function EstablishmentPage() {
 
   const defaultValues: SettingsFormValues = {
     name: 'Barbearia Inteligente',
+    logoUrl: '',
     about: 'Fundada em 2024, nossa barbearia nasceu com o propósito de resgatar a essência das barbearias clássicas, incorporando tecnologia para oferecer uma experiência única e conveniente. Nossos profissionais são artistas apaixonados, dedicados a entregar o melhor resultado para cada cliente. Utilizamos produtos de alta qualidade e as técnicas mais apuradas para garantir que seu cabelo e barba estejam sempre impecáveis. Venha nos visitar e descubra por que somos a escolha inteligente para o homem moderno.',
     heroTitle: 'Estilo e Precisão em Cada Corte.',
     heroSubtitle: 'Experimente a combinação perfeita de tradição e modernidade. Na Barbearia Inteligente, cuidamos do seu visual com a maestria que você merece.',
@@ -113,6 +117,7 @@ export default function EstablishmentPage() {
       form.reset({
         ...defaultValues,
         ...settings,
+        logoUrl: settings.logoUrl || '',
         whatsapp: settings.whatsapp || '',
         instagram: settings.instagram || '',
         context: settings.context || '',
@@ -125,6 +130,44 @@ export default function EstablishmentPage() {
       });
     }
   }, [settings, form]);
+
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingLogo(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const result = await uploadImage(formData);
+
+      if (result.error) {
+        toast({
+          variant: 'destructive',
+          title: 'Erro',
+          description: result.error,
+        });
+      } else if (result.url) {
+        form.setValue('logoUrl', result.url, { shouldValidate: true });
+        toast({
+          title: 'Upload concluído',
+          description: 'A logo foi salva com sucesso.',
+        });
+      }
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Erro no Upload',
+        description: 'Não foi possível enviar a logo.',
+      });
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
 
   async function onSubmit(values: SettingsFormValues) {
     if (!settingsRef) return;
@@ -242,6 +285,46 @@ export default function EstablishmentPage() {
                   <FormControl>
                     <Input placeholder="Nome do seu negócio" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+
+              <FormField control={form.control} name="logoUrl" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Logotipo do Estabelecimento (Substitui o ícone padrão)</FormLabel>
+                  <FormControl>
+                    <div className="flex gap-4 items-center">
+                      <div className="relative flex-1">
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                          onChange={handleLogoUpload}
+                          disabled={isUploadingLogo}
+                        />
+                        <Button type="button" variant="outline" className="w-full justify-start" disabled={isUploadingLogo}>
+                          {isUploadingLogo ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+                          {field.value ? 'Trocar Logotipo' : 'Fazer Upload do Logotipo'}
+                        </Button>
+                      </div>
+                      {field.value && (
+                        <div className="h-10 w-10 relative overflow-hidden rounded-md border bg-muted flex-shrink-0">
+                          <img src={field.value} alt="Logo" className="w-full h-full object-contain" />
+                        </div>
+                      )}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => form.setValue('logoUrl', '', { shouldValidate: true })}
+                        disabled={!field.value || isUploadingLogo}
+                      >
+                        Remover
+                      </Button>
+                    </div>
+                  </FormControl>
+                  <FormDescription>
+                    Se configurado, este logotipo aparecerá no menu principal e no cabeçalho do site.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )} />
