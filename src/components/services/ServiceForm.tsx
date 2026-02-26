@@ -26,13 +26,14 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { type Service, type ServiceWithId } from '@/app/services/page';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles, Copy, Upload } from 'lucide-react';
 import { useState } from 'react';
 import { generateServiceDescription } from '@/ai/flows/generate-service-description';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useDoc, useStorage } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Checkbox } from '../ui/checkbox';
 import type { EstablishmentSettings } from '@/app/establishment/page';
 
@@ -62,9 +63,11 @@ type ServiceFormProps = {
 export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: ServiceFormProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [isSuggesting, setIsSuggesting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
 
   const firestore = useFirestore();
+  const storage = useStorage();
   const categoriesCollection = useMemoFirebase(
     () => (firestore ? collection(firestore, 'serviceCategories') : null),
     [firestore]
@@ -121,6 +124,41 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
       setIsSaving(false);
     }
   }
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!storage) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro',
+        description: 'Serviço de armazenamento não disponível.',
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const storageRef = ref(storage, `services/${Date.now()}_${file.name}`);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      form.setValue('imageUrl', url, { shouldValidate: true });
+      toast({
+        title: 'Upload concluído',
+        description: 'A imagem foi carregada com sucesso.',
+      });
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Erro no Upload',
+        description: 'Não foi possível enviar a imagem.',
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleSuggestDescription = async () => {
     const { name, price, duration } = form.getValues();
@@ -237,7 +275,24 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
               name="imagePrompt"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Prompt Imagem IA</FormLabel>
+                  <div className="flex items-center justify-between">
+                    <FormLabel>Prompt Imagem IA</FormLabel>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const v = form.getValues('imagePrompt');
+                        if (v) {
+                          navigator.clipboard.writeText(v);
+                          toast({ title: 'Copiado!', description: 'O texto do prompt foi copiado para sua área de transferência.' });
+                        }
+                      }}
+                    >
+                      <Copy className="h-4 w-4 mr-2" />
+                      Copiar
+                    </Button>
+                  </div>
                   <FormControl>
                     <Textarea placeholder="Copie este texto e use em uma IA para gerar uma imagem do serviço (Midjourney, DALL-E, etc)." className="min-h-24 text-sm font-mono" {...field} />
                   </FormControl>
@@ -283,14 +338,38 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
               name="imageUrl"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>URL da Imagem</FormLabel>
-                  <FormControl>
-                    <Input placeholder="https://exemplo.com/imagem.jpg" {...field} />
-                  </FormControl>
+                  <FormLabel>Imagem do Serviço</FormLabel>
+                  <div className="flex gap-2">
+                    <FormControl>
+                      <Input placeholder="https://exemplo.com/imagem.jpg" {...field} />
+                    </FormControl>
+                    <div className="relative">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        onChange={handleImageUpload}
+                        disabled={isUploading}
+                      />
+                      <Button type="button" variant="outline" disabled={isUploading}>
+                        {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Upload className="h-4 w-4 mr-2 hidden sm:block" /> Upload</>}
+                      </Button>
+                    </div>
+                  </div>
                   <FormDescription>
-                    Cole a URL de uma imagem da web.
+                    Cole a URL de uma imagem da web ou faça o upload de um arquivo direto do seu dispositivo.
                   </FormDescription>
                   <FormMessage />
+                  {field.value && (
+                    <div className="mt-4 relative h-[120px] w-full rounded-md overflow-hidden bg-muted border">
+                      {/* Using standard img to avoid Next.js Image domain config issues for arbitrary URLs */}
+                      <img
+                        src={field.value}
+                        alt="Preview do serviço"
+                        className="object-cover w-full h-full"
+                      />
+                    </div>
+                  )}
                 </FormItem>
               )}
             />
