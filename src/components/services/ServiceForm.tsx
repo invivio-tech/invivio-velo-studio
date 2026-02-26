@@ -47,7 +47,7 @@ const formSchema = z.object({
   description: z.string().min(10, { message: 'A descrição deve ter pelo menos 10 caracteres.' }),
   price: z.coerce.number().positive({ message: 'O preço deve ser um número positivo.' }),
   duration: z.string().min(2, { message: 'A duração é obrigatória.' }),
-  imageUrl: z.string().url({ message: 'Por favor, insira uma URL válida.' }).optional().or(z.literal('')),
+  imageUrl: z.string().optional().or(z.literal('')),
   categoryId: z.string().min(1, { message: 'A categoria é obrigatória.' }),
   featured: z.boolean().default(false),
   imagePrompt: z.string().optional(),
