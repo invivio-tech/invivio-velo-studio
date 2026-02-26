@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, useUserProfile, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy, Timestamp, doc } from 'firebase/firestore';
+import { collection, query, where, orderBy, Timestamp, doc, addDoc } from 'firebase/firestore';
 import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -13,7 +13,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { FileText, DollarSign, Wallet, ArrowLeft, ArrowRight, Printer } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import { FileText, DollarSign, Wallet, ArrowLeft, ArrowRight, Printer, PlusCircle, TrendingDown, TrendingUp } from 'lucide-react';
+
+interface Expense {
+  id: string;
+  description: string;
+  value: number;
+  date: Timestamp;
+}
 
 interface Appointment {
   id: string;
@@ -39,8 +50,16 @@ export default function InvoicesPage() {
   const { userProfile, isLoading: isProfileLoading } = useUserProfile();
   const router = useRouter();
   const firestore = useFirestore();
+  const { toast } = useToast();
 
   const [currentDate, setCurrentDate] = useState(new Date());
+
+  // Form State
+  const [isExpenseOpen, setIsExpenseOpen] = useState(false);
+  const [expenseDesc, setExpenseDesc] = useState('');
+  const [expenseValue, setExpenseValue] = useState('');
+  const [expenseDate, setExpenseDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
+  const [isSubmittingExpense, setIsSubmittingExpense] = useState(false);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -76,13 +95,26 @@ export default function InvoicesPage() {
     },
     [firestore, startOfCurrentMonth, endOfCurrentMonth]
   );
-
   const { data: appointmentsRaw, isLoading: appointmentsLoading } = useCollection<Appointment>(appointmentsRef);
+
+  const expensesRef = useMemoFirebase(
+    () => {
+      if (!firestore || userProfile?.role !== 'admin') return null;
+      let q = query(
+        collection(firestore, 'expenses'),
+        where('date', '>=', Timestamp.fromDate(startOfCurrentMonth)),
+        where('date', '<=', Timestamp.fromDate(endOfCurrentMonth))
+      );
+      return q;
+    },
+    [firestore, startOfCurrentMonth, endOfCurrentMonth, userProfile?.role]
+  );
+  const { data: expensesRaw, isLoading: expensesLoading } = useCollection<Expense>(expensesRef);
 
   // Default commission to 25% if not set
   const commissionPercentage = settings?.professionalCommissionPercentage ?? 25;
 
-  const isLoading = isUserLoading || isProfileLoading || appointmentsLoading;
+  const isLoading = isUserLoading || isProfileLoading || appointmentsLoading || expensesLoading;
 
   if (isLoading || !userProfile) {
     return (
@@ -115,7 +147,10 @@ export default function InvoicesPage() {
   }
 
   // --- Calculations for Admin ---
+  const expenses = expensesRaw || [];
   const totalRevenue = viewData.reduce((acc, apt) => acc + Number(apt.servicePrice), 0);
+  const totalExpenses = expenses.reduce((acc, exp) => acc + Number(exp.value), 0);
+  const netProfit = totalRevenue - totalExpenses;
 
   // Calculate commissions grouped by professional
   const commissionsByProfessional = viewData.reduce((acc, apt) => {
@@ -134,6 +169,43 @@ export default function InvoicesPage() {
     acc[profId].commissionToPay += Number(apt.servicePrice) * (commissionPercentage / 100);
     return acc;
   }, {} as Record<string, { name: string, totalServices: number, totalRevenue: number, commissionToPay: number }>);
+
+  const handleAddExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!firestore || !expenseDesc || !expenseValue || !expenseDate) return;
+
+    setIsSubmittingExpense(true);
+    try {
+      const expensesColl = collection(firestore, 'expenses');
+
+      const parts = expenseDate.split('-');
+      const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+
+      await addDoc(expensesColl, {
+        description: expenseDesc,
+        value: parseFloat(expenseValue),
+        date: Timestamp.fromDate(d)
+      });
+
+      toast({
+        title: 'Despesa Adicionada',
+        description: 'O valor foi registrado com sucesso e deduzido do caixa.',
+      });
+
+      setIsExpenseOpen(false);
+      setExpenseDesc('');
+      setExpenseValue('');
+      setExpenseDate(() => format(new Date(), 'yyyy-MM-dd'));
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao adicionar despesa',
+        description: 'Tente novamente mais tarde.',
+      });
+    } finally {
+      setIsSubmittingExpense(false);
+    }
+  };
 
   // --- View Renders ---
 
@@ -161,65 +233,171 @@ export default function InvoicesPage() {
       </TabsList>
 
       <TabsContent value="cashflow" className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Card className="bg-primary text-primary-foreground">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm border-0 font-medium">Receita Total do Mês</CardTitle>
-              <DollarSign className="h-4 w-4 opacity-75" />
+        <div className="flex justify-end mb-4">
+          <Dialog open={isExpenseOpen} onOpenChange={setIsExpenseOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Registrar Despesa
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Registrar Nova Despesa</DialogTitle>
+                <DialogDescription>
+                  Insira os detalhes técnicos da despesa para subtraí-la do faturamento.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleAddExpense} className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="date">Data da Despesa</Label>
+                  <Input
+                    id="date"
+                    type="date"
+                    required
+                    value={expenseDate}
+                    onChange={(e) => setExpenseDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="desc">Descrição</Label>
+                  <Input
+                    id="desc"
+                    placeholder="Ex: Aluguel, Produtos, Energia..."
+                    required
+                    value={expenseDesc}
+                    onChange={(e) => setExpenseDesc(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="val">Valor (R$)</Label>
+                  <Input
+                    id="val"
+                    type="number"
+                    step="0.01"
+                    placeholder="Ex: 50.00"
+                    required
+                    value={expenseValue}
+                    onChange={(e) => setExpenseValue(e.target.value)}
+                  />
+                </div>
+                <DialogFooter className="mt-6">
+                  <Button type="submit" disabled={isSubmittingExpense}>
+                    {isSubmittingExpense ? 'Salvando...' : 'Salvar Despesa'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3 mb-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 bg-emerald-50 text-emerald-900 border-b border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800/50">
+              <CardTitle className="text-sm font-medium">Entradas (Faturamento)</CardTitle>
+              <TrendingUp className="h-4 w-4" />
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{formatCurrency(totalRevenue)}</div>
-              <p className="text-xs opacity-75 mt-1">Serviços concluídos</p>
+            <CardContent className="pt-4">
+              <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
+              <p className="text-xs text-muted-foreground mt-1">{viewData.length} Serviços concluídos</p>
             </CardContent>
           </Card>
+
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Atendimentos Bem-sucedidos</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
+            <CardHeader className="flex flex-row items-center justify-between pb-2 bg-destructive/10 text-destructive border-b border-destructive/20">
+              <CardTitle className="text-sm font-medium">Saídas (Despesas)</CardTitle>
+              <TrendingDown className="h-4 w-4" />
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{viewData.length}</div>
+            <CardContent className="pt-4">
+              <div className="text-2xl font-bold">{formatCurrency(totalExpenses)}</div>
+              <p className="text-xs text-muted-foreground mt-1">{expenses.length} Transações registradas</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-primary text-primary-foreground">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm border-0 font-medium">Lucro Líquido Parcial</CardTitle>
+              <DollarSign className="h-4 w-4 opacity-75" />
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="text-3xl font-bold">{formatCurrency(netProfit)}</div>
+              <p className="text-xs opacity-75 mt-1">Sem considerar repasses e impostos extra</p>
             </CardContent>
           </Card>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Histórico de Receitas (Mês Atual)</CardTitle>
-            <CardDescription>Resumo de todos os serviços prestados que geraram caixa.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Serviço</TableHead>
-                  <TableHead>Profissional</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {viewData.length === 0 ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Histórico de Receitas (Mês Atual)</CardTitle>
+              <CardDescription>Resumo de todos os serviços prestados que geraram caixa.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">Nenhum serviço faturado este mês.</TableCell>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Serviço</TableHead>
+                    <TableHead>Profissional</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
                   </TableRow>
-                ) : (
-                  // Sort by most recent inside the month
-                  [...viewData].sort((a, b) => b.startTime.seconds - a.startTime.seconds).map(apt => (
-                    <TableRow key={apt.id}>
-                      <TableCell className="font-medium">{format(apt.startTime.toDate(), "dd/MM 'às' HH:mm", { locale: ptBR })}</TableCell>
-                      <TableCell>{apt.serviceName}</TableCell>
-                      <TableCell>{apt.professionalName}</TableCell>
-                      <TableCell>{apt.customerName}</TableCell>
-                      <TableCell className="text-right text-emerald-600 font-semibold dark:text-emerald-400">{formatCurrency(apt.servicePrice)}</TableCell>
+                </TableHeader>
+                <TableBody>
+                  {viewData.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">Nenhum serviço faturado este mês.</TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                  ) : (
+                    // Sort by most recent inside the month
+                    [...viewData].sort((a, b) => b.startTime.seconds - a.startTime.seconds).map(apt => (
+                      <TableRow key={apt.id}>
+                        <TableCell className="font-medium">{format(apt.startTime.toDate(), "dd/MM 'às' HH:mm", { locale: ptBR })}</TableCell>
+                        <TableCell>{apt.serviceName}</TableCell>
+                        <TableCell>{apt.professionalName}</TableCell>
+                        <TableCell>{apt.customerName}</TableCell>
+                        <TableCell className="text-right text-emerald-600 font-semibold dark:text-emerald-400">{formatCurrency(apt.servicePrice)}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Histórico de Despesas</CardTitle>
+              <CardDescription>Resumo dos custos mensais declarados.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Descrição</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {expenses.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center h-24 text-muted-foreground">Nenhuma despesa registrada este mês.</TableCell>
+                    </TableRow>
+                  ) : (
+                    [...expenses].sort((a, b) => b.date.seconds - a.date.seconds).map(exp => (
+                      <TableRow key={exp.id}>
+                        <TableCell className="font-medium">{format(exp.date.toDate(), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
+                        <TableCell>{exp.description}</TableCell>
+                        <TableCell className="text-right text-destructive font-semibold">-{formatCurrency(exp.value)}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </div>
       </TabsContent>
 
       <TabsContent value="commissions" className="space-y-4">
