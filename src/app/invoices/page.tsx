@@ -53,8 +53,8 @@ export default function InvoicesPage() {
   const handleNextMonth = () => setCurrentDate(addMonths(currentDate, 1));
 
   // Determine time range for the current month view
-  const startOfCurrentMonth = startOfMonth(currentDate);
-  const endOfCurrentMonth = endOfMonth(currentDate);
+  const startOfCurrentMonth = useMemo(() => startOfMonth(currentDate), [currentDate]);
+  const endOfCurrentMonth = useMemo(() => endOfMonth(currentDate), [currentDate]);
 
   // Firestore Refs
   const settingsRef = useMemoFirebase(
