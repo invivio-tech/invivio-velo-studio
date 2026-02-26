@@ -110,7 +110,8 @@ export default function InvoicesPage() {
   if (role === 'professional') {
     viewData = completedAppointments.filter(a => a.professionalId === user?.uid);
   } else if (role === 'client') {
-    viewData = completedAppointments.filter(a => a.customerId === user?.uid);
+    // Clients shouldn't access this page anymore based on user request, but just in case:
+    viewData = [];
   }
 
   // --- Calculations for Admin ---
@@ -324,40 +325,18 @@ export default function InvoicesPage() {
     );
   };
 
-  const renderClientView = () => (
-    <Card>
-      <CardHeader>
-        <CardTitle>Seus Recibos</CardTitle>
-        <CardDescription>Histórico de todos os seus serviços realizados e pagos em nossa barbearia.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {viewData.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground">Você não possui recibos neste mês.</div>
-          ) : (
-            [...viewData].sort((a, b) => b.startTime.seconds - a.startTime.seconds).map(apt => (
-              <div key={apt.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                <div className="mb-4 sm:mb-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800">Pago</Badge>
-                    <span className="text-sm font-medium">{format(apt.startTime.toDate(), "dd 'de' MMMM, yyyy - HH:mm", { locale: ptBR })}</span>
-                  </div>
-                  <h3 className="font-semibold text-lg">{apt.serviceName}</h3>
-                  <p className="text-sm text-muted-foreground">Profissional: {apt.professionalName}</p>
-                </div>
-                <div className="flex items-center gap-4 w-full sm:w-auto mt-2 sm:mt-0">
-                  <span className="text-xl font-bold bg-muted px-3 py-1 rounded-md">{formatCurrency(apt.servicePrice)}</span>
-                  <Button variant="ghost" size="icon" onClick={() => window.print()} title="Imprimir Comprovante">
-                    <Printer className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
+
+  if (role === 'client') {
+    return (
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 max-w-7xl mx-auto flex flex-col items-center justify-center min-h-[60vh]">
+        <Wallet className="h-16 w-16 text-muted-foreground mb-4 opacity-20" />
+        <h1 className="text-2xl font-headline font-bold tracking-tight text-center">Acesso Restrito</h1>
+        <p className="text-muted-foreground text-center max-w-md">
+          A seção de faturamento está disponível apenas para a administração e profissionais do estabelecimento.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 max-w-7xl mx-auto">
@@ -369,7 +348,6 @@ export default function InvoicesPage() {
 
       {role === 'admin' && renderAdminView()}
       {role === 'professional' && renderProfessionalView()}
-      {role === 'client' && renderClientView()}
     </div>
   );
 }
