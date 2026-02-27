@@ -263,6 +263,65 @@ export default function InvoicesPage() {
     return acc;
   }, {} as Record<string, { name: string, totalServices: number, totalRevenue: number, commissionToPay: number }>);
 
+  const handlePrintReceipt = (tx: ProfessionalTransaction) => {
+    const receiptWindow = window.open('', '_blank');
+    if (!receiptWindow) return;
+
+    const estabName = settings?.name || 'Barbearia';
+
+    const html = `
+      <html>
+        <head>
+          <title>Recibo - ${tx.professionalName}</title>
+          <style>
+            body { font-family: sans-serif; padding: 40px; color: #333; max-width: 800px; margin: 0 auto; }
+            .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #eee; padding-bottom: 20px; }
+            .title { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+            .subtitle { color: #666; }
+            .content { line-height: 1.6; font-size: 16px; margin-bottom: 50px; }
+            .value { font-size: 20px; font-weight: bold; background: #f9f9f9; padding: 15px; text-align: center; border: 1px dashed #ccc; margin: 30px 0; }
+            .signatures { display: flex; justify-content: space-around; margin-top: 80px; }
+            .sig-line { width: 40%; border-top: 1px solid #333; text-align: center; padding-top: 10px; color: #666; }
+            .footer { text-align: center; margin-top: 50px; font-size: 12px; color: #999; }
+          </style>
+        </head>
+        <body onload="window.print();">
+          <div class="header">
+            <div class="title">${estabName}</div>
+            <div class="subtitle">Recibo de Pagamento de Comissão</div>
+          </div>
+          
+          <div class="content">
+            <p>Recebi de <strong>${estabName}</strong>, a importância de:</p>
+            <div class="value">
+              ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(tx.amount)}
+            </div>
+            <p>Referente ao saque/acerto de comissões por serviços prestados.</p>
+            <p><strong>Data de Pagamento do Saque:</strong> ${format(tx.date.toDate(), "dd 'de' MMMM 'de' yyyy, 'às' HH:mm", { locale: ptBR })}</p>
+          </div>
+
+          <div class="signatures">
+            <div class="sig-line">
+              <strong>${tx.professionalName}</strong><br>
+              Profissional
+            </div>
+            <div class="sig-line">
+              <strong>${estabName}</strong><br>
+              Administração
+            </div>
+          </div>
+          
+          <div class="footer">
+            Documento gerado eletronicamente pelo sistema de gestão. ID: ${tx.id}
+          </div>
+        </body>
+      </html>
+    `;
+
+    receiptWindow.document.write(html);
+    receiptWindow.document.close();
+  };
+
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!firestore || !expenseDesc || !expenseValue || !expenseDate) return;
@@ -728,40 +787,77 @@ export default function InvoicesPage() {
           </Card>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Extrato de Serviços</CardTitle>
-            <CardDescription>Todos os atendimentos finalizados por você neste mês.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Serviço</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead className="text-right">Sua Parte</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {viewData.length === 0 ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Extrato de Serviços</CardTitle>
+              <CardDescription>Atendimentos finalizados por você (Ganhos).</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center h-24 text-muted-foreground">Nenhum serviço realizado ainda.</TableCell>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Serviço</TableHead>
+                    <TableHead className="text-right">Sua Parte</TableHead>
                   </TableRow>
-                ) : (
-                  [...viewData].sort((a, b) => b.startTime.seconds - a.startTime.seconds).map(apt => (
-                    <TableRow key={apt.id}>
-                      <TableCell className="font-medium">{format(apt.startTime.toDate(), "dd/MM 'às' HH:mm", { locale: ptBR })}</TableCell>
-                      <TableCell>{apt.serviceName}</TableCell>
-                      <TableCell>{apt.customerName}</TableCell>
-                      <TableCell className="text-right font-semibold text-primary">{formatCurrency(Number(apt.servicePrice) * (commissionPercentage / 100))}</TableCell>
+                </TableHeader>
+                <TableBody>
+                  {viewData.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center h-24 text-muted-foreground">Nenhum serviço realizado ainda.</TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                  ) : (
+                    [...viewData].sort((a, b) => b.startTime.seconds - a.startTime.seconds).map(apt => (
+                      <TableRow key={apt.id}>
+                        <TableCell className="font-medium">{format(apt.startTime.toDate(), "dd/MM", { locale: ptBR })}</TableCell>
+                        <TableCell className="truncate max-w-[120px]" title={apt.serviceName}>{apt.serviceName}</TableCell>
+                        <TableCell className="text-right font-semibold text-emerald-600">+{formatCurrency(Number(apt.servicePrice) * (commissionPercentage / 100))}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Extrato de Pagamentos</CardTitle>
+              <CardDescription>Saques transferidos para você pela barbearia.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data do Saque</TableHead>
+                    <TableHead className="text-right">Valor Recebido</TableHead>
+                    <TableHead className="text-right">Comprovante</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {!transactionsRaw || transactionsRaw.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center h-24 text-muted-foreground">Você ainda não possui pagamentos emitidos.</TableCell>
+                    </TableRow>
+                  ) : (
+                    [...transactionsRaw].sort((a, b) => b.date.seconds - a.date.seconds).map(tx => (
+                      <TableRow key={tx.id}>
+                        <TableCell className="font-medium">{format(tx.date.toDate(), "dd/MM 'às' HH:mm", { locale: ptBR })}</TableCell>
+                        <TableCell className="text-right text-blue-600 font-bold">{formatCurrency(tx.amount)}</TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="icon" title="Ver Recibo" onClick={() => handlePrintReceipt(tx)}>
+                            <Printer className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   };
