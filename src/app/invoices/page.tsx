@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, useUserProfile, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
+import type { UserProfile } from '@/firebase';
 import { collection, query, where, orderBy, Timestamp, doc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -167,30 +168,47 @@ export default function InvoicesPage() {
   );
   const { data: transactionsRaw, isLoading: txsLoading } = useCollection<ProfessionalTransaction>(transactionsRef);
 
+  const usersRef = useMemoFirebase(
+    () => {
+      if (!firestore || userProfile?.role !== 'admin') return null;
+      return collection(firestore, 'users');
+    },
+    [firestore, userProfile?.role]
+  );
+  const { data: usersRaw, isLoading: usersLoading } = useCollection<UserProfile>(usersRef);
+
   // Default commission to 25% if not set
   const commissionPercentage = settings?.professionalCommissionPercentage ?? 25;
 
   // --- Virtual Account Calculations ---
   const virtualAccounts = useMemo(() => {
-    const acc: Record<string, { professionalId: string, name: string, totalEarned: number, totalPaid: number, balance: number }> = {};
+    const acc: Record<string, { professionalId: string, name: string, email: string, totalEarned: number, totalPaid: number, balance: number }> = {};
 
     allAppointmentsRaw?.forEach(apt => {
       const pId = apt.professionalId;
-      if (!acc[pId]) acc[pId] = { professionalId: pId, name: apt.professionalName || 'Desconhecido', totalEarned: 0, totalPaid: 0, balance: 0 };
+      if (!acc[pId]) acc[pId] = { professionalId: pId, name: apt.professionalName || 'Desconhecido', email: '', totalEarned: 0, totalPaid: 0, balance: 0 };
       acc[pId].totalEarned += Number(apt.servicePrice) * (commissionPercentage / 100);
     });
 
     transactionsRaw?.forEach(tx => {
       const pId = tx.professionalId;
-      if (!acc[pId]) acc[pId] = { professionalId: pId, name: tx.professionalName || 'Desconhecido', totalEarned: 0, totalPaid: 0, balance: 0 };
+      if (!acc[pId]) acc[pId] = { professionalId: pId, name: tx.professionalName || 'Desconhecido', email: '', totalEarned: 0, totalPaid: 0, balance: 0 };
       acc[pId].totalPaid += tx.amount;
     });
 
+    // Populate emails if Admin
+    if (usersRaw) {
+      Object.keys(acc).forEach(pId => {
+        const foundUser = usersRaw.find(u => u.id === pId);
+        if (foundUser) acc[pId].email = foundUser.email;
+      });
+    }
+
     Object.values(acc).forEach(v => v.balance = v.totalEarned - v.totalPaid);
     return acc;
-  }, [allAppointmentsRaw, transactionsRaw, commissionPercentage]);
+  }, [allAppointmentsRaw, transactionsRaw, commissionPercentage, usersRaw]);
 
-  const isLoading = isUserLoading || isProfileLoading || appointmentsLoading || expensesLoading || recurringExpensesLoading || allApptsLoading || txsLoading;
+  const isLoading = isUserLoading || isProfileLoading || appointmentsLoading || expensesLoading || recurringExpensesLoading || allApptsLoading || txsLoading || usersLoading;
 
   if (isLoading || !userProfile) {
     return (
@@ -664,6 +682,7 @@ export default function InvoicesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Profissional</TableHead>
+                  <TableHead>Email</TableHead>
                   <TableHead>Geração Total Histórica</TableHead>
                   <TableHead>Total Pago (Saques)</TableHead>
                   <TableHead className="text-right">Saldo Atual (A Pagar)</TableHead>
@@ -673,17 +692,59 @@ export default function InvoicesPage() {
               <TableBody>
                 {Object.keys(virtualAccounts).length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">Nenhum profissional com histórico de comissões.</TableCell>
+                    <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">Nenhum profissional com histórico de comissões.</TableCell>
                   </TableRow>
                 ) : (
                   Object.values(virtualAccounts).map((prof, i) => (
                     <TableRow key={i}>
                       <TableCell className="font-medium">{prof.name}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm">{prof.email || '-'}</TableCell>
                       <TableCell className="text-muted-foreground">{formatCurrency(prof.totalEarned)}</TableCell>
                       <TableCell className="text-muted-foreground">{formatCurrency(prof.totalPaid)}</TableCell>
                       <TableCell className="text-right font-bold text-blue-600 dark:text-blue-400 text-lg">{formatCurrency(prof.balance)}</TableCell>
                       <TableCell className="text-right">
                         <Button variant="outline" size="sm" onClick={() => handleOpenPayout(prof.professionalId, prof.name, prof.balance)} disabled={prof.balance <= 0}>Realizar Saque</Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>Últimos Pagamentos Emitidos (Recibos)</CardTitle>
+            <CardDescription>Consulte os últimos saques de comissões que você fez e imprima o recibo ou salve-o em PDF.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Profissional</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead className="text-right">Valor Pago</TableHead>
+                  <TableHead className="text-right">Ação</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {!transactionsRaw || transactionsRaw.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center h-12 text-muted-foreground text-xs">Nenhum saque efetuado ainda.</TableCell>
+                  </TableRow>
+                ) : (
+                  [...transactionsRaw].sort((a, b) => b.date.seconds - a.date.seconds).slice(0, 15).map((tx) => (
+                    <TableRow key={tx.id}>
+                      <TableCell className="text-sm">{format(tx.date.toDate(), "dd/MM/yyyy HH:mm")}</TableCell>
+                      <TableCell className="text-sm font-medium">{tx.professionalName}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{virtualAccounts[tx.professionalId]?.email || '-'}</TableCell>
+                      <TableCell className="text-right text-sm text-emerald-600 font-semibold">{formatCurrency(tx.amount)}</TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" onClick={() => handlePrintReceipt(tx)}>
+                          <Printer className="h-4 w-4 mr-2" /> Recibo
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))
