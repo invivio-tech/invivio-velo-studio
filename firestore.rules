@@ -35,6 +35,11 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
+    // Expenses: Allow read/write for any logged in user
+    match /expenses/{expenseId} {
+      allow read, write: if isSignedIn();
+    }
+
     // ----------------------------------------------------------------------
     // Public Read / Auth Write Collections
     // ----------------------------------------------------------------------
