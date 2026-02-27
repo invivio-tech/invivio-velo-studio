@@ -59,6 +59,7 @@ const professionalMenuItems = [
   { href: '/schedule', label: 'Painel', icon: Calendar },
   { href: '/book-appointment', label: 'Novo Agendamento', icon: PlusCircle },
   { href: '/services', label: 'Serviços', icon: BookOpen },
+  { href: '/invoices', label: 'Meus Extratos', icon: FileText },
 ];
 
 const clientMenuItems = [
