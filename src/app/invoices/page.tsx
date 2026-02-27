@@ -27,6 +27,15 @@ interface Expense {
   date: Timestamp;
 }
 
+interface ProfessionalTransaction {
+  id: string;
+  professionalId: string;
+  professionalName: string;
+  amount: number;
+  type: 'payout' | 'adjustment';
+  date: Timestamp;
+}
+
 interface Appointment {
   id: string;
   customerId: string;
@@ -123,10 +132,40 @@ export default function InvoicesPage() {
   );
   const { data: recurringExpensesRaw, isLoading: recurringExpensesLoading } = useCollection<Expense>(recurringExpensesRef);
 
+  // --- Virtual Account Queries ---
+  const allAppointmentsRef = useMemoFirebase(
+    () => {
+      if (!firestore) return null;
+      let q = query(
+        collection(firestore, 'appointments'),
+        where('status', '==', 'completed')
+      );
+      if (userProfile?.role === 'professional' && user?.uid) {
+        q = query(q, where('professionalId', '==', user.uid));
+      }
+      return q;
+    },
+    [firestore, userProfile?.role, user?.uid]
+  );
+  const { data: allAppointmentsRaw, isLoading: allApptsLoading } = useCollection<Appointment>(allAppointmentsRef);
+
+  const transactionsRef = useMemoFirebase(
+    () => {
+      if (!firestore) return null;
+      let q: any = collection(firestore, 'professionalTransactions');
+      if (userProfile?.role === 'professional' && user?.uid) {
+        q = query(q, where('professionalId', '==', user.uid));
+      }
+      return q;
+    },
+    [firestore, userProfile?.role, user?.uid]
+  );
+  const { data: transactionsRaw, isLoading: txsLoading } = useCollection<ProfessionalTransaction>(transactionsRef);
+
   // Default commission to 25% if not set
   const commissionPercentage = settings?.professionalCommissionPercentage ?? 25;
 
-  const isLoading = isUserLoading || isProfileLoading || appointmentsLoading || expensesLoading || recurringExpensesLoading;
+  const isLoading = isUserLoading || isProfileLoading || appointmentsLoading || expensesLoading || recurringExpensesLoading || allApptsLoading || txsLoading;
 
   if (isLoading || !userProfile) {
     return (
@@ -198,6 +237,26 @@ export default function InvoicesPage() {
     acc[profId].commissionToPay += Number(apt.servicePrice) * (commissionPercentage / 100);
     return acc;
   }, {} as Record<string, { name: string, totalServices: number, totalRevenue: number, commissionToPay: number }>);
+
+  // --- Virtual Account Calculations ---
+  const virtualAccounts = useMemo(() => {
+    const acc: Record<string, { professionalId: string, name: string, totalEarned: number, totalPaid: number, balance: number }> = {};
+
+    allAppointmentsRaw?.forEach(apt => {
+      const pId = apt.professionalId;
+      if (!acc[pId]) acc[pId] = { professionalId: pId, name: apt.professionalName || 'Desconhecido', totalEarned: 0, totalPaid: 0, balance: 0 };
+      acc[pId].totalEarned += Number(apt.servicePrice) * (commissionPercentage / 100);
+    });
+
+    transactionsRaw?.forEach(tx => {
+      const pId = tx.professionalId;
+      if (!acc[pId]) acc[pId] = { professionalId: pId, name: tx.professionalName || 'Desconhecido', totalEarned: 0, totalPaid: 0, balance: 0 };
+      acc[pId].totalPaid += tx.amount;
+    });
+
+    Object.values(acc).forEach(v => v.balance = v.totalEarned - v.totalPaid);
+    return acc;
+  }, [allAppointmentsRaw, transactionsRaw, commissionPercentage]);
 
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -292,6 +351,37 @@ export default function InvoicesPage() {
     setIsExpenseOpen(true);
   };
 
+  const [isPayoutOpen, setIsPayoutOpen] = useState(false);
+  const [payoutProfId, setPayoutProfId] = useState('');
+  const [payoutProfName, setPayoutProfName] = useState('');
+  const [payoutAmount, setPayoutAmount] = useState('');
+
+  const handleOpenPayout = (profId: string, profName: string, balance: number) => {
+    setPayoutProfId(profId);
+    setPayoutProfName(profName);
+    setPayoutAmount(balance.toFixed(2));
+    setIsPayoutOpen(true);
+  };
+
+  const handleProcessPayout = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!firestore || !payoutProfId || !payoutAmount) return;
+
+    try {
+      await addDoc(collection(firestore, 'professionalTransactions'), {
+        professionalId: payoutProfId,
+        professionalName: payoutProfName,
+        amount: parseFloat(payoutAmount),
+        type: 'payout',
+        date: Timestamp.now(),
+      });
+      toast({ title: 'Pagamento Registrado', description: 'O saldo da conta virtual foi atualizado.' });
+      setIsPayoutOpen(false);
+    } catch (e) {
+      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível registrar o pagamento.' });
+    }
+  };
+
   // --- View Renders ---
 
   const renderMonthNavigation = () => (
@@ -313,8 +403,8 @@ export default function InvoicesPage() {
   const renderAdminView = () => (
     <Tabs defaultValue="cashflow" className="w-full">
       <TabsList className="grid w-full grid-cols-2 mb-8">
-        <TabsTrigger value="cashflow">Fluxo de Caixa</TabsTrigger>
-        <TabsTrigger value="commissions">Comissões (Fechamento)</TabsTrigger>
+        <TabsTrigger value="cashflow">Fluxo de Caixa Mensal</TabsTrigger>
+        <TabsTrigger value="virtualaccount">Contas Virtuais (Comissões)</TabsTrigger>
       </TabsList>
 
       <TabsContent value="cashflow" className="space-y-4">
@@ -504,34 +594,38 @@ export default function InvoicesPage() {
         </div>
       </TabsContent>
 
-      <TabsContent value="commissions" className="space-y-4">
+      <TabsContent value="virtualaccount" className="space-y-4">
         <Card>
           <CardHeader>
-            <CardTitle>Fechamento de Comissões</CardTitle>
-            <CardDescription>Repasse dos serviços baseados no percentual configurado do estabelecimento ({commissionPercentage}%).</CardDescription>
+            <CardTitle>Carteira dos Profissionais</CardTitle>
+            <CardDescription>O saldo na "Conta Virtual" não zera a não ser que você realize pagamentos (Saques/Acertos). Mantenha o controle do quanto cada um acumulou e precisa receber.</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Profissional</TableHead>
-                  <TableHead>Total de Serviços</TableHead>
-                  <TableHead>Receita Gerada</TableHead>
-                  <TableHead className="text-right">Comissão a Pagar</TableHead>
+                  <TableHead>Geração Total Histórica</TableHead>
+                  <TableHead>Total Pago (Saques)</TableHead>
+                  <TableHead className="text-right">Saldo Atual (A Pagar)</TableHead>
+                  <TableHead className="text-right">Ação</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {Object.keys(commissionsByProfessional).length === 0 ? (
+                {Object.keys(virtualAccounts).length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center h-24 text-muted-foreground">Nenhum profissional com receita este mês.</TableCell>
+                    <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">Nenhum profissional com histórico de comissões.</TableCell>
                   </TableRow>
                 ) : (
-                  Object.values(commissionsByProfessional).map((prof, i) => (
+                  Object.values(virtualAccounts).map((prof, i) => (
                     <TableRow key={i}>
                       <TableCell className="font-medium">{prof.name}</TableCell>
-                      <TableCell>{prof.totalServices}</TableCell>
-                      <TableCell>{formatCurrency(prof.totalRevenue)}</TableCell>
-                      <TableCell className="text-right font-bold text-blue-600 dark:text-blue-400">{formatCurrency(prof.commissionToPay)}</TableCell>
+                      <TableCell className="text-muted-foreground">{formatCurrency(prof.totalEarned)}</TableCell>
+                      <TableCell className="text-muted-foreground">{formatCurrency(prof.totalPaid)}</TableCell>
+                      <TableCell className="text-right font-bold text-blue-600 dark:text-blue-400 text-lg">{formatCurrency(prof.balance)}</TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="outline" size="sm" onClick={() => handleOpenPayout(prof.professionalId, prof.name, prof.balance)} disabled={prof.balance <= 0}>Realizar Saque</Button>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -539,32 +633,97 @@ export default function InvoicesPage() {
             </Table>
           </CardContent>
         </Card>
+
+        <Dialog open={isPayoutOpen} onOpenChange={setIsPayoutOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Realizar Pagamento (Saque)</DialogTitle>
+              <DialogDescription>
+                Você está prestes a transferir o saldo virtual de <strong>{payoutProfName}</strong>.
+                Ao confirmar, este valor será descontado da conta dele, registrando que você realizou o pagamento.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleProcessPayout} className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="payoutAmt">Valor a Pagar / Sacar (R$)</Label>
+                <Input
+                  id="payoutAmt"
+                  type="number"
+                  step="0.01"
+                  required
+                  value={payoutAmount}
+                  onChange={(e) => setPayoutAmount(e.target.value)}
+                />
+              </div>
+              <DialogFooter className="mt-6">
+                <Button type="button" variant="ghost" onClick={() => setIsPayoutOpen(false)}>Cancelar</Button>
+                <Button type="submit">Confirmar Saque</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        <Card className="mt-8 border-dashed bg-muted/20">
+          <CardHeader>
+            <CardTitle className="text-sm">Produção Limitada a este mês ({format(currentDate, "MMMM yyyy", { locale: ptBR })})</CardTitle>
+            <CardDescription>Apenas a título de curiosidade, veja o quanto eles geraram **estritamente neste mês focado**. Mas pague eles pelo botão de "Saque" acima baseando-se no **Saldo Atual**.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Profissional</TableHead>
+                  <TableHead className="text-right">Comissão Gerada no Mês {format(currentDate, "MM/yyyy")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Object.keys(commissionsByProfessional).length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={2} className="text-center h-12 text-muted-foreground text-xs">Sem produção no mês selecionado.</TableCell>
+                  </TableRow>
+                ) : (
+                  Object.values(commissionsByProfessional).map((prof, i) => (
+                    <TableRow key={i}>
+                      <TableCell className="text-xs">{prof.name}</TableCell>
+                      <TableCell className="text-right text-xs">{formatCurrency(prof.commissionToPay)}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
       </TabsContent>
     </Tabs>
   );
 
   const renderProfessionalView = () => {
     const totalComission = totalRevenue * (commissionPercentage / 100);
+    const profWallet = virtualAccounts[user!.uid];
+    const balance = profWallet ? profWallet.balance : 0;
+
     return (
       <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-2">
           <Card className="bg-primary text-primary-foreground border-none">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Sua Comissão Estimada</CardTitle>
+              <CardTitle className="text-sm font-medium">Seu Saldo Total (Conta Virtual)</CardTitle>
               <Wallet className="h-4 w-4 opacity-75" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{formatCurrency(totalComission)}</div>
-              <p className="text-xs opacity-75 mt-1">Baseado nos {commissionPercentage}% pré-definidos.</p>
+              <div className="text-4xl font-black">{formatCurrency(balance)}</div>
+              <p className="text-xs opacity-75 mt-1">Este é o valor acumulado que a barbearia lhe deve atualmente.</p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Serviços Executados</CardTitle>
+              <CardTitle className="text-sm font-medium">Balanço do Mês Aberto</CardTitle>
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{viewData.length}</div>
+              <div className="text-2xl font-bold">{formatCurrency(totalComission)}</div>
+              <p className="text-xs text-muted-foreground mt-1">Estimativa de ganhos referentes apenas ao mês que você filtrou na tela.</p>
             </CardContent>
           </Card>
         </div>

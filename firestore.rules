@@ -2,17 +2,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ----------------------------------------------------------------------
-    // PERMISSIVE MODE (Requested by User)
-    // ----------------------------------------------------------------------
-    // Allows any authenticated user to read/write most collections.
-    // This fixes the blocking issues for Admins and Professionals.
-    
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Users: Allow read/write for any logged in user
     match /users/{userId} {
       allow read, write: if isSignedIn();
       
@@ -24,29 +17,25 @@ service cloud.firestore {
       }
     }
 
-    // Appointments: Allow read/write for any logged in user
     match /appointments/{appointmentId} {
       allow read, write: if isSignedIn();
     }
 
-    // Invoices: Allow read/write for any logged in user
     match /invoices/{invoiceId} {
       allow read, write: if isSignedIn();
     }
 
-    // Expenses: Allow read/write for any logged in user
     match /expenses/{expenseId} {
       allow read, write: if isSignedIn();
     }
 
-    // Recurring Expenses
     match /recurringExpenses/{recurringExpenseId} {
       allow read, write: if isSignedIn();
     }
 
-    // ----------------------------------------------------------------------
-    // Public Read / Auth Write Collections
-    // ----------------------------------------------------------------------
+    match /professionalTransactions/{transactionId} {
+      allow read, write: if isSignedIn();
+    }
 
     match /serviceCategories/{serviceCategoryId} {
       allow read: if true;
