@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { FileText, DollarSign, Wallet, ArrowLeft, ArrowRight, Printer, PlusCircle, TrendingDown, TrendingUp, Pencil, Trash2 } from 'lucide-react';
 
@@ -59,6 +60,7 @@ export default function InvoicesPage() {
   const [expenseDesc, setExpenseDesc] = useState('');
   const [expenseValue, setExpenseValue] = useState('');
   const [expenseDate, setExpenseDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
+  const [isRecurring, setIsRecurring] = useState(false);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   const [isSubmittingExpense, setIsSubmittingExpense] = useState(false);
 
@@ -112,10 +114,19 @@ export default function InvoicesPage() {
   );
   const { data: expensesRaw, isLoading: expensesLoading } = useCollection<Expense>(expensesRef);
 
+  const recurringExpensesRef = useMemoFirebase(
+    () => {
+      if (!firestore || userProfile?.role !== 'admin') return null;
+      return collection(firestore, 'recurringExpenses');
+    },
+    [firestore, userProfile?.role]
+  );
+  const { data: recurringExpensesRaw, isLoading: recurringExpensesLoading } = useCollection<Expense>(recurringExpensesRef);
+
   // Default commission to 25% if not set
   const commissionPercentage = settings?.professionalCommissionPercentage ?? 25;
 
-  const isLoading = isUserLoading || isProfileLoading || appointmentsLoading || expensesLoading;
+  const isLoading = isUserLoading || isProfileLoading || appointmentsLoading || expensesLoading || recurringExpensesLoading;
 
   if (isLoading || !userProfile) {
     return (
@@ -148,9 +159,26 @@ export default function InvoicesPage() {
   }
 
   // --- Calculations for Admin ---
-  const expenses = expensesRaw || [];
+  const rawExpenses = expensesRaw?.map(e => ({ ...e, isRecurring: false })) || [];
+  const rawRecurring = recurringExpensesRaw || [];
+
+  // Project recurring expenses onto current month
+  const projectedRecurring = rawRecurring
+    .filter(re => re.date.seconds <= endOfCurrentMonth.getTime() / 1000)
+    .map(re => {
+      const reDate = re.date.toDate();
+      const virtualDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), reDate.getDate());
+      return {
+        ...re,
+        date: Timestamp.fromDate(virtualDate),
+        isRecurring: true,
+      };
+    });
+
+  const allExpenses = [...rawExpenses, ...projectedRecurring].sort((a, b) => b.date.seconds - a.date.seconds);
+
   const totalRevenue = viewData.reduce((acc, apt) => acc + Number(apt.servicePrice), 0);
-  const totalExpenses = expenses.reduce((acc, exp) => acc + Number(exp.value), 0);
+  const totalExpenses = allExpenses.reduce((acc, exp) => acc + Number(exp.value), 0);
   const netProfit = totalRevenue - totalExpenses;
 
   // Calculate commissions grouped by professional
@@ -181,7 +209,8 @@ export default function InvoicesPage() {
       const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
 
       if (editingExpenseId) {
-        const expenseRef = doc(firestore, 'expenses', editingExpenseId);
+        const targetColl = isRecurring ? 'recurringExpenses' : 'expenses';
+        const expenseRef = doc(firestore, targetColl, editingExpenseId);
         await updateDoc(expenseRef, {
           description: expenseDesc,
           value: parseFloat(expenseValue),
@@ -192,7 +221,8 @@ export default function InvoicesPage() {
           description: 'A despesa foi editada com sucesso.',
         });
       } else {
-        const expensesColl = collection(firestore, 'expenses');
+        const targetColl = isRecurring ? 'recurringExpenses' : 'expenses';
+        const expensesColl = collection(firestore, targetColl);
         await addDoc(expensesColl, {
           description: expenseDesc,
           value: parseFloat(expenseValue),
@@ -200,7 +230,7 @@ export default function InvoicesPage() {
         });
         toast({
           title: 'Despesa Adicionada',
-          description: 'O valor foi registrado com sucesso e deduzido do caixa.',
+          description: isRecurring ? 'A despesa fixa foi cadastrada e será deduzida todos os meses.' : 'O valor foi registrado com sucesso e deduzido do caixa.',
         });
       }
 
@@ -209,6 +239,7 @@ export default function InvoicesPage() {
       setExpenseDesc('');
       setExpenseValue('');
       setExpenseDate(() => format(new Date(), 'yyyy-MM-dd'));
+      setIsRecurring(false);
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -220,18 +251,25 @@ export default function InvoicesPage() {
     }
   };
 
-  const handleEditExpense = (expense: Expense) => {
+  const handleEditExpense = (expense: Expense & { isRecurring: boolean }) => {
     setEditingExpenseId(expense.id);
     setExpenseDesc(expense.description);
     setExpenseValue(expense.value.toString());
     setExpenseDate(format(expense.date.toDate(), 'yyyy-MM-dd'));
+    setIsRecurring(expense.isRecurring);
     setIsExpenseOpen(true);
   };
 
-  const handleDeleteExpense = async (id: string, desc: string) => {
-    if (!firestore || !window.confirm(`Tem certeza que deseja excluir a despesa "${desc}"?`)) return;
+  const handleDeleteExpense = async (id: string, desc: string, isFromRecurring: boolean) => {
+    if (!firestore) return;
+    const msg = isFromRecurring
+      ? `Tem certeza que deseja excluir a despesa fixa "${desc}"?\nLembrando que excluí-la afetará o faturamento de todos os meses, passados e futuros.`
+      : `Tem certeza que deseja excluir a despesa "${desc}"?`;
+
+    if (!window.confirm(msg)) return;
     try {
-      await deleteDoc(doc(firestore, 'expenses', id));
+      const targetColl = isFromRecurring ? 'recurringExpenses' : 'expenses';
+      await deleteDoc(doc(firestore, targetColl, id));
       toast({
         title: 'Despesa Excluída',
         description: 'A despesa foi removida do sistema.',
@@ -250,6 +288,7 @@ export default function InvoicesPage() {
     setExpenseDesc('');
     setExpenseValue('');
     setExpenseDate(format(new Date(), 'yyyy-MM-dd'));
+    setIsRecurring(false);
     setIsExpenseOpen(true);
   };
 
@@ -325,6 +364,15 @@ export default function InvoicesPage() {
                     onChange={(e) => setExpenseValue(e.target.value)}
                   />
                 </div>
+                <div className="flex items-center space-x-2 pt-2 pb-2">
+                  <Switch
+                    id="isRecurring"
+                    checked={isRecurring}
+                    onCheckedChange={setIsRecurring}
+                    disabled={!!editingExpenseId}
+                  />
+                  <Label htmlFor="isRecurring" className="cursor-pointer">Despesa Fixa (Todo mês)</Label>
+                </div>
                 <DialogFooter className="mt-6">
                   <Button type="submit" disabled={isSubmittingExpense}>
                     {isSubmittingExpense ? 'Salvando...' : 'Salvar Despesa'}
@@ -354,7 +402,7 @@ export default function InvoicesPage() {
             </CardHeader>
             <CardContent className="pt-4">
               <div className="text-2xl font-bold">{formatCurrency(totalExpenses)}</div>
-              <p className="text-xs text-muted-foreground mt-1">{expenses.length} Transações registradas</p>
+              <p className="text-xs text-muted-foreground mt-1">{allExpenses.length} Transações registradas</p>
             </CardContent>
           </Card>
 
@@ -425,21 +473,24 @@ export default function InvoicesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {expenses.length === 0 ? (
+                  {allExpenses.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center h-24 text-muted-foreground">Nenhuma despesa registrada este mês.</TableCell>
+                      <TableCell colSpan={4} className="text-center h-24 text-muted-foreground">Nenhuma despesa para este mês.</TableCell>
                     </TableRow>
                   ) : (
-                    [...expenses].sort((a, b) => b.date.seconds - a.date.seconds).map(exp => (
+                    allExpenses.map(exp => (
                       <TableRow key={exp.id}>
                         <TableCell className="font-medium">{format(exp.date.toDate(), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
-                        <TableCell>{exp.description}</TableCell>
+                        <TableCell>
+                          {exp.description}
+                          {exp.isRecurring && <Badge variant="outline" className="ml-2 bg-secondary/50 text-[10px]">Fixa</Badge>}
+                        </TableCell>
                         <TableCell className="text-right text-destructive font-semibold">-{formatCurrency(exp.value)}</TableCell>
                         <TableCell className="text-right">
                           <Button size="icon" variant="ghost" onClick={() => handleEditExpense(exp)} className="h-8 w-8">
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button size="icon" variant="ghost" onClick={() => handleDeleteExpense(exp.id, exp.description)} className="h-8 w-8 text-destructive">
+                          <Button size="icon" variant="ghost" onClick={() => handleDeleteExpense(exp.id, exp.description, exp.isRecurring)} className="h-8 w-8 text-destructive">
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </TableCell>
