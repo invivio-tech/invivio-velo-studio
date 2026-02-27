@@ -73,6 +73,11 @@ export default function InvoicesPage() {
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   const [isSubmittingExpense, setIsSubmittingExpense] = useState(false);
 
+  const [isPayoutOpen, setIsPayoutOpen] = useState(false);
+  const [payoutProfId, setPayoutProfId] = useState('');
+  const [payoutProfName, setPayoutProfName] = useState('');
+  const [payoutAmount, setPayoutAmount] = useState('');
+
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/login');
@@ -165,6 +170,26 @@ export default function InvoicesPage() {
   // Default commission to 25% if not set
   const commissionPercentage = settings?.professionalCommissionPercentage ?? 25;
 
+  // --- Virtual Account Calculations ---
+  const virtualAccounts = useMemo(() => {
+    const acc: Record<string, { professionalId: string, name: string, totalEarned: number, totalPaid: number, balance: number }> = {};
+
+    allAppointmentsRaw?.forEach(apt => {
+      const pId = apt.professionalId;
+      if (!acc[pId]) acc[pId] = { professionalId: pId, name: apt.professionalName || 'Desconhecido', totalEarned: 0, totalPaid: 0, balance: 0 };
+      acc[pId].totalEarned += Number(apt.servicePrice) * (commissionPercentage / 100);
+    });
+
+    transactionsRaw?.forEach(tx => {
+      const pId = tx.professionalId;
+      if (!acc[pId]) acc[pId] = { professionalId: pId, name: tx.professionalName || 'Desconhecido', totalEarned: 0, totalPaid: 0, balance: 0 };
+      acc[pId].totalPaid += tx.amount;
+    });
+
+    Object.values(acc).forEach(v => v.balance = v.totalEarned - v.totalPaid);
+    return acc;
+  }, [allAppointmentsRaw, transactionsRaw, commissionPercentage]);
+
   const isLoading = isUserLoading || isProfileLoading || appointmentsLoading || expensesLoading || recurringExpensesLoading || allApptsLoading || txsLoading;
 
   if (isLoading || !userProfile) {
@@ -237,26 +262,6 @@ export default function InvoicesPage() {
     acc[profId].commissionToPay += Number(apt.servicePrice) * (commissionPercentage / 100);
     return acc;
   }, {} as Record<string, { name: string, totalServices: number, totalRevenue: number, commissionToPay: number }>);
-
-  // --- Virtual Account Calculations ---
-  const virtualAccounts = useMemo(() => {
-    const acc: Record<string, { professionalId: string, name: string, totalEarned: number, totalPaid: number, balance: number }> = {};
-
-    allAppointmentsRaw?.forEach(apt => {
-      const pId = apt.professionalId;
-      if (!acc[pId]) acc[pId] = { professionalId: pId, name: apt.professionalName || 'Desconhecido', totalEarned: 0, totalPaid: 0, balance: 0 };
-      acc[pId].totalEarned += Number(apt.servicePrice) * (commissionPercentage / 100);
-    });
-
-    transactionsRaw?.forEach(tx => {
-      const pId = tx.professionalId;
-      if (!acc[pId]) acc[pId] = { professionalId: pId, name: tx.professionalName || 'Desconhecido', totalEarned: 0, totalPaid: 0, balance: 0 };
-      acc[pId].totalPaid += tx.amount;
-    });
-
-    Object.values(acc).forEach(v => v.balance = v.totalEarned - v.totalPaid);
-    return acc;
-  }, [allAppointmentsRaw, transactionsRaw, commissionPercentage]);
 
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -350,11 +355,6 @@ export default function InvoicesPage() {
     setIsRecurring(false);
     setIsExpenseOpen(true);
   };
-
-  const [isPayoutOpen, setIsPayoutOpen] = useState(false);
-  const [payoutProfId, setPayoutProfId] = useState('');
-  const [payoutProfName, setPayoutProfName] = useState('');
-  const [payoutAmount, setPayoutAmount] = useState('');
 
   const handleOpenPayout = (profId: string, profName: string, balance: number) => {
     setPayoutProfId(profId);
