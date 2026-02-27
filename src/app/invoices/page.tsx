@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, useUserProfile, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy, Timestamp, doc, addDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, Timestamp, doc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { FileText, DollarSign, Wallet, ArrowLeft, ArrowRight, Printer, PlusCircle, TrendingDown, TrendingUp } from 'lucide-react';
+import { FileText, DollarSign, Wallet, ArrowLeft, ArrowRight, Printer, PlusCircle, TrendingDown, TrendingUp, Pencil, Trash2 } from 'lucide-react';
 
 interface Expense {
   id: string;
@@ -59,6 +59,7 @@ export default function InvoicesPage() {
   const [expenseDesc, setExpenseDesc] = useState('');
   const [expenseValue, setExpenseValue] = useState('');
   const [expenseDate, setExpenseDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   const [isSubmittingExpense, setIsSubmittingExpense] = useState(false);
 
   useEffect(() => {
@@ -176,23 +177,35 @@ export default function InvoicesPage() {
 
     setIsSubmittingExpense(true);
     try {
-      const expensesColl = collection(firestore, 'expenses');
-
       const parts = expenseDate.split('-');
       const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
 
-      await addDoc(expensesColl, {
-        description: expenseDesc,
-        value: parseFloat(expenseValue),
-        date: Timestamp.fromDate(d)
-      });
-
-      toast({
-        title: 'Despesa Adicionada',
-        description: 'O valor foi registrado com sucesso e deduzido do caixa.',
-      });
+      if (editingExpenseId) {
+        const expenseRef = doc(firestore, 'expenses', editingExpenseId);
+        await updateDoc(expenseRef, {
+          description: expenseDesc,
+          value: parseFloat(expenseValue),
+          date: Timestamp.fromDate(d)
+        });
+        toast({
+          title: 'Despesa Atualizada',
+          description: 'A despesa foi editada com sucesso.',
+        });
+      } else {
+        const expensesColl = collection(firestore, 'expenses');
+        await addDoc(expensesColl, {
+          description: expenseDesc,
+          value: parseFloat(expenseValue),
+          date: Timestamp.fromDate(d)
+        });
+        toast({
+          title: 'Despesa Adicionada',
+          description: 'O valor foi registrado com sucesso e deduzido do caixa.',
+        });
+      }
 
       setIsExpenseOpen(false);
+      setEditingExpenseId(null);
       setExpenseDesc('');
       setExpenseValue('');
       setExpenseDate(() => format(new Date(), 'yyyy-MM-dd'));
@@ -205,6 +218,39 @@ export default function InvoicesPage() {
     } finally {
       setIsSubmittingExpense(false);
     }
+  };
+
+  const handleEditExpense = (expense: Expense) => {
+    setEditingExpenseId(expense.id);
+    setExpenseDesc(expense.description);
+    setExpenseValue(expense.value.toString());
+    setExpenseDate(format(expense.date.toDate(), 'yyyy-MM-dd'));
+    setIsExpenseOpen(true);
+  };
+
+  const handleDeleteExpense = async (id: string, desc: string) => {
+    if (!firestore || !window.confirm(`Tem certeza que deseja excluir a despesa "${desc}"?`)) return;
+    try {
+      await deleteDoc(doc(firestore, 'expenses', id));
+      toast({
+        title: 'Despesa Excluída',
+        description: 'A despesa foi removida do sistema.',
+      });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao excluir',
+        description: 'Não foi possível excluir esta despesa.',
+      });
+    }
+  };
+
+  const handleOpenNewExpense = () => {
+    setEditingExpenseId(null);
+    setExpenseDesc('');
+    setExpenseValue('');
+    setExpenseDate(format(new Date(), 'yyyy-MM-dd'));
+    setIsExpenseOpen(true);
   };
 
   // --- View Renders ---
@@ -235,15 +281,13 @@ export default function InvoicesPage() {
       <TabsContent value="cashflow" className="space-y-4">
         <div className="flex justify-end mb-4">
           <Dialog open={isExpenseOpen} onOpenChange={setIsExpenseOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Registrar Despesa
-              </Button>
-            </DialogTrigger>
+            <Button onClick={handleOpenNewExpense}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Registrar Despesa
+            </Button>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>Registrar Nova Despesa</DialogTitle>
+                <DialogTitle>{editingExpenseId ? 'Editar Despesa' : 'Registrar Nova Despesa'}</DialogTitle>
                 <DialogDescription>
                   Insira os detalhes técnicos da despesa para subtraí-la do faturamento.
                 </DialogDescription>
@@ -377,6 +421,7 @@ export default function InvoicesPage() {
                     <TableHead>Data</TableHead>
                     <TableHead>Descrição</TableHead>
                     <TableHead className="text-right">Valor</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -390,6 +435,14 @@ export default function InvoicesPage() {
                         <TableCell className="font-medium">{format(exp.date.toDate(), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
                         <TableCell>{exp.description}</TableCell>
                         <TableCell className="text-right text-destructive font-semibold">-{formatCurrency(exp.value)}</TableCell>
+                        <TableCell className="text-right">
+                          <Button size="icon" variant="ghost" onClick={() => handleEditExpense(exp)} className="h-8 w-8">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" onClick={() => handleDeleteExpense(exp.id, exp.description)} className="h-8 w-8 text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))
                   )}
