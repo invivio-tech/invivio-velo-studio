@@ -403,6 +403,7 @@ function ProfessionalDashboard() {
   const { user, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const { userProfile } = useUserProfile();
 
   const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[] | null>(null);
   const [pendingAppointments, setPendingAppointments] = useState<Appointment[] | null>(null);
@@ -703,23 +704,25 @@ function ProfessionalDashboard() {
           )}
         </div>
       </div>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" disabled={isUpdating === appointment.id}>
-            {isUpdating === appointment.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuItem onSelect={() => handleUpdateAppointmentStatus(appointment, 'completed')}>
-            <Check className="mr-2 h-4 w-4" />
-            Serviço Concluído
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => handleUpdateAppointmentStatus(appointment, 'no-show')} className="text-destructive focus:text-destructive">
-            <X className="mr-2 h-4 w-4" />
-            Não Compareceu
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      {(userProfile?.role === 'admin' || settings?.allowProfessionalToCompleteAppointment !== false) && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" disabled={isUpdating === appointment.id}>
+              {isUpdating === appointment.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onSelect={() => handleUpdateAppointmentStatus(appointment, 'completed')}>
+              <Check className="mr-2 h-4 w-4" />
+              Serviço Concluído
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => handleUpdateAppointmentStatus(appointment, 'no-show')} className="text-destructive focus:text-destructive">
+              <X className="mr-2 h-4 w-4" />
+              Não Compareceu
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
     </div>
   );
 

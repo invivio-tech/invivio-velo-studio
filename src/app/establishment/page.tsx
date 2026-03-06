@@ -22,6 +22,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Building, Loader2, Sparkles, Clock, Star, DollarSign, Upload } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { uploadImage } from '@/app/actions/uploadImage';
+import { Switch } from '@/components/ui/switch';
 
 export interface EstablishmentSettings {
   name: string;
@@ -43,6 +44,7 @@ export interface EstablishmentSettings {
   professionalCommissionPercentage?: number;
   detailedAbout?: string;
   productImageDescription?: string;
+  allowProfessionalToCompleteAppointment?: boolean;
 }
 
 const formSchema = z.object({
@@ -65,6 +67,7 @@ const formSchema = z.object({
   professionalCommissionPercentage: z.coerce.number().min(0, { message: 'A comissão não pode ser negativa.' }).max(100, { message: 'O máximo é 100%.' }).optional(),
   detailedAbout: z.string().optional(),
   productImageDescription: z.string().optional(),
+  allowProfessionalToCompleteAppointment: z.boolean().optional(),
 });
 
 type SettingsFormValues = z.infer<typeof formSchema>;
@@ -110,6 +113,7 @@ export default function EstablishmentPage() {
     professionalCommissionPercentage: 25,
     detailedAbout: '',
     productImageDescription: 'Homem moderno, produtos de cuidado pessoal, alta resolução, estética minimalista e premium.',
+    allowProfessionalToCompleteAppointment: true,
   };
 
   const form = useForm<SettingsFormValues>({
@@ -135,6 +139,7 @@ export default function EstablishmentPage() {
         professionalCommissionPercentage: settings.professionalCommissionPercentage === undefined ? 25 : settings.professionalCommissionPercentage,
         detailedAbout: settings.detailedAbout || '',
         productImageDescription: settings.productImageDescription || '',
+        allowProfessionalToCompleteAppointment: settings.allowProfessionalToCompleteAppointment === undefined ? true : settings.allowProfessionalToCompleteAppointment,
       });
     }
   }, [settings, form]);
@@ -603,6 +608,26 @@ export default function EstablishmentPage() {
                       Com quantas horas de antecedência um cliente pode cancelar ou reagendar um horário? (Deixe 0 para permitir a qualquer momento).
                     </FormDescription>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="allowProfessionalToCompleteAppointment"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 mt-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Profissional Conclui Serviço</FormLabel>
+                      <FormDescription>
+                        Permite que os próprios barbeiros finalizem seus serviços e contabilizem o comissionamento. Se desativado, apenas o Administrador ou Recepção poderá dar baixa no caixa e no agendamento.
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
                   </FormItem>
                 )}
               />
