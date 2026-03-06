@@ -37,6 +37,10 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
+    match /loyaltyTransactions/{transactionId} {
+      allow read, write: if isSignedIn();
+    }
+
     match /serviceCategories/{serviceCategoryId} {
       allow read: if true;
       allow write: if isSignedIn();

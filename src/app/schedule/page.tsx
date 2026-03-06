@@ -605,8 +605,32 @@ function ProfessionalDashboard() {
           const percentage = settings.loyaltyPercentage || 10;
           const pointsToAward = Math.round((price * percentage) / 100);
           newPoints += pointsToAward;
+
+          const txRef = doc(collection(firestore, 'loyaltyTransactions'));
+          transaction.set(txRef, {
+            clientId: appointment.customerId,
+            type: 'earned',
+            points: pointsToAward,
+            description: `Serviço Concluído: ${appointment.serviceName}`,
+            date: Timestamp.now(),
+            appointmentId: appointment.id
+          });
         } else if (newStatus === 'no-show') {
-          newPoints = Math.max(0, currentPoints - (settings.pointsPenaltyForNoShow || 5));
+          const penalty = settings.pointsPenaltyForNoShow || 5;
+          newPoints = Math.max(0, currentPoints - penalty);
+
+          if (currentPoints > 0) {
+            const deductAmount = Math.min(currentPoints, penalty);
+            const txRef = doc(collection(firestore, 'loyaltyTransactions'));
+            transaction.set(txRef, {
+              clientId: appointment.customerId,
+              type: 'deducted',
+              points: deductAmount,
+              description: 'Penalidade: Não Comparecimento',
+              date: Timestamp.now(),
+              appointmentId: appointment.id
+            });
+          }
         }
 
         transaction.update(appointmentRef, { status: newStatus });

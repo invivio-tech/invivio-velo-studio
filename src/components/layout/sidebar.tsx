@@ -29,6 +29,7 @@ import {
   PlusCircle,
   LayoutGrid,
   Trash2,
+  Gift,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -66,6 +67,7 @@ const clientMenuItems = [
   { href: '/schedule', label: 'Painel', icon: Calendar },
   { href: '/book-appointment', label: 'Agendar', icon: PlusCircle },
   { href: '/services', label: 'Serviços', icon: BookOpen },
+  { href: '/rewards', label: 'Meus Pontos', icon: Gift },
 ];
 
 const unauthenticatedMenuItems = [
