@@ -1,5 +1,6 @@
 import type { NextConfig } from 'next';
 
+console.log('--- LOADING NEXT.CONFIG.TS ---');
 const nextConfig: NextConfig = {
   /* config options here */
   typescript: {
@@ -10,7 +11,7 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      bodySizeLimit: '10mb',
+      bodySizeLimit: '50mb',
     },
   },
   images: {

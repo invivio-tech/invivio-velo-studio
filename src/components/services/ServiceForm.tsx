@@ -31,11 +31,11 @@ import { useState } from 'react';
 import { generateServiceDescription } from '@/ai/flows/generate-service-description';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useDoc, useStorage } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Checkbox } from '../ui/checkbox';
 import type { EstablishmentSettings } from '@/app/establishment/page';
-import { uploadImage } from '@/app/actions/uploadImage';
 
 interface Category {
   id: string;
@@ -65,6 +65,7 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
+  const storage = useStorage();
 
   const firestore = useFirestore();
   const categoriesCollection = useMemoFirebase(
@@ -126,28 +127,23 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !storage) return;
 
     setIsUploading(true);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
+      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
+      const ext = file.name.split('.').pop() || 'jpg';
+      const filename = `uploads/services/${uniqueSuffix}.${ext}`;
+      const storageRef = ref(storage, filename);
 
-      const result = await uploadImage(formData);
+      await uploadBytes(storageRef, file, { contentType: file.type });
+      const publicUrl = await getDownloadURL(storageRef);
 
-      if (result.error) {
-        toast({
-          variant: 'destructive',
-          title: 'Erro',
-          description: result.error,
-        });
-      } else if (result.url) {
-        form.setValue('imageUrl', result.url, { shouldValidate: true });
-        toast({
-          title: 'Upload concluído',
-          description: 'A imagem foi salva no servidor com sucesso.',
-        });
-      }
+      form.setValue('imageUrl', publicUrl, { shouldValidate: true });
+      toast({
+        title: 'Upload concluído',
+        description: 'A imagem foi salva no servidor com sucesso.',
+      });
     } catch (error) {
       console.error('Error uploading image:', error);
       toast({

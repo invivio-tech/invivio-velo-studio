@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { collection, query, where, orderBy, Timestamp, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, Timestamp, doc, updateDoc, runTransaction, addDoc } from 'firebase/firestore';
 import { useFirestore, useDoc, useMemoFirebase, useUserProfile, useCollection } from '@/firebase';
 import type { UserProfile } from '@/firebase';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -21,8 +21,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, ArrowLeft, Calendar, Scissors, Clock, AlertCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, Calendar, Scissors, Clock, AlertCircle, Award, TrendingUp, TrendingDown } from 'lucide-react';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 
@@ -36,6 +37,15 @@ const formSchema = z.object({
 });
 
 type ClientFormValues = z.infer<typeof formSchema>;
+
+interface LoyaltyTransaction {
+  id: string;
+  clientId: string;
+  type: 'earned' | 'deducted' | 'redeemed';
+  points: number;
+  description: string;
+  date: Timestamp;
+}
 
 interface Appointment {
   id: string;
@@ -107,38 +117,56 @@ export default function EditClientPage() {
     setIsSaving(true);
 
     const clientToUpdateRef = doc(firestore, 'users', client.id);
+    const currentPoints = client.loyaltyPoints || 0;
+    const newPoints = values.loyaltyPoints || 0;
+    
     const updatedData: Partial<UserProfile> = {
       name: values.name,
       phoneNumber: values.phoneNumber,
       birthDate: values.birthDate,
       address: values.address,
       notes: values.notes,
-      loyaltyPoints: values.loyaltyPoints,
+      loyaltyPoints: newPoints,
     };
 
-    updateDoc(clientToUpdateRef, updatedData)
-      .then(() => {
-        toast({
-          title: 'Cliente atualizado!',
-          description: `Os dados de ${client.name} foram atualizados.`,
-        });
-      })
-      .catch((serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: clientToUpdateRef.path,
-          operation: 'update',
-          requestResourceData: updatedData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        toast({
-          variant: 'destructive',
-          title: 'Erro ao atualizar',
-          description: 'Você não tem permissão para alterar este cliente.',
-        });
-      })
-      .finally(() => {
-        setIsSaving(false);
+    try {
+      await runTransaction(firestore, async (transaction) => {
+        if (currentPoints !== newPoints) {
+          const diff = newPoints - currentPoints;
+          const txRef = doc(collection(firestore, 'loyaltyTransactions'));
+          transaction.set(txRef, {
+            clientId: userId,
+            type: diff > 0 ? 'earned' : 'deducted',
+            points: Math.abs(diff),
+            description: 'Ajuste Manual pelo Administrador',
+            date: Timestamp.now()
+          });
+        }
+        transaction.update(clientToUpdateRef, updatedData);
       });
+
+      toast({
+        title: 'Cliente atualizado!',
+        description: `Os dados de ${client.name} foram atualizados.`,
+      });
+    } catch (serverError: any) {
+      console.error('Error updating client:', serverError);
+      const permissionError = new FirestorePermissionError({
+        path: clientToUpdateRef.path,
+        operation: 'update',
+        requestResourceData: updatedData,
+      });
+      errorEmitter.emit('permission-error', permissionError);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao atualizar',
+        description: serverError.code === 'permission-denied' 
+          ? 'Você não tem permissão para alterar este cliente.' 
+          : 'Ocorreu um erro ao salvar as alterações.',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   const handleToggleDisable = async () => {
@@ -183,7 +211,21 @@ export default function EditClientPage() {
     return null;
   }, [firestore, userId]);
 
-  const { data: appointments, isLoading: areAppointmentsLoading } = useCollection<Appointment>(appointmentsQuery);
+  const { data: appointments, isLoading: areAppointmentsLoading, error: appointmentsError } = useCollection<Appointment>(appointmentsQuery);
+
+  // Fetch Loyalty Transactions
+  const loyaltyTransactionsQuery = useMemoFirebase(() => {
+    if (firestore && userId) {
+      return query(
+        collection(firestore, 'loyaltyTransactions'),
+        where('clientId', '==', userId),
+        orderBy('date', 'desc')
+      );
+    }
+    return null;
+  }, [firestore, userId]);
+
+  const { data: transactions, isLoading: areTransactionsLoading, error: transactionsError } = useCollection<LoyaltyTransaction>(loyaltyTransactionsQuery);
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
@@ -390,6 +432,76 @@ export default function EditClientPage() {
 
       <Card className="mt-6">
         <CardHeader>
+          <CardTitle className="font-headline flex items-center gap-2 text-primary">
+            <Award className="h-5 w-5" />
+            Extrato de Fidelidade (Pontos)
+          </CardTitle>
+          <CardDescription>
+            Histórico de todas as movimentações de pontos deste cliente.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {areTransactionsLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : transactionsError ? (
+            <div className="p-4 border border-destructive/50 bg-destructive/10 rounded-lg text-destructive text-sm flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 mt-0.5" />
+              <div>
+                <p className="font-semibold">Erro ao carregar pontos</p>
+                <p className="opacity-80">{(transactionsError as any).message || 'Ocorreu um erro inesperado.'}</p>
+              </div>
+            </div>
+          ) : transactions && transactions.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Descrição</TableHead>
+                  <TableHead className="text-right">Tipo</TableHead>
+                  <TableHead className="text-right">Pontos</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {transactions.map((tx) => (
+                  <TableRow key={tx.id}>
+                    <TableCell className="text-xs">
+                      {format(tx.date.toDate(), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                    </TableCell>
+                    <TableCell className="max-w-[200px] truncate">{tx.description}</TableCell>
+                    <TableCell className="text-right">
+                      <Badge variant="outline" className={cn(
+                        "text-[10px] uppercase font-bold",
+                        tx.type === 'earned' && "border-emerald-200 text-emerald-700 bg-emerald-50",
+                        tx.type === 'deducted' && "border-red-200 text-red-700 bg-red-50",
+                        tx.type === 'redeemed' && "border-blue-200 text-blue-700 bg-blue-50"
+                      )}>
+                        {tx.type === 'earned' ? 'Crédito' : tx.type === 'deducted' ? 'Débito' : 'Resgate'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className={cn(
+                      "text-right font-bold",
+                      tx.type === 'earned' ? "text-emerald-600" : "text-red-600"
+                    )}>
+                      {tx.type === 'earned' ? '+' : '-'}{tx.points}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground flex flex-col items-center gap-2">
+              <Award className="h-8 w-8 opacity-20" />
+              <p>Nenhuma movimentação de pontos encontrada.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader>
           <CardTitle className="font-headline flex items-center gap-2">
             <Clock className="h-5 w-5" />
             Histórico de Agendamentos
@@ -404,6 +516,14 @@ export default function EditClientPage() {
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
+            </div>
+          ) : appointmentsError ? (
+            <div className="p-4 border border-destructive/50 bg-destructive/10 rounded-lg text-destructive text-sm flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 mt-0.5" />
+              <div>
+                <p className="font-semibold">Erro ao carregar agendamentos</p>
+                <p className="opacity-80">{(appointmentsError as any).message || 'Ocorreu um erro inesperado.'}</p>
+              </div>
             </div>
           ) : appointments && appointments.length > 0 ? (
             <Table>

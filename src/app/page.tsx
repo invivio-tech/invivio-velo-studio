@@ -76,11 +76,6 @@ export default function LandingPage() {
   const establishmentLogo = settings?.logoUrl;
   const establishmentAboutImageUrl = settings?.aboutImageUrl;
 
-  useEffect(() => {
-    if (establishmentName) {
-      document.title = establishmentName;
-    }
-  }, [establishmentName]);
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -216,11 +211,10 @@ export default function LandingPage() {
                   <CardHeader className="p-0">
                     {service.imageUrl ? (
                       <div className="relative aspect-[16/9] w-full overflow-hidden">
-                        <Image
+                        <img
                           src={service.imageUrl}
                           alt={service.name}
-                          fill
-                          className="object-cover"
+                          className="object-cover w-full h-full"
                         />
                       </div>
                     ) : (
@@ -313,11 +307,19 @@ export default function LandingPage() {
           ) : (
             <>
               <p>
-                &copy; 2024 {establishmentName}. Todos os direitos reservados.
+                &copy; {new Date().getFullYear()} {establishmentName}. Todos os direitos reservados.
               </p>
               <p className="mt-2">
                 {establishmentAddress}
               </p>
+              <div className="mt-6 flex flex-col items-center justify-center gap-1 opacity-60 hover:opacity-100 transition-opacity">
+                <p className="text-xs font-medium">
+                  Powered by <a href="http://www.invivio.com.br" target="_blank" rel="noopener noreferrer" className="font-bold text-primary hover:underline">Invivio Tecnologia</a>
+                </p>
+                <p className="text-[10px]">
+                   Invivio Velo v1.00043
+                </p>
+              </div>
             </>
           )}
         </div>

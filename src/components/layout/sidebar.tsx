@@ -30,6 +30,7 @@ import {
   LayoutGrid,
   Trash2,
   Gift,
+  Monitor,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -48,19 +49,20 @@ const adminMenuItems = [
   { href: '/categories', label: 'Categorias', icon: LayoutGrid },
   { href: '/team', label: 'Equipe', icon: Users },
   { href: '/clients', label: 'Clientes', icon: ContactRound },
-  { href: '/invoices', label: 'Faturas', icon: FileText },
+  { href: '/invoices', label: 'Financeiro', icon: FileText },
   { href: '/promotions', label: 'Marketing com IA', icon: Sparkles },
+  { href: '/agenda-view', label: 'Visão Agenda', icon: Monitor },
   { href: '/establishment', label: 'Estabelecimento', icon: Building },
   { href: '/schedule/settings', label: 'Horário do Estabelecimento', icon: Settings },
   { href: '/schedule/block', label: 'Bloquear Agenda (Geral)', icon: Lock },
-  { href: '/admin/cleanup', label: 'Limpeza de Dados', icon: Trash2 },
 ];
 
 const professionalMenuItems = [
   { href: '/schedule', label: 'Painel', icon: Calendar },
   { href: '/book-appointment', label: 'Novo Agendamento', icon: PlusCircle },
   { href: '/services', label: 'Serviços', icon: BookOpen },
-  { href: '/invoices', label: 'Meus Extratos', icon: FileText },
+  { href: '/invoices', label: 'Financeiro', icon: FileText },
+  { href: '/agenda-view', label: 'Visão Agenda', icon: Monitor },
 ];
 
 const clientMenuItems = [
@@ -211,10 +213,18 @@ export default function AppSidebar() {
               {areSettingsLoading ? (
                 <Skeleton className="h-4 w-32 mx-auto" />
               ) : (
-                <p>&copy; 2024 {establishmentName}</p>
+                <p>&copy; {new Date().getFullYear()} {establishmentName}</p>
               )}
             </div>
           )}
+          <div className="pb-4 pt-2 flex flex-col items-center justify-center gap-1 opacity-50 hover:opacity-100 transition-opacity">
+             <p className="text-[10px] font-medium leading-tight">
+               Powered by <a href="http://www.invivio.com.br" target="_blank" rel="noopener noreferrer" className="font-bold text-primary hover:underline">Invivio Tecnologia</a>
+             </p>
+             <p className="text-[9px] leading-tight">
+                 Invivio Velo v1.00043
+             </p>
+          </div>
         </SidebarFooter>
       </Sidebar>
     </>

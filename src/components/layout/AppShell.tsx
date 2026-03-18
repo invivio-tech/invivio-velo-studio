@@ -15,6 +15,7 @@ const appRoutes = [
   '/establishment',
   '/categories',
   '/book-appointment',
+  '/rewards',
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

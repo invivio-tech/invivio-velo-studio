@@ -306,6 +306,7 @@ export default function BookAppointmentPage() {
       professionalName: finalProfessional.name,
       serviceDuration: selectedService.duration,
       servicePrice: selectedService.price,
+      reminderSent: false,
     };
 
     try {

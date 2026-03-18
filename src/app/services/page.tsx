@@ -256,11 +256,10 @@ export default function ServicesPage() {
                             <CardHeader className="p-0 relative">
                               {image ? (
                                 <div className="relative aspect-[16/9] w-full">
-                                  <Image
+                                  <img
                                     src={image}
                                     alt={service.name}
-                                    fill
-                                    className="object-cover"
+                                    className="object-cover w-full h-full"
                                   />
                                 </div>
                               ) : (

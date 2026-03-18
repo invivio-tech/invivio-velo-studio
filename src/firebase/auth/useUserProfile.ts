@@ -18,6 +18,8 @@ export interface UserProfile {
   notes?: string;
   address?: string;
   loyaltyPoints?: number;
+  fcmTokens?: string[];
+  notificationsEnabled?: boolean;
 }
 
 export function useUserProfile() {

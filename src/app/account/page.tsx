@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { logout } from '@/firebase/auth/client';
+import { logout, resetPassword } from '@/firebase/auth/client';
 import { Loader2 } from 'lucide-react';
 import ProfessionalScheduleSettings from '@/components/schedule/ProfessionalScheduleSettings';
 
@@ -52,6 +52,7 @@ export default function AccountPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(formSchema),
@@ -130,6 +131,27 @@ export default function AccountPage() {
       setIsSaving(false);
     }
   }
+
+  const handleResetPassword = async () => {
+    if (!user?.email) return;
+    
+    setIsResettingPassword(true);
+    const error = await resetPassword(user.email);
+    setIsResettingPassword(false);
+
+    if (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao enviar e-mail',
+        description: 'Não foi possível enviar o link de redefinição. Tente novamente.',
+      });
+    } else {
+      toast({
+        title: 'E-mail enviado!',
+        description: 'Enviamos um link de redefinição para o seu e-mail cadastrado.',
+      });
+    }
+  };
 
   const isLoading = isUserLoading || isProfileLoading;
 
@@ -237,9 +259,15 @@ export default function AccountPage() {
                     )}
                   />
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 pt-4">
-                    <Button onClick={handleLogout} variant="outline" className="w-full sm:w-auto">
-                      Sair da Conta
-                    </Button>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <Button onClick={handleResetPassword} variant="secondary" className="w-full sm:w-auto" type="button" disabled={isResettingPassword}>
+                        {isResettingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Redefinir Senha
+                      </Button>
+                      <Button onClick={handleLogout} variant="outline" className="w-full sm:w-auto" type="button">
+                        Sair da Conta
+                      </Button>
+                    </div>
                     <Button type="submit" disabled={isSaving} className="w-full sm:w-auto">
                       {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Salvar Alterações

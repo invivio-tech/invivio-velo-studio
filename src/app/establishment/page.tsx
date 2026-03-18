@@ -6,12 +6,14 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { doc, setDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
-import { useUserProfile, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useUserProfile, useFirestore, useDoc, useMemoFirebase, useStorage } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { generateEstablishmentTexts } from '@/ai/flows/generate-establishment-texts';
+import { generateBirthdayMessage } from '@/ai/flows/generate-birthday-message';
 
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -21,7 +23,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Building, Loader2, Sparkles, Clock, Star, DollarSign, Upload } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import { uploadImage } from '@/app/actions/uploadImage';
 import { Switch } from '@/components/ui/switch';
 
 export interface EstablishmentSettings {
@@ -45,6 +46,8 @@ export interface EstablishmentSettings {
   detailedAbout?: string;
   productImageDescription?: string;
   allowProfessionalToCompleteAppointment?: boolean;
+  birthdayTitle?: string;
+  birthdayMessage?: string;
 }
 
 const formSchema = z.object({
@@ -68,6 +71,8 @@ const formSchema = z.object({
   detailedAbout: z.string().optional(),
   productImageDescription: z.string().optional(),
   allowProfessionalToCompleteAppointment: z.boolean().optional(),
+  birthdayTitle: z.string().optional(),
+  birthdayMessage: z.string().optional(),
 });
 
 type SettingsFormValues = z.infer<typeof formSchema>;
@@ -79,6 +84,7 @@ export default function EstablishmentPage() {
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [isSuggesting, setIsSuggesting] = useState(false);
+  const [isSuggestingBirthday, setIsSuggestingBirthday] = useState(false);
 
   // Redirect if not admin
   useEffect(() => {
@@ -114,6 +120,8 @@ export default function EstablishmentPage() {
     detailedAbout: '',
     productImageDescription: 'Homem moderno, produtos de cuidado pessoal, alta resolução, estética minimalista e premium.',
     allowProfessionalToCompleteAppointment: true,
+    birthdayTitle: 'Feliz Aniversário! 🎂',
+    birthdayMessage: 'A equipe da Barbearia East Side te deseja um dia incrível e muito sucesso!',
   };
 
   const form = useForm<SettingsFormValues>({
@@ -140,36 +148,34 @@ export default function EstablishmentPage() {
         detailedAbout: settings.detailedAbout || '',
         productImageDescription: settings.productImageDescription || '',
         allowProfessionalToCompleteAppointment: settings.allowProfessionalToCompleteAppointment === undefined ? true : settings.allowProfessionalToCompleteAppointment,
+        birthdayTitle: settings.birthdayTitle || 'Feliz Aniversário! 🎂',
+        birthdayMessage: settings.birthdayMessage || 'A equipe da Barbearia East Side te deseja um dia incrível e muito sucesso!',
       });
     }
   }, [settings, form]);
 
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const storage = useStorage();
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !storage) return;
 
     setIsUploadingLogo(true);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
+      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
+      const ext = file.name.split('.').pop() || 'jpg';
+      const filename = `uploads/services/${uniqueSuffix}.${ext}`;
+      const storageRef = ref(storage, filename);
 
-      const result = await uploadImage(formData);
+      await uploadBytes(storageRef, file, { contentType: file.type });
+      const publicUrl = await getDownloadURL(storageRef);
 
-      if (result.error) {
-        toast({
-          variant: 'destructive',
-          title: 'Erro',
-          description: result.error,
-        });
-      } else if (result.url) {
-        form.setValue('logoUrl', result.url, { shouldValidate: true });
-        toast({
-          title: 'Upload concluído',
-          description: 'A logo foi salva com sucesso.',
-        });
-      }
+      form.setValue('logoUrl', publicUrl, { shouldValidate: true });
+      toast({
+        title: 'Upload concluído',
+        description: 'A logo foi salva com sucesso.',
+      });
     } catch (error) {
       console.error('Error uploading logo:', error);
       toast({
@@ -186,28 +192,23 @@ export default function EstablishmentPage() {
 
   const handleAboutImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !storage) return;
 
     setIsUploadingAboutImage(true);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
+      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
+      const ext = file.name.split('.').pop() || 'jpg';
+      const filename = `uploads/services/${uniqueSuffix}.${ext}`;
+      const storageRef = ref(storage, filename);
 
-      const result = await uploadImage(formData);
+      await uploadBytes(storageRef, file, { contentType: file.type });
+      const publicUrl = await getDownloadURL(storageRef);
 
-      if (result.error) {
-        toast({
-          variant: 'destructive',
-          title: 'Erro',
-          description: result.error,
-        });
-      } else if (result.url) {
-        form.setValue('aboutImageUrl', result.url, { shouldValidate: true });
-        toast({
-          title: 'Upload concluído',
-          description: 'A imagem da seção Sobre foi salva com sucesso.',
-        });
-      }
+      form.setValue('aboutImageUrl', publicUrl, { shouldValidate: true });
+      toast({
+        title: 'Upload concluído',
+        description: 'A imagem da seção Sobre foi salva com sucesso.',
+      });
     } catch (error) {
       console.error('Error uploading about image:', error);
       toast({
@@ -286,6 +287,32 @@ export default function EstablishmentPage() {
       });
     } finally {
       setIsSuggesting(false);
+    }
+  }
+
+  const handleSuggestBirthday = async () => {
+    const name = form.getValues('name');
+    const context = form.getValues('context');
+    setIsSuggestingBirthday(true);
+    try {
+      const result = await generateBirthdayMessage({ name, context });
+      if (result) {
+        form.setValue('birthdayTitle', result.birthdayTitle, { shouldValidate: true });
+        form.setValue('birthdayMessage', result.birthdayMessage, { shouldValidate: true });
+        toast({
+          title: 'Sugestão aplicada!',
+          description: 'A mensagem de aniversário foi preenchida.'
+        });
+      }
+    } catch (error) {
+      console.error('Error suggesting birthday message:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao sugerir',
+        description: 'Não foi possível gerar a sugestão de aniversário.'
+      });
+    } finally {
+      setIsSuggestingBirthday(false);
     }
   }
 
@@ -696,6 +723,62 @@ export default function EstablishmentPage() {
                     </FormControl>
                     <FormDescription>
                       Pontos que o cliente perde se não comparecer ao agendamento.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-headline flex items-center gap-2">🎂 Notificação de Aniversário</CardTitle>
+              <CardDescription>
+                Configure a mensagem automática que seus clientes recebem no dia do aniversário.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-end">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleSuggestBirthday} 
+                  disabled={isSuggestingBirthday}
+                >
+                  {isSuggestingBirthday ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                  Sugerir com IA
+                </Button>
+              </div>
+              <FormField
+                control={form.control}
+                name="birthdayTitle"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Título da Notificação</FormLabel>
+                    <FormControl>
+                      <Input placeholder="ex: Feliz Aniversário! 🎂" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="birthdayMessage"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Mensagem</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="A equipe te deseja um dia incrível..." 
+                        className="min-h-20" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Mencione o nome da barbearia para reforçar o carinho com o cliente.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

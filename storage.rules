@@ -1,0 +1,13 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      // Permitir leitura pública para logos e imagens
+      allow read: if true;
+      
+      // Permitir escrita apenas para usuários autenticados (Admin)
+      // Você pode restringir mais se quiser, ex: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+  }
+}
