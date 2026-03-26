@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { HelpCircle, Mail, Phone, ArrowRight, MessageCircle, AlertCircle, FileText, CheckCircle2 } from 'lucide-react';
+import { HelpCircle, Mail, Phone, ArrowRight, MessageCircle, AlertCircle, FileText, CheckCircle2, Award } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
@@ -124,6 +124,13 @@ export default function HelpPage() {
               WhatsApp
             </Link>
           </Button>
+        </div>
+      </div>
+
+      <div className="pt-10 border-t border-border/10 text-center">
+        <div className="inline-flex items-center gap-2 px-4 py-2 bg-muted/50 rounded-full text-xs font-medium text-slate-400">
+          <Award className="h-3 w-3" />
+          Versão v1.00055 • © 2026 Invivio Tecnologia
         </div>
       </div>
     </div>
