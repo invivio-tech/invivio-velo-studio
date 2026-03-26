@@ -170,6 +170,24 @@
               "order": "ASCENDING"
             }
           ]
+        },
+        {
+          "collectionGroup": "appointments",
+          "queryScope": "COLLECTION",
+          "fields": [
+            {
+              "fieldPath": "status",
+              "order": "ASCENDING"
+            },
+            {
+              "fieldPath": "isPortfolioFeatured",
+              "order": "ASCENDING"
+            },
+            {
+              "fieldPath": "startTime",
+              "order": "DESCENDING"
+            }
+          ]
         }
     ],
     "fieldOverrides": []

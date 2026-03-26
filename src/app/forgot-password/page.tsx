@@ -73,9 +73,37 @@ export default function ForgotPasswordPage() {
         </CardHeader>
         <CardContent className="grid gap-4">
           {emailSent ? (
-            <Button asChild>
-              <Link href="/login">Voltar para o Login</Link>
-            </Button>
+            <div className="space-y-4">
+              <p className="text-sm text-center text-muted-foreground mb-4">
+                Se você não receber o e-mail em alguns minutos, verifique sua caixa de spam ou solicite ajuda abaixo.
+              </p>
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                onClick={async () => {
+                  try {
+                    const { httpsCallable, functions } = (await import('@/firebase')).initializeFirebase();
+                    const requestHelp = httpsCallable(functions, 'requestpasswordresetsupport');
+                    await requestHelp({ email: form.getValues('email') });
+                    toast({
+                      title: 'Solicitação Enviada',
+                      description: 'Os administradores foram notificados. Aguarde contato.'
+                    });
+                  } catch (error) {
+                    toast({
+                      variant: 'destructive',
+                      title: 'Erro ao solicitar',
+                      description: 'Não foi possível enviar a solicitação. Tente novamente.'
+                    });
+                  }
+                }}
+              >
+                Solicitar Redefinição via Suporte
+              </Button>
+              <Button asChild className="w-full">
+                <Link href="/login">Voltar para o Login</Link>
+              </Button>
+            </div>
           ) : (
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

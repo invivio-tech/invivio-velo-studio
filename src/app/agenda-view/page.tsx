@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -17,7 +16,9 @@ import {
   where, 
   orderBy, 
   Timestamp, 
-  doc 
+  doc,
+  updateDoc,
+  runTransaction
 } from 'firebase/firestore';
 import { 
   format, 
@@ -43,15 +44,27 @@ import {
   ChevronRight,
   Maximize,
   Minimize,
-  RefreshCw
+  RefreshCw,
+  MoreHorizontal,
+  Check,
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import type { EstablishmentSettings } from '@/app/establishment/page';
+import { CompleteServiceDialog } from '@/components/admin/CompleteServiceDialog';
+import { useToast } from '@/hooks/use-toast';
 
 interface Appointment {
   id: string;
@@ -72,9 +85,13 @@ interface Appointment {
 export default function AgendaViewPage() {
   const { userProfile } = useUserProfile();
   const firestore = useFirestore();
+  const { toast } = useToast();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isCompletionDialogOpen, setIsCompletionDialogOpen] = useState(false);
+  const [appointmentToComplete, setAppointmentToComplete] = useState<Appointment | null>(null);
+  const [isUpdating, setIsUpdating] = useState<string | null>(null);
 
   const isToday = isSameDay(selectedDate, new Date());
 
@@ -116,6 +133,55 @@ export default function AgendaViewPage() {
         setIsFullscreen(false);
       }
     }
+  };
+
+  const handleUpdateStatus = async (
+    appointment: Appointment, 
+    newStatus: 'completed' | 'no-show' | 'cancelled',
+    completionData?: { notes?: string; photos?: string[] }
+  ) => {
+    if (!firestore || !userProfile) return;
+    setIsUpdating(appointment.id);
+    
+    try {
+      const appointmentRef = doc(firestore, 'appointments', appointment.id);
+
+      await runTransaction(firestore, async (transaction) => {
+        const appointmentDoc = await transaction.get(appointmentRef);
+        if (!appointmentDoc.exists()) throw new Error('Agendamento não encontrado');
+
+        const updateData: any = {
+          status: newStatus,
+          updatedAt: Timestamp.now(),
+          updatedBy: userProfile.id,
+          completionNotes: completionData?.notes || '',
+          completionPhotos: completionData?.photos || []
+        };
+
+        transaction.update(appointmentRef, updateData);
+      });
+
+      toast({ 
+        title: 'Sucesso', 
+        description: `Agendamento marcado como ${newStatus === 'completed' ? 'concluído' : newStatus}.` 
+      });
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível atualizar o status.' });
+    } finally {
+      setIsUpdating(null);
+    }
+  };
+
+  const handleCompleteClick = (apt: Appointment) => {
+    setAppointmentToComplete(apt);
+    setIsCompletionDialogOpen(true);
+  };
+
+  const handleConfirmCompletion = async (notes: string, photos: string[]) => {
+    if (!appointmentToComplete) return;
+    await handleUpdateStatus(appointmentToComplete, 'completed', { notes, photos });
+    setAppointmentToComplete(null);
   };
 
   if (userProfile && userProfile.role === 'client') {
@@ -233,7 +299,6 @@ export default function AgendaViewPage() {
                     isNext && "ring-1 ring-slate-700"
                   )}
                 >
-                  {/* Status Indicator */}
                   <div className={cn(
                     "absolute left-0 top-0 bottom-0 w-1.5",
                     isHappeningNow ? "bg-primary" : "bg-slate-800 group-hover:bg-slate-700"
@@ -241,23 +306,56 @@ export default function AgendaViewPage() {
 
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between mb-2">
-                      <div className="bg-slate-950/80 px-3 py-1.5 rounded-full border border-slate-800 flex items-center gap-2">
-                        <Clock className={cn("h-4 w-4", isHappeningNow ? "text-primary animate-spin-slow" : "text-slate-500")} />
-                        <span className="text-lg font-bold tabular-nums">
-                          {format(start, 'HH:mm')}
-                        </span>
-                      </div>
-                      {isHappeningNow && (
-                        <div className="flex items-center gap-2 bg-primary/20 px-3 py-1 rounded-full animate-pulse">
-                          <div className="h-2 w-2 rounded-full bg-primary" />
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Em Atendimento</span>
+                      <div className="flex items-center gap-2">
+                        <div className="bg-slate-950/80 px-3 py-1.5 rounded-full border border-slate-800 flex items-center gap-2">
+                          <Clock className={cn("h-4 w-4", isHappeningNow ? "text-primary animate-spin-slow" : "text-slate-500")} />
+                          <span className="text-lg font-bold tabular-nums">
+                            {format(start, 'HH:mm')}
+                          </span>
                         </div>
-                      )}
+                        {isHappeningNow && (
+                          <div className="flex items-center gap-2 bg-primary/20 px-3 py-1 rounded-full animate-pulse">
+                            <div className="h-2 w-2 rounded-full bg-primary" />
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Ativo</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500 hover:text-white transition-all h-8 gap-1"
+                          onClick={() => handleCompleteClick(apt)}
+                          disabled={isUpdating === apt.id}
+                        >
+                          <Check className="h-3 w-3" />
+                          Concluir
+                        </Button>
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white" disabled={isUpdating === apt.id}>
+                                {isUpdating === apt.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800 text-slate-200">
+                              <DropdownMenuItem onClick={() => handleCompleteClick(apt)} className="hover:bg-slate-800 focus:bg-slate-800 cursor-pointer">
+                                <Check className="h-4 w-4 mr-2 text-emerald-500" />
+                                Baixa de Serviço
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleUpdateStatus(apt, 'no-show')} className="hover:bg-slate-800 focus:bg-slate-800 cursor-pointer text-amber-500">
+                                <AlertCircle className="h-4 w-4 mr-2" />
+                                Marcar Falta
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
                     </div>
                   </CardHeader>
 
                   <CardContent className="space-y-4">
-                    {/* Customer Info */}
                     <div className="flex items-center gap-4">
                       <Avatar className="h-14 w-14 ring-2 ring-slate-800 group-hover:ring-slate-700 transition-all">
                         <AvatarImage src={apt.customerPhotoURL} />
@@ -276,7 +374,6 @@ export default function AgendaViewPage() {
                       </div>
                     </div>
 
-                    {/* Meta Info */}
                     <div className="pt-4 border-t border-slate-800/50 flex items-center justify-between">
                       <div className="flex items-center gap-2 text-xs text-slate-500">
                         <User className="h-3 w-3" />
@@ -289,7 +386,6 @@ export default function AgendaViewPage() {
                     </div>
                   </CardContent>
 
-                  {/* Visual Decoration */}
                   <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
                     <Scissors className="h-24 w-24 rotate-12" />
                   </div>
@@ -314,15 +410,22 @@ export default function AgendaViewPage() {
         )}
       </main>
 
-      {/* Footer Branding */}
-      <footer className="p-8 text-center text-slate-600 mt-auto opacity-30">
+      <footer className="p-8 text-center text-slate-600 mt-auto opacity-40">
         <div className="flex flex-col items-center gap-1">
           <p className="text-xs font-medium">
             Powered by <span className="font-bold text-primary">Invivio Tecnologia</span>
           </p>
-          <p className="text-[10px]">Invivio Velo v1.00043 • Modo Painel Ativo</p>
+          <p className="text-[10px] font-bold text-primary">Invivio Velo v1.00053 • Modo Painel Ativo</p>
         </div>
       </footer>
+
+      <CompleteServiceDialog 
+        isOpen={isCompletionDialogOpen}
+        onOpenChange={setIsCompletionDialogOpen}
+        customerName={appointmentToComplete?.customerName || ''}
+        serviceName={appointmentToComplete?.serviceName || ''}
+        onConfirm={handleConfirmCompletion}
+      />
 
       <style jsx global>{`
         @keyframes spin-slow {
@@ -336,4 +439,3 @@ export default function AgendaViewPage() {
     </div>
   );
 }
-

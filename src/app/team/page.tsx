@@ -28,6 +28,8 @@ import {
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
+import { PasswordResetDialog } from '@/components/admin/PasswordResetDialog';
+import { Key } from 'lucide-react';
 
 const roleDisplay: Record<UserProfile['role'], string> = {
   admin: 'Admin',
@@ -46,6 +48,15 @@ export default function UsersPage() {
   const { userProfile, isLoading: isProfileLoading } = useUserProfile();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Password Reset State
+  const [isResetOpen, setIsResetOpen] = useState(false);
+  const [resetTarget, setResetTarget] = useState<{ id: string, name: string } | null>(null);
+
+  const handleOpenReset = (userId: string, userName: string) => {
+    setResetTarget({ id: userId, name: userName });
+    setIsResetOpen(true);
+  };
 
   const usersQuery = useMemoFirebase(
     () => (firestore && userProfile?.role === 'admin' ? query(collection(firestore, 'users'), where('role', 'in', ['admin', 'professional'])) : null),
@@ -119,6 +130,7 @@ export default function UsersPage() {
   }
 
   return (
+    <>
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -214,6 +226,11 @@ export default function UsersPage() {
                             </DropdownMenuItem>
                           </>
                         )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onSelect={() => handleOpenReset(user.id, user.name)} className="text-amber-600 dark:text-amber-400">
+                          <Key className="mr-2 h-4 w-4" />
+                          Redefinir Senha
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -231,5 +248,12 @@ export default function UsersPage() {
         </CardContent>
       </Card>
     </div>
+    <PasswordResetDialog 
+        isOpen={isResetOpen} 
+        onOpenChange={setIsResetOpen}
+        userId={resetTarget?.id || ''}
+        userName={resetTarget?.name || ''}
+    />
+    </>
   );
 }

@@ -5,6 +5,7 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import AppSidebar from '@/components/layout/sidebar';
 
 const appRoutes = [
+  '/dashboard',
   '/schedule',
   '/services',
   '/team',

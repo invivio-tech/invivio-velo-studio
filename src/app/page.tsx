@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,7 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Badge } from '@/components/ui/badge';
 import { BarberPoleIcon } from '@/components/icons/barber-pole-icon';
 
-import { collection, doc, query, where, limit, orderBy } from 'firebase/firestore';
+import { collection, doc, query, where, limit, orderBy, Timestamp } from 'firebase/firestore';
 import {
   useFirestore,
   useCollection,
@@ -26,7 +26,7 @@ import {
 import type { Service } from '@/app/services/page';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { EstablishmentSettings } from '@/app/establishment/page';
-import { Instagram } from 'lucide-react';
+import { Instagram, Star, Scissors as ScissorsIcon, User as UserIcon } from 'lucide-react';
 
 export default function LandingPage() {
   const heroImage = PlaceHolderImages.find((p) => p.id === 'landing-hero');
@@ -49,6 +49,26 @@ export default function LandingPage() {
     [firestore]
   );
   const { data: settings, isLoading: areSettingsLoading } = useDoc<EstablishmentSettings>(settingsRef);
+
+  // Fetch Portfolio (Completed Appointments with Photos)
+  const portfolioQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(
+      collection(firestore, 'appointments'),
+      where('status', '==', 'completed'),
+      where('isPortfolioFeatured', '==', true),
+      orderBy('startTime', 'desc'),
+      limit(6)
+    );
+  }, [firestore]);
+  
+  const { data: allCompleted, isLoading: isPortfolioLoading } = useCollection<any>(portfolioQuery);
+
+  const portfolioItems = useMemo(() => {
+    if (!allCompleted) return [];
+    // Filter items that have photos
+    return allCompleted.filter(apt => apt.completionPhotos && apt.completionPhotos.length > 0);
+  }, [allCompleted]);
 
   const isLoading = areServicesLoading || areSettingsLoading;
 
@@ -246,6 +266,73 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Portfolio Section */}
+        {portfolioItems.length > 0 && (
+          <section className="bg-slate-950 text-white py-16 md:py-24 overflow-hidden">
+            <div className="container px-4 md:px-6">
+              <div className="flex flex-col md:flex-row items-end justify-between gap-4 mb-12">
+                <div className="space-y-2">
+                  <Badge variant="outline" className="text-primary border-primary/30 uppercase tracking-widest text-[10px] py-1 px-3">Galeria de Resultados</Badge>
+                  <h2 className="text-3xl md:text-5xl font-headline font-bold text-slate-50">
+                    Serviços Executados
+                  </h2>
+                  <p className="text-slate-400 max-w-xl text-lg">
+                    Confira os resultados reais transformados por nossos especialistas.
+                  </p>
+                </div>
+                <div className="hidden md:flex gap-2">
+                   <div className="flex -space-x-3 overflow-hidden">
+                     {[1,2,3].map(i => (
+                       <div key={i} className="inline-block h-10 w-10 rounded-full ring-2 ring-slate-950 bg-slate-800 flex items-center justify-center">
+                         <Star className="h-4 w-4 text-emerald-500 fill-emerald-500" />
+                       </div>
+                     ))}
+                   </div>
+                   <div className="ml-4 text-sm">
+                      <p className="font-bold text-slate-200">Resultados Reais</p>
+                      <p className="text-slate-500 text-xs">Transformações confirmadas</p>
+                   </div>
+                </div>
+              </div>
+
+              <div className="relative">
+                <div className="flex gap-6 overflow-x-auto pb-8 scrollbar-hide snap-x snap-mandatory px-4 -mx-4">
+                  {portfolioItems.map((item) => (
+                    <div 
+                      key={item.id} 
+                      className="flex-shrink-0 w-[280px] md:w-[350px] snap-start group"
+                    >
+                      <div className="relative aspect-[4/5] rounded-3xl overflow-hidden mb-4 ring-1 ring-slate-800 transition-all duration-500 group-hover:ring-primary/50 group-hover:shadow-[0_0_30px_rgba(var(--primary),0.1)]">
+                        <img 
+                          src={item.completionPhotos[0]} 
+                          alt={item.serviceName}
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
+                        
+                        <div className="absolute bottom-4 left-4 right-4 translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+                           <div className="flex items-center gap-2 mb-1">
+                              <Badge className="bg-primary/20 text-primary border-none hover:bg-primary/30 text-[10px] h-5">
+                                 {item.serviceName}
+                              </Badge>
+                           </div>
+                           <p className="text-slate-300 text-xs font-medium flex items-center gap-1">
+                             <UserIcon className="h-3 w-3" />
+                             Corte por {item.professionalName}
+                           </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Visual hint for scrolling */}
+                <div className="absolute right-0 top-0 bottom-8 w-24 bg-gradient-to-l from-slate-950 to-transparent pointer-events-none" />
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* About Section */}
         <section id="about" className="bg-card border-y">
           <div className="container py-16 md:py-24 grid md:grid-cols-2 gap-12 items-center">
@@ -312,12 +399,10 @@ export default function LandingPage() {
               <p className="mt-2">
                 {establishmentAddress}
               </p>
-              <div className="mt-6 flex flex-col items-center justify-center gap-1 opacity-60 hover:opacity-100 transition-opacity">
-                <p className="text-xs font-medium">
+              <div className="pb-4 pt-2 flex flex-col items-center justify-center gap-1 opacity-50 hover:opacity-100 transition-all duration-300">
+                <p className="text-[10px]">Invivio Velo v1.00053</p>
+                <p className="text-[10px] font-medium leading-tight">
                   Powered by <a href="http://www.invivio.com.br" target="_blank" rel="noopener noreferrer" className="font-bold text-primary hover:underline">Invivio Tecnologia</a>
-                </p>
-                <p className="text-[10px]">
-                   Invivio Velo v1.00043
                 </p>
               </div>
             </>

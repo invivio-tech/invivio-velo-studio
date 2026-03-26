@@ -18,7 +18,8 @@ service cloud.firestore {
     }
 
     match /appointments/{appointmentId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() || resource.data.isPortfolioFeatured == true;
+      allow write: if isSignedIn();
     }
 
     match /invoices/{invoiceId} {

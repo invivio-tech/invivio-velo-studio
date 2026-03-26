@@ -1,5 +1,18 @@
 {
   "projects": {
-    "default": "studio-5338129989-3331c"
-  }
+    "prod": "invivio-velo"
+  },
+  "targets": {
+    "invivio-velo": {
+      "hosting": {
+        "main": [
+          "invivio-velo"
+        ],
+        "eastside": [
+          "barbeariaeastside"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

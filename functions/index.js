@@ -1,5 +1,6 @@
 const { onDocumentUpdated, onDocumentCreated } = require('firebase-functions/v2/firestore');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
+const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { setGlobalOptions } = require('firebase-functions/v2');
 const admin = require('firebase-admin');
 const { format } = require('date-fns');
@@ -21,10 +22,16 @@ exports.onappointmentupdate = onDocumentUpdated('appointments/{appointmentId}', 
 
     let title = '';
     let body = '';
+    const promises = [];
 
     if (newData.status === 'cancelled' && oldData.status !== 'cancelled') {
         title = 'Agendamento Cancelado';
         body = `Seu agendamento para ${newData.serviceName} foi cancelado.`;
+        promises.push(sendNotificationToUser(newData.customerId, title, body));
+
+        const profTitle = '❌ Agendamento Cancelado';
+        const profBody = `O cliente ${newData.customerName} cancelou o serviço: ${newData.serviceName} para ${format(newData.startTime.toDate(), "dd/MM 'às' HH:mm", { locale: ptBR })}.`;
+        promises.push(sendNotificationToUser(newData.professionalId, profTitle, profBody));
     } else if (newData.status === 'scheduled' && oldData.status === 'scheduled') {
         const newTime = newData.startTime.toMillis();
         const oldTime = oldData.startTime.toMillis();
@@ -33,11 +40,12 @@ exports.onappointmentupdate = onDocumentUpdated('appointments/{appointmentId}', 
             const dateStr = format(newData.startTime.toDate(), "dd/MM 'às' HH:mm", { locale: ptBR });
             title = 'Agendamento Atualizado';
             body = `Seu agendamento foi alterado para: ${newData.serviceName} em ${dateStr}.`;
+            promises.push(sendNotificationToUser(newData.customerId, title, body));
         }
     }
 
-    if (title && body) {
-        return sendNotificationToUser(newData.customerId, title, body);
+    if (promises.length > 0) {
+        return Promise.all(promises);
     }
     return null;
 });
@@ -142,6 +150,148 @@ exports.dailybirthdaycheck = onSchedule('0 8 * * *', async (event) => {
 
     return Promise.all(promises);
 });
+
+/**
+ * HTTPS: Redefinir senha de um usuário (admins ou o próprio usuário)
+ */
+exports.updateuserpassword = onCall(async (request) => {
+    // Verifica se o solicitante está autenticado
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'O usuário deve estar logado.');
+    }
+
+    const { userId, newPassword } = request.data;
+    const callerId = request.auth.uid;
+
+    // Se não for o próprio usuário, verifica se é admin
+    if (callerId !== userId) {
+        const adminDoc = await admin.firestore().collection('users').doc(callerId).get();
+        if (!adminDoc.exists || adminDoc.data().role !== 'admin') {
+            throw new HttpsError('permission-denied', 'Apenas administradores podem redefinir senhas de outros usuários.');
+        }
+    }
+
+    if (!userId || !newPassword || newPassword.length < 6) {
+        throw new HttpsError('invalid-argument', 'Dados inválidos. A senha deve ter no mínimo 6 caracteres.');
+    }
+
+    try {
+        await admin.auth().updateUser(userId, {
+            password: newPassword
+        });
+        return { success: true, message: 'Senha atualizada com sucesso.' };
+    } catch (error) {
+        console.error('Erro ao atualizar senha:', error);
+        throw new HttpsError('internal', 'Erro ao processar a redefinição de senha.');
+    }
+});
+
+/**
+ * HTTPS: Solicitar ajuda para redefinir senha (notifica admins)
+ */
+exports.requestpasswordresetsupport = onCall(async (request) => {
+    const { email } = request.data;
+    if (!email) {
+        throw new HttpsError('invalid-argument', 'O e-mail é obrigatório.');
+    }
+
+    // Busca o usuário pelo e-mail para confirmar que existe e pegar o nome
+    const usersSnapshot = await admin.firestore().collection('users').where('email', '==', email).limit(1).get();
+    let userName = 'Cliente';
+    if (!usersSnapshot.empty) {
+        userName = usersSnapshot.docs[0].data().name || userName;
+    }
+
+    // Busca todos os administradores
+    const adminsSnapshot = await admin.firestore().collection('users').where('role', '==', 'admin').get();
+    
+    const title = '⚠️ Ajuda com Senha';
+    const body = `${userName} (${email}) solicitou ajuda para redefinir a senha.`;
+
+    const promises = [];
+    adminsSnapshot.forEach(adminDoc => {
+        promises.push(sendNotificationToUser(adminDoc.id, title, body));
+    });
+
+    await Promise.all(promises);
+    return { success: true, message: 'Os administradores foram notificados. Por favor, aguarde o suporte.' };
+});
+
+/**
+ * Trigger: Sincronizar dados de serviço nos agendamentos futuros quando o serviço for editado
+ */
+exports.onserviceupdate = onDocumentUpdated('services/{serviceId}', async (event) => {
+    const newData = event.data.after.data();
+    const oldData = event.data.before.data();
+
+    if (!newData || !oldData) return null;
+
+    // Só atualiza se houver mudança relevante
+    if (newData.name === oldData.name && newData.price === oldData.price && newData.duration === oldData.duration) {
+        return null;
+    }
+
+    const serviceId = event.params.serviceId;
+    const now = admin.firestore.Timestamp.now();
+
+    // Busca agendamentos futuros deste serviço que ainda não foram concluídos/cancelados
+    const appointmentsSnapshot = await admin.firestore().collection('appointments')
+        .where('serviceId', '==', serviceId)
+        .where('startTime', '>=', now)
+        .where('status', '==', 'scheduled')
+        .get();
+
+    if (appointmentsSnapshot.empty) return null;
+
+    const batch = admin.firestore().batch();
+    appointmentsSnapshot.forEach(doc => {
+        batch.update(doc.ref, {
+            serviceName: newData.name,
+            servicePrice: newData.price,
+            serviceDuration: newData.duration
+        });
+    });
+
+    console.log(`Sincronizando ${appointmentsSnapshot.size} agendamentos para o serviço: ${newData.name}`);
+    return batch.commit();
+});
+
+/**
+ * Trigger: Sincronizar nome do profissional nos agendamentos futuros quando o perfil mudar
+ */
+exports.onuserupdate = onDocumentUpdated('users/{userId}', async (event) => {
+    const newData = event.data.after.data();
+    const oldData = event.data.before.data();
+
+    if (!newData || !oldData) return null;
+
+    // Só importa se o nome mudou e se é profissional/admin
+    if (newData.name === oldData.name) return null;
+    if (newData.role !== 'professional' && newData.role !== 'admin') return null;
+
+    const userId = event.params.userId;
+    const now = admin.firestore.Timestamp.now();
+
+    const appointmentsSnapshot = await admin.firestore().collection('appointments')
+        .where('professionalId', '==', userId)
+        .where('startTime', '>=', now)
+        .where('status', '==', 'scheduled')
+        .get();
+
+    if (appointmentsSnapshot.empty) return null;
+
+    const batch = admin.firestore().batch();
+    appointmentsSnapshot.forEach(doc => {
+        batch.update(doc.ref, {
+            professionalName: newData.name
+        });
+    });
+
+    console.log(`Sincronizando ${appointmentsSnapshot.size} agendamentos para o profissional: ${newData.name}`);
+    return batch.commit();
+});
+
+
 
 /**
  * Helper: Enviar notificação para um usuário específico

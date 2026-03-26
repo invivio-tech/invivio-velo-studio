@@ -31,6 +31,7 @@ import {
   Trash2,
   Gift,
   Monitor,
+  BarChart3,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -44,7 +45,8 @@ import { doc } from 'firebase/firestore';
 import type { EstablishmentSettings } from '@/app/establishment/page';
 
 const adminMenuItems = [
-  { href: '/schedule', label: 'Painel', icon: Calendar },
+  { href: '/dashboard', label: 'Dashboard', icon: BarChart3 },
+  { href: '/schedule', label: 'Agenda', icon: Calendar },
   { href: '/services', label: 'Serviços', icon: BookOpen },
   { href: '/categories', label: 'Categorias', icon: LayoutGrid },
   { href: '/team', label: 'Equipe', icon: Users },
@@ -218,11 +220,12 @@ export default function AppSidebar() {
             </div>
           )}
           <div className="pb-4 pt-2 flex flex-col items-center justify-center gap-1 opacity-50 hover:opacity-100 transition-opacity">
+             <span className="text-[10px] text-muted-foreground">v1.00053</span>
+             <p className="text-[10px] font-medium leading-tight text-primary font-bold">
+               Invivio Velo
+             </p>
              <p className="text-[10px] font-medium leading-tight">
                Powered by <a href="http://www.invivio.com.br" target="_blank" rel="noopener noreferrer" className="font-bold text-primary hover:underline">Invivio Tecnologia</a>
-             </p>
-             <p className="text-[9px] leading-tight">
-                 Invivio Velo v1.00043
              </p>
           </div>
         </SidebarFooter>

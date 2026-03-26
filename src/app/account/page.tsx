@@ -33,8 +33,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { logout, resetPassword } from '@/firebase/auth/client';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Key } from 'lucide-react';
 import ProfessionalScheduleSettings from '@/components/schedule/ProfessionalScheduleSettings';
+import { PasswordResetDialog } from '@/components/admin/PasswordResetDialog';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'O nome é obrigatório.' }),
@@ -52,7 +53,7 @@ export default function AccountPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
-  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [isResetOpen, setIsResetOpen] = useState(false);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(formSchema),
@@ -132,30 +133,14 @@ export default function AccountPage() {
     }
   }
 
-  const handleResetPassword = async () => {
-    if (!user?.email) return;
-    
-    setIsResettingPassword(true);
-    const error = await resetPassword(user.email);
-    setIsResettingPassword(false);
-
-    if (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Erro ao enviar e-mail',
-        description: 'Não foi possível enviar o link de redefinição. Tente novamente.',
-      });
-    } else {
-      toast({
-        title: 'E-mail enviado!',
-        description: 'Enviamos um link de redefinição para o seu e-mail cadastrado.',
-      });
-    }
+  const handleResetPassword = () => {
+    setIsResetOpen(true);
   };
 
   const isLoading = isUserLoading || isProfileLoading;
 
   return (
+    <>
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <h1 className="text-3xl font-headline font-bold tracking-tight">
         Minha Conta
@@ -260,9 +245,9 @@ export default function AccountPage() {
                   />
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 pt-4">
                     <div className="flex flex-col sm:flex-row gap-3">
-                      <Button onClick={handleResetPassword} variant="secondary" className="w-full sm:w-auto" type="button" disabled={isResettingPassword}>
-                        {isResettingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Redefinir Senha
+                      <Button onClick={handleResetPassword} variant="secondary" className="w-full sm:w-auto" type="button">
+                        <Key className="mr-2 h-4 w-4" />
+                        Alterar Senha
                       </Button>
                       <Button onClick={handleLogout} variant="outline" className="w-full sm:w-auto" type="button">
                         Sair da Conta
@@ -288,5 +273,12 @@ export default function AccountPage() {
         </div>
       )}
     </div>
+    <PasswordResetDialog 
+        isOpen={isResetOpen}
+        onOpenChange={setIsResetOpen}
+        userId={user?.uid || ''}
+        userName={userProfile?.name || ''}
+    />
+    </>
   );
 }

@@ -27,6 +27,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
+import { PasswordResetDialog } from '@/components/admin/PasswordResetDialog';
+import { Key } from 'lucide-react';
 
 export default function ClientsPage() {
   const firestore = useFirestore();
@@ -40,6 +42,15 @@ export default function ClientsPage() {
   const [redeemClient, setRedeemClient] = useState<{ id: string, name: string, points: number } | null>(null);
   const [redeemAmount, setRedeemAmount] = useState('');
   const [redeemDesc, setRedeemDesc] = useState('Resgate de Saldo/Serviço');
+
+  // Password Reset State
+  const [isResetOpen, setIsResetOpen] = useState(false);
+  const [resetTarget, setResetTarget] = useState<{ id: string, name: string } | null>(null);
+
+  const handleOpenReset = (clientId: string, clientName: string) => {
+    setResetTarget({ id: clientId, name: clientName });
+    setIsResetOpen(true);
+  };
 
   const clientsQuery = useMemoFirebase(
     () =>
@@ -168,6 +179,7 @@ export default function ClientsPage() {
   }
 
   return (
+    <>
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -255,6 +267,10 @@ export default function ClientsPage() {
                         <DropdownMenuItem onSelect={() => router.push(`/clients/${client.id}/edit`)}>
                           Gerenciar
                         </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleOpenReset(client.id, client.name)} className="text-amber-600 dark:text-amber-400">
+                          <Key className="mr-2 h-4 w-4" />
+                          Redefinir Senha
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -312,5 +328,12 @@ export default function ClientsPage() {
         </DialogContent>
       </Dialog>
     </div>
+    <PasswordResetDialog 
+        isOpen={isResetOpen} 
+        onOpenChange={setIsResetOpen}
+        userId={resetTarget?.id || ''}
+        userName={resetTarget?.name || ''}
+    />
+    </>
   );
 }
