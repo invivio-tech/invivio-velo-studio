@@ -697,7 +697,7 @@ function AdminDashboard({
       <footer className="p-8 text-center text-slate-600 mt-auto opacity-40">
         <div className="flex flex-col items-center gap-1">
           <p className="text-xs font-medium">Powered by <span className="font-bold text-primary">Invivio Tecnologia</span></p>
-          <p className="text-[10px] font-bold text-primary">Invivio Velo v1.00053</p>
+          <p className="text-[10px] font-bold text-primary">Invivio Velo v1.00054</p>
         </div>
       </footer>
     </div>
@@ -819,7 +819,7 @@ function ProfessionalDashboard({
        <footer className="p-8 text-center text-slate-600 mt-auto opacity-40">
         <div className="flex flex-col items-center gap-1">
           <p className="text-xs font-medium">Powered by <span className="font-bold text-primary">Invivio Tecnologia</span></p>
-          <p className="text-[10px] font-bold text-primary">Invivio Velo v1.00053</p>
+          <p className="text-[10px] font-bold text-primary">Invivio Velo v1.00054</p>
         </div>
       </footer>
     </div>
@@ -850,7 +850,7 @@ function ClientDashboard({ userProfile }: { userProfile: UserProfile }) {
       <footer className="p-8 text-center text-slate-600 mt-auto opacity-40">
         <div className="flex flex-col items-center gap-1">
           <p className="text-xs font-medium">Powered by <span className="font-bold text-primary">Invivio Tecnologia</span></p>
-          <p className="text-[10px] font-bold text-primary">Invivio Velo v1.00053</p>
+          <p className="text-[10px] font-bold text-primary">Invivio Velo v1.00054</p>
         </div>
       </footer>
     </div>

@@ -32,6 +32,8 @@ import {
   Gift,
   Monitor,
   BarChart3,
+  Info,
+  HelpCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -77,6 +79,11 @@ const clientMenuItems = [
 const unauthenticatedMenuItems = [
   { href: '/login', label: 'Login', icon: LogIn },
   { href: '/signup', label: 'Cadastrar', icon: UserPlus },
+];
+
+const generalMenuItems = [
+  { href: '/help', label: 'Ajuda e FAQ', icon: HelpCircle },
+  { href: '/about', label: 'Sobre o Sistema', icon: Info },
 ];
 
 
@@ -181,6 +188,27 @@ export default function AppSidebar() {
             </SidebarMenu>
           )}
 
+          <SidebarSeparator className="my-2 opacity-10" />
+          <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2">
+            <span>Suporte e Info</span>
+          </div>
+          <SidebarMenu>
+            {generalMenuItems.map((item) => (
+              <SidebarMenuItem key={item.href}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === item.href}
+                  tooltip={item.label}
+                >
+                  <Link href={item.href}>
+                    <item.icon className="h-5 w-5" />
+                    <span className="truncate">{item.label}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+
 
         </SidebarContent>
         <SidebarFooter>
@@ -220,7 +248,7 @@ export default function AppSidebar() {
             </div>
           )}
           <div className="pb-4 pt-2 flex flex-col items-center justify-center gap-1 opacity-50 hover:opacity-100 transition-opacity">
-             <span className="text-[10px] text-muted-foreground">v1.00053</span>
+             <span className="text-[10px] text-muted-foreground">v1.00054</span>
              <p className="text-[10px] font-medium leading-tight text-primary font-bold">
                Invivio Velo
              </p>
