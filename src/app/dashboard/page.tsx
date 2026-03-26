@@ -365,7 +365,7 @@ export default function DashboardPage() {
 
       <footer className="py-8 text-center text-slate-600 mt-auto opacity-40">
         <div className="flex flex-col items-center gap-1">
-          <p className="text-xs font-medium">Invivio Velo Dashboard v1.00054</p>
+          <p className="text-xs font-medium">Invivio Velo Dashboard v1.00055</p>
           <p className="text-[10px]">Powered by Invivio Tecnologia</p>
         </div>
       </footer>

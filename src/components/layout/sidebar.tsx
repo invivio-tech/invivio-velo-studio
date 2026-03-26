@@ -248,7 +248,7 @@ export default function AppSidebar() {
             </div>
           )}
           <div className="pb-4 pt-2 flex flex-col items-center justify-center gap-1 opacity-50 hover:opacity-100 transition-opacity">
-             <span className="text-[10px] text-muted-foreground">v1.00054</span>
+             <span className="text-[10px] text-muted-foreground">v1.00055</span>
              <p className="text-[10px] font-medium leading-tight text-primary font-bold">
                Invivio Velo
              </p>

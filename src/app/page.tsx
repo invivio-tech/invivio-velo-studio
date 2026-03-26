@@ -400,7 +400,7 @@ export default function LandingPage() {
                 {establishmentAddress}
               </p>
               <div className="pb-4 pt-2 flex flex-col items-center justify-center gap-1 opacity-50 hover:opacity-100 transition-all duration-300">
-                <p className="text-[10px]">Invivio Velo v1.00054</p>
+                <p className="text-[10px]">Invivio Velo v1.00055</p>
                 <p className="text-[10px] font-medium leading-tight">
                   Powered by <a href="http://www.invivio.com.br" target="_blank" rel="noopener noreferrer" className="font-bold text-primary hover:underline">Invivio Tecnologia</a>
                 </p>

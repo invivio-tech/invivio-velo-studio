@@ -29,11 +29,11 @@ export default function AboutPage() {
         <Card className="border border-border/10 bg-card/50 shadow-none backdrop-blur-sm">
           <CardHeader>
             <Shield className="h-8 w-8 text-emerald-500 mb-2" />
-            <CardTitle className="text-lg">Seguro e Confiável</CardTitle>
+            <CardTitle className="text-lg">Segurança de Dados</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Seus dados e de seus clientes estão protegidos com criptografia de nível bancário e infraestrutura Firebase robusta.
+              Seus dados e de seus clientes residem em infraestrutura de nuvem certificada, com backups automáticos e camadas de proteção multicamadas.
             </p>
           </CardContent>
         </Card>
@@ -66,7 +66,7 @@ export default function AboutPage() {
       <div className="pt-10 border-t border-border/10 text-center">
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-muted/50 rounded-full text-xs font-medium text-slate-400">
           <Award className="h-3 w-3" />
-          Versão v1.00054 • © 2026 Invivio Tecnologia
+          Versão v1.00055 • © 2026 Invivio Tecnologia
         </div>
       </div>
     </div>

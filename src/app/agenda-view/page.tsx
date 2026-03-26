@@ -415,7 +415,7 @@ export default function AgendaViewPage() {
           <p className="text-xs font-medium">
             Powered by <span className="font-bold text-primary">Invivio Tecnologia</span>
           </p>
-          <p className="text-[10px] font-bold text-primary">Invivio Velo v1.00054 • Modo Painel Ativo</p>
+          <p className="text-[10px] font-bold text-primary">Invivio Velo v1.00055 • Modo Painel Ativo</p>
         </div>
       </footer>
 

@@ -113,13 +113,13 @@ export default function HelpPage() {
         </div>
         <div className="flex flex-wrap justify-center gap-4">
           <Button asChild variant="outline" className="gap-2 bg-card/50">
-            <Link href="mailto:contato@invivio.com.br">
+            <Link href="mailto:invivio.tech@gmail.com">
               <Mail className="h-4 w-4" />
               E-mail
             </Link>
           </Button>
           <Button asChild variant="default" className="gap-2">
-            <Link href="https://wa.me/5511999999999">
+            <Link href="https://wa.me/5511988047106">
               <MessageCircle className="h-4 w-4" />
               WhatsApp
             </Link>
