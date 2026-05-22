@@ -130,7 +130,7 @@ export default function HelpPage() {
       <div className="pt-10 border-t border-border/10 text-center">
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-muted/50 rounded-full text-xs font-medium text-slate-400">
           <Award className="h-3 w-3" />
-          Versão v1.00055 • © 2026 Invivio Tecnologia
+          Versão v1.00056 • © 2026 Invivio Tecnologia
         </div>
       </div>
     </div>

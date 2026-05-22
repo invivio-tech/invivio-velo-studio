@@ -39,7 +39,7 @@ export default function SignupPage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -58,7 +58,7 @@ export default function SignupPage() {
       toast({
         variant: 'destructive',
         title: 'Falha no cadastro',
-        description: 'Não foi possível criar sua conta. Verifique os dados ou tente novamente.',
+        description: `Erro: ${error.code || 'desconhecido'} — ${error.message || 'Tente novamente.'}`,
       });
     } else {
       router.push('/schedule');
@@ -139,6 +139,7 @@ export default function SignupPage() {
                   </FormItem>
                 )}
               />
+
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -1,19 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Camera, Image as ImageIcon, Loader2, X } from 'lucide-react';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { useStorage } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
 
 interface CompleteServiceDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (notes: string, photos: string[]) => Promise<void>;
+  onConfirm: (notes: string, photos: string[], createProfile?: boolean, guestData?: { name: string, phone: string, email: string }) => Promise<void>;
   customerName: string;
+  customerPhone?: string;
+  customerEmail?: string;
   serviceName: string;
+  isGuest?: boolean;
 }
 
 export function CompleteServiceDialog({
@@ -21,36 +23,55 @@ export function CompleteServiceDialog({
   onOpenChange,
   onConfirm,
   customerName,
-  serviceName
+  customerPhone = '',
+  customerEmail = '',
+  serviceName,
+  isGuest
 }: CompleteServiceDialogProps) {
   const [notes, setNotes] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
+  const [createProfile, setCreateProfile] = useState(true);
+  const [guestData, setGuestData] = useState({ 
+    name: customerName, 
+    phone: customerPhone, 
+    email: customerEmail 
+  });
+
+  // Update guest data when props change (dialog opens)
+  useEffect(() => {
+    if (isOpen) {
+      setGuestData({
+        name: customerName,
+        phone: customerPhone,
+        email: customerEmail
+      });
+    }
+  }, [isOpen, customerName, customerPhone, customerEmail]);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const storage = useStorage();
   const { toast } = useToast();
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0 || !storage) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
 
     setIsUploading(true);
     try {
-      const uploadedUrls = await Promise.all(
-        Array.from(files).map(async (file) => {
-          const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
-          const ext = file.name.split('.').pop() || 'jpg';
-          const filename = `appointments/completion/${uniqueSuffix}.${ext}`;
-          const storageRef = ref(storage, filename);
-          await uploadBytes(storageRef, file, { contentType: file.type });
-          return getDownloadURL(storageRef);
-        })
-      );
-      setPhotos((prev) => [...prev, ...uploadedUrls]);
-      toast({ title: 'Fotos enviadas!', description: `${uploadedUrls.length} fotos carregadas com sucesso.` });
-    } catch (error) {
-      console.error('Error uploading photos:', error);
-      toast({ variant: 'destructive', title: 'Erro de Upload', description: 'Não foi possível enviar as fotos.' });
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', 'uploads/appointments');
+      const response = await fetch('/api/upload', { method: 'POST', body: formData });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Falha no upload');
+      }
+      const { url } = await response.json();
+      
+      setPhotos((prev) => [...prev, url as string]);
+      toast({ title: 'Foto enviada!', description: 'Foto carregada com sucesso.' });
+    } catch (error: any) {
+      console.error('Error uploading photo:', error);
+      toast({ variant: 'destructive', title: 'Erro de Upload', description: error?.message || 'Não foi possível enviar as fotos.' });
     } finally {
       setIsUploading(false);
     }
@@ -63,7 +84,8 @@ export function CompleteServiceDialog({
   const handleConfirm = async () => {
     setIsSubmitting(true);
     try {
-      await onConfirm(notes, photos);
+      // If isGuest and createProfile, we pass the (possibly edited) guestData
+      await onConfirm(notes, photos, isGuest ? createProfile : false, isGuest ? guestData : undefined);
       onOpenChange(false);
       setNotes('');
       setPhotos([]);
@@ -74,16 +96,67 @@ export function CompleteServiceDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-headline">Concluir Atendimento</DialogTitle>
           <DialogDescription>
             Confirme a conclusão do serviço para <strong>{customerName}</strong>.
-            Você pode adicionar observações e fotos do serviço realizado.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {isGuest && (
+            <div className="space-y-3 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+              <div className="flex items-center space-x-2 pb-2 border-b border-slate-200">
+                <input 
+                  type="checkbox" 
+                  id="createProfile" 
+                  checked={createProfile}
+                  onChange={(e) => setCreateProfile(e.target.checked)}
+                  className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary"
+                />
+                <Label htmlFor="createProfile" className="text-sm font-bold text-slate-900 cursor-pointer">
+                  Criar Cadastro de Cliente
+                </Label>
+              </div>
+              
+              {createProfile && (
+                <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="space-y-1">
+                    <Label htmlFor="guestName" className="text-xs font-semibold text-slate-700">Nome Completo</Label>
+                    <Input 
+                      id="guestName"
+                      value={guestData.name}
+                      onChange={(e) => setGuestData({...guestData, name: e.target.value})}
+                      className="bg-white text-slate-900 border-slate-300 focus:border-primary"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="guestPhone" className="text-xs font-semibold text-slate-700">Telefone/WhatsApp</Label>
+                    <Input 
+                      id="guestPhone"
+                      placeholder="(00) 00000-0000"
+                      value={guestData.phone}
+                      onChange={(e) => setGuestData({...guestData, phone: e.target.value})}
+                      className="bg-white text-slate-900 border-slate-300 focus:border-primary"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="guestEmail" className="text-xs font-semibold text-slate-700">E-mail (Opcional)</Label>
+                    <Input 
+                      id="guestEmail"
+                      type="email"
+                      placeholder="cliente@email.com"
+                      value={guestData.email}
+                      onChange={(e) => setGuestData({...guestData, email: e.target.value})}
+                      className="bg-white text-slate-900 border-slate-300 focus:border-primary"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="notes">Observações do Serviço</Label>
             <Textarea 
@@ -91,7 +164,7 @@ export function CompleteServiceDialog({
               placeholder="Ex: Utilizado shampoo X e finalizado com pomada matte."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="resize-none h-24"
+              className="resize-none h-20"
             />
           </div>
 
@@ -116,8 +189,13 @@ export function CompleteServiceDialog({
                 }>
                   {isUploading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Camera className="w-6 h-6 text-muted-foreground" />}
                   <span className="text-[10px] text-muted-foreground mt-1 text-center">Adicionar Fotos</span>
-                  <input type="file" multiple accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={isUploading} />
-                </label>
+                  <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handlePhotoUpload}
+                disabled={isUploading}
+              />  </label>
               )}
             </div>
           </div>

@@ -23,7 +23,7 @@ import {
   Legend
 } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
-import { DollarSign, Users, CalendarCheck, TrendingUp, Scissors, UserCheck, Plus, Calendar, FileText, LayoutDashboard, ChevronDown } from 'lucide-react';
+import { DollarSign, Users, CalendarCheck, TrendingUp, Scissors, UserCheck, Plus, Calendar, FileText, LayoutDashboard, ChevronDown, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import {
@@ -34,15 +34,24 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { UserProfile } from '@/firebase';
 import type { EstablishmentSettings } from '@/app/establishment/page';
+import type { ServiceWithId } from '@/app/services/page';
+import type { CategoryWithId } from '@/app/categories/page';
 
 interface Appointment {
   id: string;
   serviceName: string;
   servicePrice: number;
-  startTime: Timestamp;
+  startTime: Timestamp | { toDate: () => Date };
   status: 'completed' | 'cancelled' | 'no-show' | 'scheduled';
   professionalName: string;
   professionalId: string;
+}
+
+interface Order {
+  id: string;
+  totalValue: number;
+  status: 'pending' | 'paid' | 'completed' | 'cancelled';
+  createdAt: string;
 }
 
 const COLORS = ['#0f172a', '#334155', '#64748b', '#94a3b8', '#cbd5e1', '#e2e8f0'];
@@ -95,6 +104,27 @@ export default function DashboardPage() {
   , [firestore, start, end]);
 
   const { data: recentAppointments, isLoading: isHistoryLoading } = useCollection<Appointment>(historyQuery);
+
+  const ordersQuery = useMemoFirebase(() => 
+    firestore ? query(
+      collection(firestore, 'orders'),
+      where('createdAt', '>=', start.toISOString()),
+      where('createdAt', '<=', end.toISOString()),
+      orderBy('createdAt', 'desc')
+    ) : null
+  , [firestore, start, end]);
+
+  const { data: recentOrders, isLoading: isOrdersLoading } = useCollection<Order>(ordersQuery);
+
+  const servicesQuery = useMemoFirebase(() => 
+    firestore ? collection(firestore, 'services') : null
+  , [firestore]);
+  const { data: services } = useCollection<ServiceWithId>(servicesQuery);
+
+  const categoriesQuery = useMemoFirebase(() => 
+    firestore ? collection(firestore, 'serviceCategories') : null
+  , [firestore]);
+  const { data: categories } = useCollection<CategoryWithId>(categoriesQuery);
   
   const settingsRef = useMemoFirebase(() => firestore ? doc(firestore, 'establishmentSettings', 'main') : null, [firestore]);
   const { data: settings } = useDoc<EstablishmentSettings>(settingsRef);
@@ -103,7 +133,11 @@ export default function DashboardPage() {
     if (!recentAppointments) return null;
 
     const completed = recentAppointments.filter(a => a.status === 'completed');
-    const totalRevenue = completed.reduce((sum, a) => sum + (a.servicePrice || 0), 0);
+    const completedOrders = recentOrders?.filter(o => o.status === 'completed' || o.status === 'paid') || [];
+    
+    const serviceRevenue = completed.reduce((sum, a) => sum + (a.servicePrice || 0), 0);
+    const productRevenue = completedOrders.reduce((sum, o) => sum + (o.totalValue || 0), 0);
+    const totalRevenue = serviceRevenue + productRevenue;
     
     // Dynamic chart data based on time range
     const intervalDays = eachDayOfInterval({
@@ -112,11 +146,16 @@ export default function DashboardPage() {
     });
 
     const revenueData = intervalDays.map(day => {
-      const dayCompleted = completed.filter(a => isSameDay(a.startTime.toDate(), day));
+      const dayCompletedServices = completed.filter(a => isSameDay((a.startTime as any).toDate ? (a.startTime as any).toDate() : new Date(a.startTime as any), day));
+      const dayCompletedOrders = completedOrders.filter(o => isSameDay(new Date(o.createdAt), day));
+      
+      const dayServiceRev = dayCompletedServices.reduce((sum, a) => sum + (a.servicePrice || 0), 0);
+      const dayProductRev = dayCompletedOrders.reduce((sum, o) => sum + (o.totalValue || 0), 0);
+
       return {
         name: format(day, intervalDays.length > 7 ? 'dd/MM' : 'EEE', { locale: ptBR }),
-        revenue: dayCompleted.reduce((sum, a) => sum + (a.servicePrice || 0), 0),
-        count: dayCompleted.length
+        revenue: dayServiceRev + dayProductRev,
+        count: dayCompletedServices.length + dayCompletedOrders.length
       };
     });
 
@@ -130,28 +169,47 @@ export default function DashboardPage() {
       .sort((a, b) => b.value - a.value)
       .slice(0, 5);
 
-    // Professional performance
-    const proMap = new Map<string, number>();
+    // Category distribution
+    const categoryMap = new Map<string, number>();
     completed.forEach(a => {
-      proMap.set(a.professionalName, (proMap.get(a.professionalName) || 0) + (a.servicePrice || 0));
+      const service = services?.find(s => s.name === a.serviceName);
+      const category = categories?.find(c => c.id === service?.categoryId);
+      const catName = category?.name || 'Outros';
+      categoryMap.set(catName, (categoryMap.get(catName) || 0) + 1);
+    });
+    const categoryData = Array.from(categoryMap.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+
+    // Professional performance (Revenue and Count)
+    const proMap = new Map<string, { revenue: number, count: number }>();
+    completed.forEach(a => {
+      const current = proMap.get(a.professionalName) || { revenue: 0, count: 0 };
+      proMap.set(a.professionalName, { 
+        revenue: current.revenue + (a.servicePrice || 0),
+        count: current.count + 1
+      });
     });
     const proData = Array.from(proMap.entries())
-      .map(([name, revenue]) => ({ name, revenue }))
+      .map(([name, stats]) => ({ name, ...stats }))
       .sort((a, b) => b.revenue - a.revenue);
 
     return {
       totalRevenue,
+      serviceRevenue,
+      productRevenue,
       totalCompleted: completed.length,
       avgTicket: completed.length > 0 ? totalRevenue / completed.length : 0,
       revenueData,
       serviceData,
+      categoryData,
       proData,
       cancelledCount: recentAppointments.filter(a => a.status === 'cancelled').length,
       noShowCount: recentAppointments.filter(a => a.status === 'no-show').length
     };
   }, [recentAppointments]);
 
-  if (isUserLoading || isProfileLoading || isHistoryLoading) {
+  if (isUserLoading || isProfileLoading || isHistoryLoading || isOrdersLoading) {
     return (
       <div className="flex-1 space-y-4 p-8 pt-6">
         <div className="flex items-center justify-between space-y-2">
@@ -178,7 +236,7 @@ export default function DashboardPage() {
     <div className="flex-1 space-y-6 p-8 pt-6 bg-background min-h-screen">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-headline font-bold tracking-tight text-foreground">Dashboard Administrativo</h1>
+          <h1 className="text-3xl font-headline font-bold tracking-tight text-foreground">Dashboard Serviços</h1>
           <p className="text-muted-foreground">
             Bem-vindo de volta! Aqui está como o <span className="text-primary font-bold">{settings?.name || 'seu estabelecimento'}</span> está indo em <span className="text-primary font-bold">{label}</span>.
           </p>
@@ -229,14 +287,32 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="border border-border/10 bg-card/50 shadow-none backdrop-blur-sm overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Faturamento ({filterMode === 'month' ? 'Mensal' : timeRange + 'd'})</CardTitle>
+            <CardTitle className="text-sm font-medium">Faturamento Total</CardTitle>
             <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg"><DollarSign className="h-4 w-4" /></div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{formatCurrency(stats?.totalRevenue || 0)}</div>
-            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-              <TrendingUp className="h-3 w-3 text-emerald-500" /> +8% em relação ao mês anterior
-            </p>
+            <p className="text-[10px] text-muted-foreground mt-1">Soma de Serviços e Vendas</p>
+          </CardContent>
+        </Card>
+        <Card className="border border-border/10 bg-card/50 shadow-none backdrop-blur-sm overflow-hidden border-l-primary/30">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Faturamento Loja</CardTitle>
+            <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg"><ShoppingBag className="h-4 w-4" /></div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-foreground">{formatCurrency((stats as any)?.productRevenue || 0)}</div>
+            <p className="text-[10px] text-muted-foreground mt-1">Vendas de produtos retirados</p>
+          </CardContent>
+        </Card>
+        <Card className="border border-border/10 bg-card/50 shadow-none backdrop-blur-sm overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Faturamento Serviços</CardTitle>
+            <div className="p-2 bg-purple-500/10 text-purple-500 rounded-lg"><Scissors className="h-4 w-4" /></div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-foreground">{formatCurrency((stats as any)?.serviceRevenue || 0)}</div>
+            <p className="text-[10px] text-muted-foreground mt-1">Receita de atendimentos concluídos</p>
           </CardContent>
         </Card>
         <Card className="border border-border/10 bg-card/50 shadow-none backdrop-blur-sm overflow-hidden">
@@ -246,30 +322,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{stats?.totalCompleted}</div>
-            <p className="text-xs text-muted-foreground mt-1 text-slate-400">Atendimentos finalizados com sucesso</p>
-          </CardContent>
-        </Card>
-        <Card className="border border-border/10 bg-card/50 shadow-none backdrop-blur-sm overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
-            <div className="p-2 bg-purple-500/10 text-purple-500 rounded-lg"><TrendingUp className="h-4 w-4" /></div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{formatCurrency(stats?.avgTicket || 0)}</div>
-            <p className="text-xs text-muted-foreground mt-1 text-slate-400">Valor médio gasto por cliente</p>
-          </CardContent>
-        </Card>
-        <Card className="border border-border/10 bg-card/50 shadow-none backdrop-blur-sm overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Faltas e Cancelamentos</CardTitle>
-            <div className="p-2 bg-orange-500/10 text-orange-500 rounded-lg"><Users className="h-4 w-4" /></div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{(stats?.noShowCount || 0) + (stats?.cancelledCount || 0)}</div>
-            <div className="flex gap-2 mt-1">
-               <span className="text-[10px] bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded border border-orange-500/20">{stats?.noShowCount || 0} faltas</span>
-               <span className="text-[10px] bg-slate-500/20 text-slate-400 px-1.5 py-0.5 rounded border border-slate-500/20">{stats?.cancelledCount || 0} cancelados</span>
-            </div>
+            <p className="text-[10px] text-muted-foreground mt-1">Agendamentos finalizados</p>
           </CardContent>
         </Card>
       </div>
@@ -300,14 +353,14 @@ export default function DashboardPage() {
 
         <Card className="col-span-3 border border-border/10 bg-card/50 shadow-none">
           <CardHeader>
-            <CardTitle className="text-foreground">Serviços mais Procurados</CardTitle>
-            <CardDescription className="text-slate-400">Distribuição dos serviços realizados.</CardDescription>
+            <CardTitle className="text-foreground">Tipos de Serviço</CardTitle>
+            <CardDescription className="text-slate-400">Distribuição por categorias.</CardDescription>
           </CardHeader>
           <CardContent className="pt-4">
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
                 <Pie
-                  data={stats?.serviceData}
+                  data={stats?.categoryData}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
@@ -316,13 +369,75 @@ export default function DashboardPage() {
                   dataKey="value"
                   stroke="none"
                 >
-                  {stats?.serviceData.map((entry: any, index: number) => (
+                  {stats?.categoryData.map((entry: any, index: number) => (
                     <Cell key={`cell-${index}`} fill={`hsl(var(--chart-${(index % 5) + 1}))`} />
                   ))}
                 </Pie>
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #334155', color: '#f8fafc' }}
                   itemStyle={{ color: '#f8fafc' }}
+                />
+                <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: '20px', fontSize: '10px' }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-4 border border-border/10 bg-card/50 shadow-none">
+          <CardHeader>
+            <CardTitle className="text-foreground">Serviços mais Procurados</CardTitle>
+            <CardDescription className="text-slate-400">Top 5 serviços realizados.</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={stats?.serviceData} layout="vertical" margin={{ left: 40, right: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#1e293b" />
+                <XAxis type="number" hide />
+                <YAxis 
+                  dataKey="name" 
+                  type="category" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{fill: '#94a3b8', fontSize: 10}} 
+                  width={100}
+                />
+                <Tooltip 
+                  cursor={{fill: '#1e293b'}}
+                  contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #334155', color: '#f8fafc' }}
+                  itemStyle={{ color: '#f8fafc' }}
+                />
+                <Bar dataKey="value" fill="hsl(var(--secondary))" radius={[0, 4, 4, 0]} barSize={20} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-3 border border-border/10 bg-card/50 shadow-none">
+          <CardHeader>
+            <CardTitle className="text-foreground">Faturamento por Profissional</CardTitle>
+            <CardDescription className="text-slate-400">Receita total por integrante.</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie
+                  data={stats?.proData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="revenue"
+                  stroke="none"
+                >
+                  {stats?.proData.map((entry: any, index: number) => (
+                    <Cell key={`cell-${index}`} fill={`hsl(var(--chart-${((index + 2) % 5) + 1}))`} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #334155', color: '#f8fafc' }}
+                  itemStyle={{ color: '#f8fafc' }}
+                  formatter={(value: number) => [formatCurrency(value), 'Faturamento']}
                 />
                 <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: '20px', fontSize: '10px' }} />
               </PieChart>
@@ -365,7 +480,7 @@ export default function DashboardPage() {
 
       <footer className="py-8 text-center text-slate-600 mt-auto opacity-40">
         <div className="flex flex-col items-center gap-1">
-          <p className="text-xs font-medium">Invivio Velo Dashboard v1.00055</p>
+          <p className="text-xs font-medium">Invivio Velo Dashboard v1.00056</p>
           <p className="text-[10px]">Powered by Invivio Tecnologia</p>
         </div>
       </footer>

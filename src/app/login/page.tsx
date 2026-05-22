@@ -38,7 +38,7 @@ export default function LoginPage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -56,7 +56,7 @@ export default function LoginPage() {
       toast({
         variant: 'destructive',
         title: 'Falha no login',
-        description: 'Verifique seu e-mail e senha e tente novamente.',
+        description: `Erro: ${error.code || 'desconhecido'} — ${error.message || 'Verifique seu e-mail e senha.'}`,
       });
     } else {
       router.push('/schedule');
@@ -72,8 +72,9 @@ export default function LoginPage() {
        toast({
         variant: 'destructive',
         title: 'Falha no login com Google',
-        description: 'Não foi possível fazer login com o Google. Por favor, tente novamente.',
+        description: `Erro: ${error.code || 'desconhecido'} — ${error.message || 'Tente novamente.'}`,
       });
+      console.error('Google Sign-In Error:', error);
     } else {
        router.push('/schedule');
     }

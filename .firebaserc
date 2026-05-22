@@ -1,6 +1,7 @@
 {
   "projects": {
-    "prod": "invivio-velo"
+    "default": "invivio-velo",
+    "staging": "invivio-velo-dev"
   },
   "targets": {
     "invivio-velo": {
@@ -10,6 +11,16 @@
         ],
         "eastside": [
           "barbeariaeastside"
+        ]
+      }
+    },
+    "invivio-velo-dev": {
+      "hosting": {
+        "main": [
+          "invivio-velo-dev"
+        ],
+        "eastside": [
+          "invivio-velo-dev"
         ]
       }
     }

@@ -7,6 +7,9 @@
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
     "build": "NODE_ENV=production next build",
+    "deploy:staging": "firebase deploy -P staging --only hosting:main",
+    "deploy:staging:functions": "firebase deploy -P staging --only functions",
+    "deploy:staging:rules": "firebase deploy -P staging --only firestore:rules",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"

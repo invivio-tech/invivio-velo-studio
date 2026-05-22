@@ -51,6 +51,14 @@ interface Appointment {
   status: 'scheduled' | 'completed' | 'cancelled' | 'no-show';
 }
 
+interface Order {
+  id: string;
+  clientName: string;
+  totalValue: number;
+  status: 'pending' | 'paid' | 'completed' | 'cancelled';
+  createdAt: string;
+}
+
 interface EstablishmentSettings {
   professionalCommissionPercentage?: number;
   name?: string;
@@ -103,7 +111,7 @@ export default function InvoicesPage() {
   // We query by date range to avoid needing multiple composite indexes
   const appointmentsRef = useMemoFirebase(
     () => {
-      if (!firestore) return null;
+      if (!firestore || !user) return null;
       let q = query(
         collection(firestore, 'appointments'),
         where('startTime', '>=', Timestamp.fromDate(startOfCurrentMonth)),
@@ -111,13 +119,27 @@ export default function InvoicesPage() {
       );
       return q;
     },
-    [firestore, startOfCurrentMonth, endOfCurrentMonth]
+    [firestore, user, startOfCurrentMonth, endOfCurrentMonth]
   );
   const { data: appointmentsRaw, isLoading: appointmentsLoading } = useCollection<Appointment>(appointmentsRef);
 
+  const ordersRef = useMemoFirebase(
+    () => {
+      if (!firestore || !user) return null;
+      let q = query(
+        collection(firestore, 'orders'),
+        where('createdAt', '>=', startOfCurrentMonth.toISOString()),
+        where('createdAt', '<=', endOfCurrentMonth.toISOString())
+      );
+      return q;
+    },
+    [firestore, user, startOfCurrentMonth, endOfCurrentMonth]
+  );
+  const { data: ordersRaw, isLoading: ordersLoading } = useCollection<Order>(ordersRef);
+
   const expensesRef = useMemoFirebase(
     () => {
-      if (!firestore || userProfile?.role !== 'admin') return null;
+      if (!firestore || !user || userProfile?.role !== 'admin') return null;
       let q = query(
         collection(firestore, 'expenses'),
         where('date', '>=', Timestamp.fromDate(startOfCurrentMonth)),
@@ -125,23 +147,23 @@ export default function InvoicesPage() {
       );
       return q;
     },
-    [firestore, startOfCurrentMonth, endOfCurrentMonth, userProfile?.role]
+    [firestore, user, startOfCurrentMonth, endOfCurrentMonth, userProfile?.role]
   );
   const { data: expensesRaw, isLoading: expensesLoading } = useCollection<Expense>(expensesRef);
 
   const recurringExpensesRef = useMemoFirebase(
     () => {
-      if (!firestore || userProfile?.role !== 'admin') return null;
+      if (!firestore || !user || userProfile?.role !== 'admin') return null;
       return collection(firestore, 'recurringExpenses');
     },
-    [firestore, userProfile?.role]
+    [firestore, user, userProfile?.role]
   );
   const { data: recurringExpensesRaw, isLoading: recurringExpensesLoading } = useCollection<Expense>(recurringExpensesRef);
 
   // --- Virtual Account Queries ---
   const allAppointmentsRef = useMemoFirebase(
     () => {
-      if (!firestore) return null;
+      if (!firestore || !user) return null;
       let q = query(
         collection(firestore, 'appointments'),
         where('status', '==', 'completed')
@@ -151,20 +173,20 @@ export default function InvoicesPage() {
       }
       return q;
     },
-    [firestore, userProfile?.role, user?.uid]
+    [firestore, user, userProfile?.role, user?.uid]
   );
   const { data: allAppointmentsRaw, isLoading: allApptsLoading } = useCollection<Appointment>(allAppointmentsRef);
 
   const transactionsRef = useMemoFirebase(
     () => {
-      if (!firestore) return null;
+      if (!firestore || !user) return null;
       let q: any = collection(firestore, 'professionalTransactions');
       if (userProfile?.role === 'professional' && user?.uid) {
         q = query(q, where('professionalId', '==', user.uid));
       }
       return q;
     },
-    [firestore, userProfile?.role, user?.uid]
+    [firestore, user, userProfile?.role, user?.uid]
   );
   const { data: transactionsRaw, isLoading: txsLoading } = useCollection<ProfessionalTransaction>(transactionsRef);
 
@@ -208,7 +230,7 @@ export default function InvoicesPage() {
     return acc;
   }, [allAppointmentsRaw, transactionsRaw, commissionPercentage, usersRaw]);
 
-  const isLoading = isUserLoading || isProfileLoading || appointmentsLoading || expensesLoading || recurringExpensesLoading || allApptsLoading || txsLoading || usersLoading;
+  const isLoading = isUserLoading || isProfileLoading || appointmentsLoading || ordersLoading || expensesLoading || recurringExpensesLoading || allApptsLoading || txsLoading || usersLoading;
 
   if (isLoading || !userProfile) {
     return (
@@ -228,17 +250,39 @@ export default function InvoicesPage() {
   // For standard revenue, we compute based on "completed" status appointments
   // For no-show we could (if we charged a fee), but currently only completed has full price guaranteed.
   const completedAppointments = appointmentsRaw?.filter(a => a.status === 'completed') || [];
+  const completedOrders = ordersRaw?.filter(o => o.status === 'completed' || o.status === 'paid') || [];
 
   // Filter based on user role
   const role = userProfile.role;
 
-  let viewData = completedAppointments;
+  let viewDataServices = completedAppointments;
   if (role === 'professional') {
-    viewData = completedAppointments.filter(a => a.professionalId === user?.uid);
+    viewDataServices = completedAppointments.filter(a => a.professionalId === user?.uid);
   } else if (role === 'client') {
-    // Clients shouldn't access this page anymore based on user request, but just in case:
-    viewData = [];
+    viewDataServices = [];
   }
+
+  // Combined revenue items for history table
+  const combinedHistory = [
+    ...viewDataServices.map(a => ({
+      id: a.id,
+      date: a.startTime.toDate(),
+      description: a.serviceName,
+      professional: a.professionalName,
+      client: a.customerName,
+      value: a.servicePrice,
+      type: 'service' as const
+    })),
+    ...completedOrders.map(o => ({
+      id: o.id,
+      date: new Date(o.createdAt),
+      description: 'Venda de Produtos',
+      professional: 'Loja',
+      client: o.clientName,
+      value: o.totalValue,
+      type: 'order' as const
+    }))
+  ].sort((a, b) => b.date.getTime() - a.date.getTime());
 
   // --- Calculations for Admin ---
   const rawExpenses = expensesRaw?.map(e => ({ ...e, isRecurring: false })) || [];
@@ -259,12 +303,14 @@ export default function InvoicesPage() {
 
   const allExpenses = [...rawExpenses, ...projectedRecurring].sort((a, b) => b.date.seconds - a.date.seconds);
 
-  const totalRevenue = viewData.reduce((acc, apt) => acc + Number(apt.servicePrice), 0);
+  const serviceRevenueTotal = viewDataServices.reduce((acc, apt) => acc + Number(apt.servicePrice), 0);
+  const orderRevenueTotal = role === 'admin' ? completedOrders.reduce((acc, o) => acc + Number(o.totalValue), 0) : 0;
+  const totalRevenue = serviceRevenueTotal + orderRevenueTotal;
   const totalExpenses = allExpenses.reduce((acc, exp) => acc + Number(exp.value), 0);
   const netProfit = totalRevenue - totalExpenses;
 
   // Calculate commissions grouped by professional
-  const commissionsByProfessional = viewData.reduce((acc, apt) => {
+  const commissionsByProfessional = viewDataServices.reduce((acc, apt) => {
     const profName = apt.professionalName || 'Desconhecido';
     const profId = apt.professionalId;
     if (!acc[profId]) {
@@ -558,7 +604,7 @@ export default function InvoicesPage() {
             </CardHeader>
             <CardContent className="pt-4">
               <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
-              <p className="text-xs text-muted-foreground mt-1">{viewData.length} Serviços concluídos</p>
+              <p className="text-xs text-muted-foreground mt-1">{viewDataServices.length} Serviços + {completedOrders.length} Pedidos</p>
             </CardContent>
           </Card>
 
@@ -603,19 +649,21 @@ export default function InvoicesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {viewData.length === 0 ? (
+                  {combinedHistory.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">Nenhum serviço faturado este mês.</TableCell>
+                      <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">Nenhuma receita faturada este mês.</TableCell>
                     </TableRow>
                   ) : (
-                    // Sort by most recent inside the month
-                    [...viewData].sort((a, b) => b.startTime.seconds - a.startTime.seconds).map(apt => (
-                      <TableRow key={apt.id}>
-                        <TableCell className="font-medium">{format(apt.startTime.toDate(), "dd/MM 'às' HH:mm", { locale: ptBR })}</TableCell>
-                        <TableCell>{apt.serviceName}</TableCell>
-                        <TableCell>{apt.professionalName}</TableCell>
-                        <TableCell>{apt.customerName}</TableCell>
-                        <TableCell className="text-right text-emerald-600 font-semibold dark:text-emerald-400">{formatCurrency(apt.servicePrice)}</TableCell>
+                    combinedHistory.map(item => (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">{format(item.date, "dd/MM 'às' HH:mm", { locale: ptBR })}</TableCell>
+                        <TableCell>
+                          {item.description}
+                          {item.type === 'order' && <Badge variant="outline" className="ml-2 bg-blue-500/10 text-blue-700 border-blue-200">Loja</Badge>}
+                        </TableCell>
+                        <TableCell>{item.professional}</TableCell>
+                        <TableCell>{item.client}</TableCell>
+                        <TableCell className="text-right text-emerald-600 font-semibold dark:text-emerald-400">{formatCurrency(item.value)}</TableCell>
                       </TableRow>
                     ))
                   )}
@@ -820,7 +868,7 @@ export default function InvoicesPage() {
 
   const renderProfessionalView = () => {
     const totalComission = totalRevenue * (commissionPercentage / 100);
-    const profWallet = virtualAccounts[user!.uid];
+    const profWallet = user ? virtualAccounts[user.uid] : null;
     const balance = profWallet ? profWallet.balance : 0;
 
     return (
@@ -864,12 +912,12 @@ export default function InvoicesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {viewData.length === 0 ? (
+                  {viewDataServices.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={3} className="text-center h-24 text-muted-foreground">Nenhum serviço realizado ainda.</TableCell>
                     </TableRow>
                   ) : (
-                    [...viewData].sort((a, b) => b.startTime.seconds - a.startTime.seconds).map(apt => (
+                    [...viewDataServices].sort((a, b) => b.startTime.seconds - a.startTime.seconds).map(apt => (
                       <TableRow key={apt.id}>
                         <TableCell className="font-medium">{format(apt.startTime.toDate(), "dd/MM", { locale: ptBR })}</TableCell>
                         <TableCell className="truncate max-w-[120px]" title={apt.serviceName}>{apt.serviceName}</TableCell>

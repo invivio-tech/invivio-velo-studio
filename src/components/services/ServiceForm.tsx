@@ -31,11 +31,11 @@ import { useState } from 'react';
 import { generateServiceDescription } from '@/ai/flows/generate-service-description';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { useCollection, useFirestore, useMemoFirebase, useDoc, useStorage } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Checkbox } from '../ui/checkbox';
 import type { EstablishmentSettings } from '@/app/establishment/page';
+import { compressImage } from '@/lib/image-compression';
 
 interface Category {
   id: string;
@@ -65,7 +65,6 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
-  const storage = useStorage();
 
   const firestore = useFirestore();
   const categoriesCollection = useMemoFirebase(
@@ -126,30 +125,43 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
   }
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !storage) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
     setIsUploading(true);
     try {
-      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
-      const ext = file.name.split('.').pop() || 'jpg';
-      const filename = `uploads/services/${uniqueSuffix}.${ext}`;
-      const storageRef = ref(storage, filename);
-
-      await uploadBytes(storageRef, file, { contentType: file.type });
-      const publicUrl = await getDownloadURL(storageRef);
-
-      form.setValue('imageUrl', publicUrl, { shouldValidate: true });
+      let uploadedUrl = '';
+      for (const file of Array.from(files)) {
+        const compressedFile = await compressImage(file);
+        const formData = new FormData();
+        formData.append('file', compressedFile);
+        formData.append('folder', 'uploads/services');
+        const response = await fetch('/api/upload', { method: 'POST', body: formData });
+        if (!response.ok) {
+          const errorText = await response.text();
+          let errorMessage = errorText;
+          try {
+            const errJson = JSON.parse(errorText);
+            errorMessage = errJson.error || errorMessage;
+          } catch (e) {
+            // Not a JSON response, fallback to text
+          }
+          throw new Error(errorMessage);
+        }
+        const { url } = await response.json();
+        uploadedUrl = url as string;
+      }
+      form.setValue('imageUrl', uploadedUrl, { shouldValidate: true });
       toast({
         title: 'Upload concluído',
         description: 'A imagem foi salva no servidor com sucesso.',
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading image:', error);
       toast({
         variant: 'destructive',
         title: 'Erro no Upload',
-        description: 'Não foi possível enviar a imagem.',
+        description: error?.message || 'Não foi possível enviar a imagem.',
       });
     } finally {
       setIsUploading(false);

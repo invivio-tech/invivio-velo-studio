@@ -26,7 +26,8 @@ import {
 import type { Service } from '@/app/services/page';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { EstablishmentSettings } from '@/app/establishment/page';
-import { Instagram, Star, Scissors as ScissorsIcon, User as UserIcon } from 'lucide-react';
+import type { Product } from '@/types/store';
+import { Instagram, Star, Scissors as ScissorsIcon, User as UserIcon, ShoppingBag, Package, ArrowRight } from 'lucide-react';
 
 export default function LandingPage() {
   const heroImage = PlaceHolderImages.find((p) => p.id === 'landing-hero');
@@ -49,6 +50,13 @@ export default function LandingPage() {
     [firestore]
   );
   const { data: settings, isLoading: areSettingsLoading } = useDoc<EstablishmentSettings>(settingsRef);
+
+  // Fetch Featured Products (up to 4 active products)
+  const featuredProductsQuery = useMemoFirebase(
+    () => (firestore ? query(collection(firestore, 'products'), where('active', '==', true), limit(4)) : null),
+    [firestore]
+  );
+  const { data: featuredProducts, isLoading: areProductsLoading } = useCollection<Product>(featuredProductsQuery);
 
   // Fetch Portfolio (Completed Appointments with Photos)
   const portfolioQuery = useMemoFirebase(() => {
@@ -82,6 +90,8 @@ export default function LandingPage() {
     address: 'Rua da Barbearia, 123 - Centro, Sua Cidade',
     whatsapp: '5511999998888',
     instagram: 'barbearia.inteligente',
+    businessCategory: 'barbershop',
+    businessTone: 'luxury',
   };
 
   const establishmentName = settings?.name || defaultSettings.name;
@@ -122,6 +132,12 @@ export default function LandingPage() {
             >
               Serviços
             </a>
+            <Link
+              href="/store"
+              className="text-foreground/60 transition-colors hover:text-foreground/80"
+            >
+              Loja
+            </Link>
             <a
               href="#about"
               className="text-foreground/60 transition-colors hover:text-foreground/80"
@@ -251,9 +267,9 @@ export default function LandingPage() {
                   </div>
                   <CardFooter className="flex justify-between items-center bg-muted/50 p-6 pt-4">
                     <span className="text-xl font-bold font-headline text-primary">
-                      {`R$${service.price.toFixed(2).replace('.', ',')}`}
+                      {`R$${(service.price ?? 0).toFixed(2).replace('.', ',')}`}
                     </span>
-                    <Badge variant="secondary">{service.duration}</Badge>
+                    <Badge variant="secondary">{service.duration || 'Consultar'}</Badge>
                   </CardFooter>
                 </Card>
               );
@@ -333,6 +349,71 @@ export default function LandingPage() {
           </section>
         )}
 
+        {/* Featured Products Section */}
+        {(areProductsLoading || (featuredProducts && featuredProducts.length > 0)) && (
+          <section id="store" className="container py-16 md:py-24">
+            <div className="flex flex-col md:flex-row items-end justify-between gap-4 mb-12">
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
+                  <ShoppingBag className="w-4 h-4" /> Nossa Loja
+                </div>
+                <h2 className="text-3xl md:text-4xl font-headline font-bold">Produtos em Destaque</h2>
+                <p className="text-muted-foreground max-w-md">
+                  Produtos profissionais usados pelos nossos barbeiros, disponíveis para você.
+                </p>
+              </div>
+              <Button variant="outline" asChild className="shrink-0">
+                <Link href="/store">
+                  Ver Todos os Produtos <ArrowRight className="ml-2 w-4 h-4" />
+                </Link>
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {areProductsLoading &&
+                [...Array(4)].map((_, i) => (
+                  <div key={i} className="rounded-2xl border overflow-hidden">
+                    <Skeleton className="h-44 w-full" />
+                    <div className="p-4 space-y-2">
+                      <Skeleton className="h-5 w-3/4" />
+                      <Skeleton className="h-4 w-1/2" />
+                      <Skeleton className="h-8 w-full mt-2" />
+                    </div>
+                  </div>
+                ))
+              }
+              {!areProductsLoading && featuredProducts?.map((product) => (
+                <div key={product.id} className="group relative flex flex-col rounded-2xl border bg-card overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
+                  <div className="relative h-44 bg-muted overflow-hidden">
+                    {(product.imageURLs?.[0] || product.imageURL) ? (
+                      <img
+                        src={product.imageURLs?.[0] || product.imageURL}
+                        alt={product.name}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Package className="w-12 h-12 text-muted-foreground opacity-30" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col flex-1 p-4 space-y-3">
+                    <h3 className="font-headline font-semibold text-sm leading-tight line-clamp-2">{product.name}</h3>
+                    <div className="flex items-center justify-between gap-2 mt-auto">
+                      <span className="text-base font-bold text-primary">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price ?? 0)}
+                      </span>
+                      <Button size="sm" className="rounded-xl text-xs h-8" asChild>
+                        <Link href="/store">Comprar</Link>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* About Section */}
         <section id="about" className="bg-card border-y">
           <div className="container py-16 md:py-24 grid md:grid-cols-2 gap-12 items-center">
@@ -400,7 +481,7 @@ export default function LandingPage() {
                 {establishmentAddress}
               </p>
               <div className="pb-4 pt-2 flex flex-col items-center justify-center gap-1 opacity-50 hover:opacity-100 transition-all duration-300">
-                <p className="text-[10px]">Invivio Velo v1.00055</p>
+                <p className="text-[10px]">Invivio Velo v1.00056</p>
                 <p className="text-[10px] font-medium leading-tight">
                   Powered by <a href="http://www.invivio.com.br" target="_blank" rel="noopener noreferrer" className="font-bold text-primary hover:underline">Invivio Tecnologia</a>
                 </p>

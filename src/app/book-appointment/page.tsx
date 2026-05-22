@@ -10,6 +10,7 @@ import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase, type Use
 import { useToast } from '@/hooks/use-toast';
 import type { ServiceWithId } from '@/app/services/page';
 import type { ScheduleSettings } from '@/components/schedule/ScheduleSettingsForm';
+import type { EstablishmentSettings } from '@/app/establishment/page';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -81,8 +82,11 @@ export default function BookAppointmentPage() {
   const professionalsQuery = useMemoFirebase(() => firestore && user ? query(collection(firestore, 'users'), where('role', '==', 'professional')) : null, [firestore, user]);
   const { data: allProfessionals, isLoading: areProfessionalsLoading } = useCollection<UserProfile>(professionalsQuery);
 
-  const establishmentSettingsRef = useMemoFirebase(() => firestore ? doc(firestore, 'scheduleSettings', 'main') : null, [firestore]);
-  const { data: establishmentSettings, isLoading: areEstablishmentSettingsLoading } = useDoc<ScheduleSettings>(establishmentSettingsRef);
+  const scheduleSettingsRef = useMemoFirebase(() => firestore ? doc(firestore, 'scheduleSettings', 'main') : null, [firestore]);
+  const { data: scheduleSettings, isLoading: areScheduleSettingsLoading } = useDoc<ScheduleSettings>(scheduleSettingsRef);
+
+  const establishmentSettingsRef = useMemoFirebase(() => firestore ? doc(firestore, 'establishmentSettings', 'main') : null, [firestore]);
+  const { data: establishmentSettings, isLoading: areEstablishmentSettingsLoading } = useDoc<EstablishmentSettings>(establishmentSettingsRef);
 
   // State for daily data fetched via getDocs
   const [dailyAppointments, setDailyAppointments] = useState<Appointment[] | null>(null);
@@ -182,7 +186,7 @@ export default function BookAppointmentPage() {
 
   // The core availability calculation logic
   const availableSlots = useMemo(() => {
-    if (!selectedDate || !selectedService || !selectedProfessional || !establishmentSettings || !allProfessionals || areAppointmentsLoading || areBlockedTimesLoading) return [];
+    if (!selectedDate || !selectedService || !selectedProfessional || !scheduleSettings || !allProfessionals || areAppointmentsLoading || areBlockedTimesLoading) return [];
 
     const serviceDuration = parseDuration(selectedService.duration);
     const dayOfWeek = format(selectedDate, 'eeee').toLowerCase() as keyof ScheduleSettings['workingHours'];
@@ -196,7 +200,7 @@ export default function BookAppointmentPage() {
     for (const prof of professionalsToCheck) {
       // Use professional schedule if available, otherwise establishment schedule
       const profSpecificSchedule = professionalSchedules[prof.id];
-      const settingsToUse = profSpecificSchedule || establishmentSettings;
+      const settingsToUse = profSpecificSchedule || scheduleSettings;
 
       const daySchedule = settingsToUse.workingHours[dayOfWeek];
       if (!daySchedule || !daySchedule.isOpen) continue;
@@ -236,7 +240,7 @@ export default function BookAppointmentPage() {
 
     return uniqueSlots;
 
-  }, [selectedDate, selectedService, selectedProfessional, dailyAppointments, dailyBlockedTimes, establishmentSettings, allProfessionals, areAppointmentsLoading, areBlockedTimesLoading, professionalSchedules]);
+  }, [selectedDate, selectedService, selectedProfessional, dailyAppointments, dailyBlockedTimes, scheduleSettings, allProfessionals, areAppointmentsLoading, areBlockedTimesLoading, professionalSchedules]);
 
 
   const professionalsForService = useMemo(() => {
@@ -337,7 +341,7 @@ export default function BookAppointmentPage() {
   );
 
   const areSlotsLoading = areAppointmentsLoading || areBlockedTimesLoading;
-  const isLoading = isUserLoading || isProfileLoading || areServicesLoading || areProfessionalsLoading || areEstablishmentSettingsLoading || areCategoriesLoading;
+  const isLoading = isUserLoading || isProfileLoading || areServicesLoading || areProfessionalsLoading || areScheduleSettingsLoading || areEstablishmentSettingsLoading || areCategoriesLoading;
 
   if (isLoading) {
     return (
@@ -352,9 +356,18 @@ export default function BookAppointmentPage() {
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <h1 className="text-3xl font-headline font-bold tracking-tight">
-        Novo Agendamento
-      </h1>
+      <div className="flex flex-col items-center gap-4 mb-8">
+        <div className="w-20 h-20 bg-card border rounded-2xl flex items-center justify-center shadow-sm overflow-hidden">
+          {establishmentSettings?.logoUrl ? (
+            <img src={establishmentSettings.logoUrl} alt={establishmentSettings.name || 'Logo'} className="w-full h-full object-contain p-2" />
+          ) : (
+            <CalendarIcon className="w-10 h-10 text-primary" />
+          )}
+        </div>
+        <h1 className="text-3xl font-headline font-bold tracking-tight">
+          Novo Agendamento
+        </h1>
+      </div>
 
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Step 1: Select Service */}

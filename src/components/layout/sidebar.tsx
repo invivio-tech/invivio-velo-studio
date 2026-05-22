@@ -34,6 +34,10 @@ import {
   BarChart3,
   Info,
   HelpCircle,
+  ShoppingBag,
+  Tags,
+  ShoppingCart,
+  Receipt,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -46,33 +50,50 @@ import { useRouter } from 'next/navigation';
 import { doc } from 'firebase/firestore';
 import type { EstablishmentSettings } from '@/app/establishment/page';
 
-const adminMenuItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: BarChart3 },
-  { href: '/schedule', label: 'Agenda', icon: Calendar },
-  { href: '/services', label: 'Serviços', icon: BookOpen },
-  { href: '/categories', label: 'Categorias', icon: LayoutGrid },
+const adminOperationsItems = [
+  { href: '/dashboard', label: 'Dashboard Serviços', icon: BarChart3 },
+  { href: '/schedule', label: 'Gestão de Atendimentos', icon: Calendar },
+  { href: '/agenda-view', label: 'Visão Agenda', icon: Monitor },
   { href: '/team', label: 'Equipe', icon: Users },
   { href: '/clients', label: 'Clientes', icon: ContactRound },
+];
+
+const adminServicesItems = [
+  { href: '/services', label: 'Serviços', icon: BookOpen },
+  { href: '/categories', label: 'Categorias', icon: LayoutGrid },
+];
+
+const adminFinanceMarketingItems = [
   { href: '/invoices', label: 'Financeiro', icon: FileText },
+  { href: '/financial-report', label: 'Relatório Financeiro', icon: Receipt },
   { href: '/promotions', label: 'Marketing com IA', icon: Sparkles },
-  { href: '/agenda-view', label: 'Visão Agenda', icon: Monitor },
+];
+
+const adminSettingsItems = [
   { href: '/establishment', label: 'Estabelecimento', icon: Building },
   { href: '/schedule/settings', label: 'Horário do Estabelecimento', icon: Settings },
   { href: '/schedule/block', label: 'Bloquear Agenda (Geral)', icon: Lock },
 ];
 
+const storeMenuItems = [
+  { href: '/sales-dashboard', label: 'Dashboard Vendas', icon: BarChart3 },
+  { href: '/orders', label: 'Pedidos', icon: ShoppingCart },
+  { href: '/products', label: 'Produtos', icon: ShoppingBag },
+  { href: '/product-categories', label: 'Categorias (Loja)', icon: Tags },
+];
+
 const professionalMenuItems = [
-  { href: '/schedule', label: 'Painel', icon: Calendar },
-  { href: '/book-appointment', label: 'Novo Agendamento', icon: PlusCircle },
+  { href: '/schedule', label: 'Gestão de Atendimentos', icon: Calendar },
   { href: '/services', label: 'Serviços', icon: BookOpen },
   { href: '/invoices', label: 'Financeiro', icon: FileText },
   { href: '/agenda-view', label: 'Visão Agenda', icon: Monitor },
 ];
 
 const clientMenuItems = [
-  { href: '/schedule', label: 'Painel', icon: Calendar },
+  { href: '/schedule', label: 'Meus Agendamentos', icon: Calendar },
   { href: '/book-appointment', label: 'Agendar', icon: PlusCircle },
   { href: '/services', label: 'Serviços', icon: BookOpen },
+  { href: '/store', label: 'Loja', icon: ShoppingBag },
   { href: '/rewards', label: 'Meus Pontos', icon: Gift },
 ];
 
@@ -114,7 +135,7 @@ export default function AppSidebar() {
 
   let menuItems = clientMenuItems;
   if (userProfile?.role === 'admin') {
-    menuItems = adminMenuItems;
+    menuItems = [];
   } else if (userProfile?.role === 'professional') {
     menuItems = professionalMenuItems;
   }
@@ -153,22 +174,141 @@ export default function AppSidebar() {
               <Skeleton className="h-8 w-full" />
             </div>
           ) : user && userProfile ? (
-            <SidebarMenu className="flex-1">
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname.startsWith(item.href)}
-                    tooltip={item.label}
-                  >
-                    <Link href={item.href}>
-                      <item.icon className="h-5 w-5" />
-                      <span className="truncate">{item.label}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
+            <>
+              {userProfile.role === 'admin' ? (
+                <>
+                  {/* Agenda e Equipe */}
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2">
+                    <span>Agenda e Equipe</span>
+                  </div>
+                  <SidebarMenu>
+                    {adminOperationsItems.map((item) => (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={pathname.startsWith(item.href)}
+                          tooltip={item.label}
+                        >
+                          <Link href={item.href}>
+                            <item.icon className="h-5 w-5" />
+                            <span className="truncate">{item.label}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+
+                  <SidebarSeparator className="my-2 opacity-10" />
+
+                  {/* Serviços e Catálogo */}
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2">
+                    <span>Serviços e Catálogo</span>
+                  </div>
+                  <SidebarMenu>
+                    {adminServicesItems.map((item) => (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={pathname.startsWith(item.href)}
+                          tooltip={item.label}
+                        >
+                          <Link href={item.href}>
+                            <item.icon className="h-5 w-5" />
+                            <span className="truncate">{item.label}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+
+                  <SidebarSeparator className="my-2 opacity-10" />
+
+                  {/* Financeiro e Marketing */}
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2">
+                    <span>Financeiro e Marketing</span>
+                  </div>
+                  <SidebarMenu>
+                    {adminFinanceMarketingItems.map((item) => (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={pathname.startsWith(item.href)}
+                          tooltip={item.label}
+                        >
+                          <Link href={item.href}>
+                            <item.icon className="h-5 w-5" />
+                            <span className="truncate">{item.label}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+
+                  <SidebarSeparator className="my-2 opacity-10" />
+
+                  {/* Loja e Produtos */}
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2">
+                    <span>Loja e Produtos</span>
+                  </div>
+                  <SidebarMenu>
+                    {storeMenuItems.map((item) => (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={pathname.startsWith(item.href)}
+                          tooltip={item.label}
+                        >
+                          <Link href={item.href}>
+                            <item.icon className="h-5 w-5" />
+                            <span className="truncate">{item.label}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+
+                  <SidebarSeparator className="my-2 opacity-10" />
+
+                  {/* Configurações */}
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2">
+                    <span>Estabelecimento</span>
+                  </div>
+                  <SidebarMenu>
+                    {adminSettingsItems.map((item) => (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={pathname.startsWith(item.href)}
+                          tooltip={item.label}
+                        >
+                          <Link href={item.href}>
+                            <item.icon className="h-5 w-5" />
+                            <span className="truncate">{item.label}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </>
+              ) : (
+                <SidebarMenu className="flex-1">
+                  {menuItems.map((item) => (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={pathname.startsWith(item.href)}
+                        tooltip={item.label}
+                      >
+                        <Link href={item.href}>
+                          <item.icon className="h-5 w-5" />
+                          <span className="truncate">{item.label}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              )}
+            </>
           ) : (
             <SidebarMenu>
               {unauthenticatedMenuItems.map((item) => (
@@ -248,7 +388,7 @@ export default function AppSidebar() {
             </div>
           )}
           <div className="pb-4 pt-2 flex flex-col items-center justify-center gap-1 opacity-50 hover:opacity-100 transition-opacity">
-             <span className="text-[10px] text-muted-foreground">v1.00055</span>
+             <span className="text-[10px] text-muted-foreground">v1.00056</span>
              <p className="text-[10px] font-medium leading-tight text-primary font-bold">
                Invivio Velo
              </p>

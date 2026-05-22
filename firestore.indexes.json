@@ -176,11 +176,11 @@
           "queryScope": "COLLECTION",
           "fields": [
             {
-              "fieldPath": "status",
+              "fieldPath": "isPortfolioFeatured",
               "order": "ASCENDING"
             },
             {
-              "fieldPath": "isPortfolioFeatured",
+              "fieldPath": "status",
               "order": "ASCENDING"
             },
             {

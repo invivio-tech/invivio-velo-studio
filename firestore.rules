@@ -56,6 +56,29 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isSignedIn();
     }
+
+    // ── Store Collections ──────────────────────────────────
+    // Product categories: anyone can read (for the public storefront),
+    // only authenticated users (admins) can write.
+    match /productCategories/{categoryId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // Products: anyone can read active products in the public store,
+    // only authenticated users (admins) can create/update/delete.
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // Orders: anyone can create (guest checkout — name + phone only),
+    // only signed-in users (admin) can read/update status.
+    match /orders/{orderId} {
+      allow create: if true;
+      allow read, update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
     
     match /scheduleSettings/{docId} {
       allow read: if true;
@@ -70,6 +93,15 @@ service cloud.firestore {
     match /establishmentSettings/{docId} {
       allow read: if true;
       allow write: if isSignedIn();
+    }
+
+    // ── Marketing & Push Notifications Collections ──────────
+    match /campaigns/{campaignId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /pushLogs/{pushLogId} {
+      allow read, write: if isSignedIn();
     }
   }
 }

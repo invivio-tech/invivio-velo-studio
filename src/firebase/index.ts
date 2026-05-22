@@ -21,11 +21,18 @@ export function initializeFirebase() {
 export function getSdks(firebaseApp: FirebaseApp) {
   const auth = getAuth(firebaseApp);
   auth.useDeviceLanguage();
+  
+  // Normalize storage bucket URL to gs:// format for maximum compatibility
+  let bucketUrl = firebaseConfig.storageBucket;
+  if (bucketUrl && !bucketUrl.startsWith('gs://')) {
+    bucketUrl = `gs://${bucketUrl}`;
+  }
+
   return {
     firebaseApp,
     auth,
     firestore: getFirestore(firebaseApp),
-    storage: getStorage(firebaseApp),
+    storage: getStorage(firebaseApp, bucketUrl),
     functions: getFunctions(firebaseApp, 'southamerica-east1'),
     httpsCallable
   };

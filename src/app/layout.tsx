@@ -8,6 +8,9 @@ import { AppShell } from '@/components/layout/AppShell';
 import { DynamicMetadata } from '@/components/layout/DynamicMetadata';
 import { NotificationManager } from '@/components/NotificationManager';
 
+import { GlobalErrorBoundary } from '@/components/layout/GlobalErrorBoundary';
+import { DynamicTheme } from '@/components/layout/DynamicTheme';
+
 export const metadata: Metadata = {
   title: 'Barbearia Inteligente',
   description: 'Sistema de gestão para o seu estabelecimento',
@@ -29,11 +32,14 @@ export default function RootLayout({
       </head>
       <body className={cn('font-body antialiased min-h-screen')}>
         <FirebaseClientProvider>
-          <DynamicMetadata />
-          <AppShell>{children}</AppShell>
-          <Toaster />
-          <NotificationManager />
-          <FirebaseErrorListener />
+          <DynamicTheme />
+          <GlobalErrorBoundary>
+            <DynamicMetadata />
+            <AppShell>{children}</AppShell>
+            <Toaster />
+            <NotificationManager />
+            <FirebaseErrorListener />
+          </GlobalErrorBoundary>
         </FirebaseClientProvider>
       </body>
     </html>

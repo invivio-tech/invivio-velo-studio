@@ -21,7 +21,7 @@ import { useUser, useUserProfile, useFirestore, useCollection, useMemoFirebase, 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { collection, query, where, orderBy, Timestamp, getDocs, doc, updateDoc, runTransaction, getDoc, limit } from 'firebase/firestore';
+import { collection, query, where, orderBy, Timestamp, getDocs, doc, updateDoc, runTransaction, getDoc, limit, addDoc } from 'firebase/firestore';
 import { format, startOfDay, isBefore, subHours, startOfMonth, endOfMonth, endOfDay, addMonths, subMonths, isSameMonth, addMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -35,6 +35,10 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Zap, PlusCircle, ShoppingBag } from 'lucide-react';
+import { QuickServiceDialog } from '@/components/admin/QuickServiceDialog';
+import { QuickSaleDialog } from '@/components/admin/QuickSaleDialog';
+import type { Product } from '@/types/store';
 import {
   Dialog,
   DialogContent,
@@ -66,7 +70,9 @@ interface Appointment {
   status: 'scheduled' | 'completed' | 'cancelled' | 'no-show';
   completionNotes?: string;
   completionPhotos?: string[];
+  completedAt?: Timestamp;
   isPortfolioFeatured?: boolean;
+  type?: 'guest' | 'client';
 }
 
 export default function SchedulePage() {
@@ -89,21 +95,33 @@ export default function SchedulePage() {
   const [isUpdatingAppointment, setIsUpdatingAppointment] = useState(false);
   const [isCompletionDialogOpen, setIsCompletionDialogOpen] = useState(false);
   const [appointmentToComplete, setAppointmentToComplete] = useState<Appointment | null>(null);
+  const [isQuickServiceOpen, setIsQuickServiceOpen] = useState(false);
+  const [isQuickSaleOpen, setIsQuickSaleOpen] = useState(false);
 
   const firestore = useFirestore();
   const { toast } = useToast();
 
   const professionalsQuery = useMemoFirebase(() =>
-    firestore ? query(collection(firestore, 'users'), where('role', '==', 'professional')) : null
-  , [firestore]);
+    (firestore && user) ? query(collection(firestore, 'users'), where('role', '==', 'professional')) : null
+  , [firestore, user]);
   const { data: professionals } = useCollection<UserProfile>(professionalsQuery);
 
   const allServicesQuery = useMemoFirebase(() =>
-    firestore ? query(collection(firestore, 'services'), orderBy('name', 'asc')) : null
-  , [firestore]);
+    (firestore && user) ? query(collection(firestore, 'services'), orderBy('name', 'asc')) : null
+  , [firestore, user]);
   const { data: services } = useCollection<Service>(allServicesQuery);
 
-  const settingsRef = useMemoFirebase(() => firestore ? doc(firestore, 'establishmentSettings', 'main') : null, [firestore]);
+  const clientsQuery = useMemoFirebase(() =>
+    (firestore && user) ? query(collection(firestore, 'users'), where('role', '==', 'client')) : null
+  , [firestore, user]);
+  const { data: clients } = useCollection<UserProfile>(clientsQuery);
+
+  const productsQuery = useMemoFirebase(() =>
+    (firestore && user) ? query(collection(firestore, 'products'), orderBy('name', 'asc')) : null
+  , [firestore, user]);
+  const { data: products } = useCollection<Product>(productsQuery);
+
+  const settingsRef = useMemoFirebase(() => (firestore && user) ? doc(firestore, 'establishmentSettings', 'main') : null, [firestore, user]);
   const { data: settings } = useDoc<EstablishmentSettings>(settingsRef);
 
   const handleEditAppointment = (apt: Appointment) => {
@@ -114,62 +132,129 @@ export default function SchedulePage() {
   const handleUpdateStatus = async (
     appointment: Appointment, 
     newStatus: 'completed' | 'no-show' | 'cancelled',
-    completionData?: { notes?: string; photos?: string[] }
+    completionData?: { 
+      notes?: string; 
+      photos?: string[]; 
+      registration?: {
+        create: boolean;
+        data: { name: string; phone: string; email: string };
+      }
+    }
   ) => {
     if (!firestore || !settings || !user) return false;
 
     try {
       const appointmentRef = doc(firestore, 'appointments', appointment.id);
-      const clientProfileRef = doc(firestore, 'users', appointment.customerId);
-
+      
       await runTransaction(firestore, async (transaction) => {
-        const clientDoc = await transaction.get(clientProfileRef);
-        if (!clientDoc.exists()) throw new Error("Perfil do cliente não encontrado.");
+        let currentPoints = 0;
+        let finalCustomerId = appointment.customerId;
+        let isNowClient = appointment.type === 'client';
+        const isCreatingRegistration = !!(newStatus === 'completed' && completionData?.registration?.create && appointment.type === 'guest');
 
-        const currentPoints = clientDoc.data().loyaltyPoints || 0;
-        let newPoints = currentPoints;
-
-        if (newStatus === 'completed') {
-          const price = appointment.servicePrice || 0;
-          const percentage = settings.loyaltyPercentage || 10;
-          const pointsToAward = Math.round((price * percentage) / 100);
-          newPoints += pointsToAward;
-
-          const txRef = doc(collection(firestore, 'loyaltyTransactions'));
-          transaction.set(txRef, {
-            clientId: appointment.customerId,
-            type: 'earned',
-            points: pointsToAward,
-            description: `Serviço Concluído: ${appointment.serviceName}`,
-            date: Timestamp.now(),
-            appointmentId: appointment.id
-          });
-        } else if (newStatus === 'no-show') {
-          const penalty = settings.pointsPenaltyForNoShow || 5;
-          newPoints = Math.max(0, currentPoints - penalty);
-
-          if (currentPoints > 0) {
-            const deductAmount = Math.min(currentPoints, penalty);
-            const txRef = doc(collection(firestore, 'loyaltyTransactions'));
-            transaction.set(txRef, {
-              clientId: appointment.customerId,
-              type: 'deducted',
-              points: deductAmount,
-              description: 'Penalidade: Não Comparecimento',
-              date: Timestamp.now(),
-              appointmentId: appointment.id
-            });
+        // --- FASE DE LEITURA (READS MUST COME FIRST) ---
+        if (appointment.customerId && !isCreatingRegistration) {
+          const clientProfileRef = doc(firestore, 'users', appointment.customerId);
+          const clientDoc = await transaction.get(clientProfileRef);
+          if (clientDoc.exists()) {
+            currentPoints = clientDoc.data().loyaltyPoints || 0;
           }
         }
 
-        transaction.update(clientProfileRef, { loyaltyPoints: newPoints });
-        transaction.update(appointmentRef, { 
+        // --- FASE DE ESCRITA (WRITES MUST COME LAST) ---
+        
+        let clientWriteData: any = null;
+
+        // 1. Criar perfil se necessário
+        if (isCreatingRegistration && completionData?.registration) {
+          const newClientRef = doc(collection(firestore, 'users'));
+          finalCustomerId = newClientRef.id;
+          isNowClient = true;
+          currentPoints = 0; // Novo cliente começa com 0
+
+          clientWriteData = {
+            name: completionData.registration.data.name || appointment.customerName,
+            phoneNumber: completionData.registration.data.phone || appointment.customerPhoneNumber || '',
+            email: completionData.registration.data.email || appointment.customerEmail || '',
+            role: 'client',
+            createdAt: Timestamp.now(),
+            disabled: false,
+            loyaltyPoints: 0,
+            source: 'manual-registration-on-completion'
+          };
+        }
+
+        // 2. Processar fidelidade
+        if (finalCustomerId) {
+          const clientProfileRef = doc(firestore, 'users', finalCustomerId);
+          let newPoints = currentPoints;
+
+          if (newStatus === 'completed') {
+            const price = appointment.servicePrice || 0;
+            const percentage = settings.loyaltyPercentage || 10;
+            const pointsToAward = Math.round((price * percentage) / 100);
+            newPoints += pointsToAward;
+
+            const txRef = doc(collection(firestore, 'loyaltyTransactions'));
+            transaction.set(txRef, {
+              clientId: finalCustomerId,
+              type: 'earned',
+              points: pointsToAward,
+              description: `Serviço Concluído: ${appointment.serviceName}`,
+              date: Timestamp.now(),
+              appointmentId: appointment.id
+            });
+          } else if (newStatus === 'no-show') {
+            const penalty = settings.pointsPenaltyForNoShow || 5;
+            newPoints = Math.max(0, currentPoints - penalty);
+
+            if (currentPoints > 0) {
+              const deductAmount = Math.min(currentPoints, penalty);
+              const txRef = doc(collection(firestore, 'loyaltyTransactions'));
+              transaction.set(txRef, {
+                clientId: finalCustomerId,
+                type: 'deducted',
+                points: deductAmount,
+                description: 'Penalidade: Não Comparecimento',
+                date: Timestamp.now(),
+                appointmentId: appointment.id
+              });
+            }
+          }
+          
+          // Atualiza os pontos no perfil (seja o novo ou o existente)
+          if (clientWriteData) {
+            clientWriteData.loyaltyPoints = newPoints;
+            transaction.set(clientProfileRef, clientWriteData);
+          } else {
+            transaction.update(clientProfileRef, { loyaltyPoints: newPoints });
+          }
+        }
+
+        // 3. Atualizar o agendamento
+        const updatePayload: any = { 
           status: newStatus,
           updatedAt: Timestamp.now(),
           updatedBy: user.uid,
           completionNotes: completionData?.notes || '',
           completionPhotos: completionData?.photos || []
-        });
+        };
+
+        if (newStatus === 'completed') {
+          updatePayload.completedAt = Timestamp.now();
+        }
+
+        if (isNowClient && appointment.type === 'guest') {
+          updatePayload.customerId = finalCustomerId;
+          updatePayload.type = 'client';
+          if (completionData?.registration?.data) {
+            updatePayload.customerName = completionData.registration.data.name;
+            updatePayload.customerPhoneNumber = completionData.registration.data.phone;
+            updatePayload.customerEmail = completionData.registration.data.email;
+          }
+        }
+
+        transaction.update(appointmentRef, updatePayload);
       });
 
       toast({
@@ -182,8 +267,8 @@ export default function SchedulePage() {
       console.error("Error updating status", e);
       toast({
         variant: 'destructive',
-        title: 'Erro ao atualizar',
-        description: 'Não foi possível atualizar o status.',
+        title: 'Erro ao concluir',
+        description: 'Não foi possível concluir o processo de atendimento.',
       });
       return false;
     }
@@ -213,10 +298,20 @@ export default function SchedulePage() {
     setIsCompletionDialogOpen(true);
   };
 
-  const handleConfirmCompletion = async (notes: string, photos: string[]) => {
-    if (!appointmentToComplete) return;
-    await handleUpdateStatus(appointmentToComplete, 'completed', { notes, photos });
-    setAppointmentToComplete(null);
+  const handleConfirmCompletion = async (notes: string, photos: string[], createProfile?: boolean, guestData?: { name: string, phone: string, email: string }) => {
+    if (!appointmentToComplete || !firestore) return;
+
+    try {
+      await handleUpdateStatus(appointmentToComplete, 'completed', { 
+        notes, 
+        photos,
+        registration: createProfile && guestData ? { create: true, data: guestData } : undefined
+      });
+    } catch (error) {
+      console.error("Error in handleConfirmCompletion:", error);
+    } finally {
+      setAppointmentToComplete(null);
+    }
   };
 
   const handleTogglePortfolioFeatured = async (appointment: Appointment) => {
@@ -232,6 +327,97 @@ export default function SchedulePage() {
       });
     } catch (error) {
       toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível atualizar o destaque.' });
+    }
+  };
+
+  const handleQuickServiceConfirm = async (data: any) => {
+    if (!firestore || !user) return;
+    
+    try {
+      const selectedSvc = services?.find(s => s.id === data.serviceId);
+      const selectedPro = professionals?.find(p => p.id === data.professionalId);
+
+      const aptData: any = {
+        customerId: data.customerId || '',
+        customerName: data.type === 'client' ? (clients?.find(c => c.id === data.customerId)?.name || 'Cliente') : data.guestData?.name,
+        customerPhoneNumber: data.type === 'client' ? (clients?.find(c => c.id === data.customerId)?.phoneNumber || '') : data.guestData?.phone,
+        customerEmail: data.type === 'client' ? (clients?.find(c => c.id === data.customerId)?.email || '') : data.guestData?.email,
+        serviceId: data.serviceId,
+        serviceName: selectedSvc?.name || '',
+        servicePrice: selectedSvc?.price || 0,
+        serviceDuration: selectedSvc?.duration || '30',
+        professionalId: data.professionalId,
+        professionalName: selectedPro?.name || '',
+        status: 'scheduled',
+        startTime: Timestamp.now(),
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+        createdBy: user.uid,
+        type: data.type
+      };
+
+      const duration = parseInt(selectedSvc?.duration || '30', 10);
+      aptData.endTime = Timestamp.fromDate(addMinutes(new Date(), duration));
+
+      const docRef = await addDoc(collection(firestore, 'appointments'), aptData);
+      
+      await handleUpdateStatus({ id: docRef.id, ...aptData }, 'completed', {
+        notes: data.notes,
+        registration: data.type === 'guest' ? { create: true, data: data.guestData } : undefined
+      });
+
+      toast({ title: 'Atendimento Realizado', description: 'O serviço foi registrado com sucesso.' });
+    } catch (error) {
+      console.error("Error in handleQuickServiceConfirm:", error);
+      toast({ title: 'Erro', description: 'Não foi possível registrar o atendimento.', variant: 'destructive' });
+    }
+  };
+
+  const handleQuickSaleConfirm = async (data: any) => {
+    if (!firestore || !user) return;
+    
+    try {
+      let totalValue = 0;
+      const mappedItems = data.items.map((item: any) => {
+        const product = products?.find(p => p.id === item.productId);
+        const itemTotal = (product?.price || 0) * item.quantity;
+        totalValue += itemTotal;
+        
+        return {
+          productId: item.productId,
+          productName: product?.name || 'Produto Removido',
+          quantity: item.quantity,
+          priceAtPurchase: product?.price || 0,
+        };
+      });
+      
+      const orderData: any = {
+        clientId: data.customerId || '',
+        clientName: data.type === 'client' ? (clients?.find(c => c.id === data.customerId)?.name || 'Cliente') : data.guestData?.name,
+        clientPhone: data.type === 'client' ? (clients?.find(c => c.id === data.customerId)?.phoneNumber || '') : data.guestData?.phone,
+        items: mappedItems,
+        totalValue: totalValue,
+        status: 'completed',
+        paymentMethod: 'Pagamento no Balcão',
+        createdAt: new Date().toISOString(),
+        createdBy: user.uid,
+      };
+
+      await addDoc(collection(firestore, 'orders'), orderData);
+      
+      // Update stock for each item
+      for (const item of data.items) {
+        const product = products?.find(p => p.id === item.productId);
+        if (product && product.stock !== undefined) {
+          const newStock = Math.max(0, product.stock - item.quantity);
+          await updateDoc(doc(firestore, 'products', item.productId), { stock: newStock });
+        }
+      }
+
+      toast({ title: 'Venda Realizada', description: 'Os produtos foram vendidos e o estoque atualizado.' });
+    } catch (error) {
+      console.error("Error in handleQuickSaleConfirm:", error);
+      toast({ title: 'Erro', description: 'Não foi possível registrar a venda.', variant: 'destructive' });
     }
   };
 
@@ -291,12 +477,14 @@ export default function SchedulePage() {
     onCompleteClick: handleCompleteClick,
     onUpdateStatus: handleUpdateStatus,
     onTogglePortfolioFeatured: handleTogglePortfolioFeatured,
+    onQuickServiceOpen: () => setIsQuickServiceOpen(true),
+    onQuickSaleOpen: () => setIsQuickSaleOpen(true),
   };
 
   const dashComponent = () => {
     if (userProfile.role === 'admin') return <AdminDashboard {...dashboardProps} professionals={professionals || undefined} services={services || undefined} settings={settings || undefined} />;
     if (userProfile.role === 'professional') return <ProfessionalDashboard userProfile={userProfile} {...dashboardProps} />;
-    if (userProfile.role === 'client') return <ClientDashboard userProfile={userProfile} />;
+    if (userProfile.role === 'client') return <ClientDashboard userProfile={userProfile} onCancelClick={handleCancelClick} onEditAppointment={handleEditAppointment} settings={settings || undefined} />;
     return null;
   };
 
@@ -426,8 +614,29 @@ export default function SchedulePage() {
         isOpen={isCompletionDialogOpen}
         onOpenChange={setIsCompletionDialogOpen}
         customerName={appointmentToComplete?.customerName || ''}
+        customerPhone={appointmentToComplete?.customerPhoneNumber || ''}
+        customerEmail={appointmentToComplete?.customerEmail || ''}
         serviceName={appointmentToComplete?.serviceName || ''}
+        isGuest={appointmentToComplete?.type === 'guest'}
         onConfirm={handleConfirmCompletion}
+      />
+
+      <QuickServiceDialog 
+        isOpen={isQuickServiceOpen}
+        onOpenChange={setIsQuickServiceOpen}
+        clients={clients || []}
+        services={services || []}
+        professionals={professionals || []}
+        currentProfessionalId={userProfile.role === 'professional' ? userProfile.id : undefined}
+        onConfirm={handleQuickServiceConfirm}
+      />
+
+      <QuickSaleDialog 
+        isOpen={isQuickSaleOpen}
+        onOpenChange={setIsQuickSaleOpen}
+        clients={clients || []}
+        products={products || []}
+        onConfirm={handleQuickSaleConfirm}
       />
     </>
   );
@@ -439,6 +648,8 @@ function AdminDashboard({
   onCompleteClick,
   onUpdateStatus,
   onTogglePortfolioFeatured,
+  onQuickServiceOpen,
+  onQuickSaleOpen,
   professionals,
   services,
   settings 
@@ -448,6 +659,8 @@ function AdminDashboard({
   onCompleteClick: (apt: Appointment) => void;
   onUpdateStatus: (apt: Appointment, status: 'completed' | 'no-show' | 'cancelled') => Promise<boolean>;
   onTogglePortfolioFeatured: (apt: Appointment) => void;
+  onQuickServiceOpen: () => void;
+  onQuickSaleOpen: () => void;
   professionals: UserProfile[] | undefined;
   services: Service[] | undefined;
   settings: EstablishmentSettings | undefined;
@@ -564,10 +777,16 @@ function AdminDashboard({
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-headline font-bold tracking-tight">Painel Administrativo</h1>
-          <p className="text-muted-foreground">Visão geral do desempenho do estabelecimento.</p>
+          <h1 className="text-3xl font-headline font-bold tracking-tight">Gestão de Atendimentos</h1>
+          <p className="text-muted-foreground">Gerencie agendamentos, vendas balcão e histórico.</p>
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+          <Button onClick={onQuickSaleOpen} variant="outline" className="gap-2">
+            <ShoppingBag className="h-4 w-4" /> Venda Balcão
+          </Button>
+          <Button onClick={onQuickServiceOpen} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
+            <Zap className="h-4 w-4" /> Novo Atendimento
+          </Button>
           <Select value={selectedProfessionalId} onValueChange={setSelectedProfessionalId}>
             <SelectTrigger className="w-[200px]"><SelectValue placeholder="Todos os Profissionais" /></SelectTrigger>
             <SelectContent>
@@ -617,7 +836,7 @@ function AdminDashboard({
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <div><CardTitle>Agenda de Atendimentos</CardTitle><CardDescription>Gerencie os horários marcados.</CardDescription></div>
+            <div><CardTitle>Gestão de Atendimentos</CardTitle><CardDescription>Gerencie os horários marcados.</CardDescription></div>
             <div className="flex items-center gap-2 bg-muted p-1 rounded-md">
               <Button variant={!showPending ? "secondary" : "ghost"} size="sm" onClick={() => setShowPending(false)} className="h-8">Próximos ({upcomingAppointments?.length || 0})</Button>
               <Button variant={showPending ? "secondary" : "ghost"} size="sm" onClick={() => setShowPending(true)} className={cn("h-8 text-orange-600 transition-all", pendingAppointments && pendingAppointments.length > 0 && !showPending && "ring-2 ring-orange-500 animate-pulse font-bold")}>Pendentes ({pendingAppointments?.length || 0})</Button>
@@ -630,7 +849,14 @@ function AdminDashboard({
               {(showPending ? pendingAppointments : upcomingAppointments)?.map((apt) => (
                 <div key={apt.id} className={cn("flex flex-col p-4 border rounded-lg hover:border-primary transition-colors gap-3 bg-card/50", showPending && "border-orange-200 bg-orange-50/30")}>
                   <div className="flex items-center justify-between">
-                    <Badge variant={showPending ? "destructive" : "outline"} className="capitalize">{format(apt.startTime.toDate(), "EEEE, dd/MM", { locale: ptBR })}</Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={showPending ? "destructive" : "outline"} className="capitalize">
+                        {format(apt.startTime.toDate(), "EEEE, dd/MM", { locale: ptBR })}
+                      </Badge>
+                      {apt.type === 'guest' && (
+                        <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200">Novo Cliente</Badge>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2">
                        <span className="font-bold text-primary">{format(apt.startTime.toDate(), "HH:mm")}</span>
                        <Button size="sm" className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white gap-1" onClick={() => onCompleteClick(apt)} disabled={!!isUpdatingStatus}>
@@ -667,7 +893,21 @@ function AdminDashboard({
               <div key={apt.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors group">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-8 w-8"><AvatarImage src={apt.customerPhotoURL} /><AvatarFallback>{apt.customerName?.charAt(0)}</AvatarFallback></Avatar>
-                  <div><p className="font-medium text-sm">{apt.customerName}</p><p className="text-[10px] text-muted-foreground">{apt.serviceName} • {apt.professionalName}</p></div>
+                  <div>
+                    <p className="font-medium text-sm">{apt.customerName}</p>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted-foreground mt-0.5">
+                      <span className="flex items-center gap-1">
+                        <CalendarIcon className="h-3 w-3" />
+                        Execução: {format(apt.startTime.toDate(), "dd/MM HH:mm")}
+                      </span>
+                      {apt.completedAt && (
+                        <span className="flex items-center gap-1 text-emerald-600 font-medium">
+                          <Check className="h-3 w-3" />
+                          Baixa: {format(apt.completedAt.toDate(), "dd/MM HH:mm")}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                   {apt.completionPhotos && apt.completionPhotos.length > 0 && (
                     <div className="h-8 w-8 relative flex-shrink-0 rounded-md overflow-hidden border ml-2">
                        <img src={apt.completionPhotos[0]} alt="Serviço" className="h-full w-full object-cover" />
@@ -697,7 +937,7 @@ function AdminDashboard({
       <footer className="p-8 text-center text-slate-600 mt-auto opacity-40">
         <div className="flex flex-col items-center gap-1">
           <p className="text-xs font-medium">Powered by <span className="font-bold text-primary">Invivio Tecnologia</span></p>
-          <p className="text-[10px] font-bold text-primary">Invivio Velo v1.00055</p>
+          <p className="text-[10px] font-bold text-primary">Invivio Velo v1.00056</p>
         </div>
       </footer>
     </div>
@@ -710,38 +950,40 @@ function ProfessionalDashboard({
   onCancelClick, 
   onCompleteClick,
   onUpdateStatus,
-  onTogglePortfolioFeatured 
+  onTogglePortfolioFeatured,
+  onQuickServiceOpen,
+  onQuickSaleOpen
 }: { 
   userProfile: UserProfile, 
   onEditAppointment: (apt: Appointment) => void, 
   onCancelClick: (apt: Appointment) => void,
   onCompleteClick: (apt: Appointment) => void,
   onUpdateStatus: (apt: Appointment, status: 'completed' | 'no-show' | 'cancelled') => Promise<boolean>,
-  onTogglePortfolioFeatured: (apt: Appointment) => void
+  onTogglePortfolioFeatured: (apt: Appointment) => void,
+  onQuickServiceOpen: () => void,
+  onQuickSaleOpen: () => void
 }) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
-  const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[] | null>(null);
-  const [pendingAppointments, setPendingAppointments] = useState<Appointment[] | null>(null);
-  const [completedAppointments, setCompletedAppointments] = useState<Appointment[] | null>(null);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   
   const settingsRef = useMemoFirebase(() => firestore ? doc(firestore, 'establishmentSettings', 'main') : null, [firestore]);
   const { data: settings } = useDoc<EstablishmentSettings>(settingsRef);
 
-  useEffect(() => {
-    if (!isUserLoading && user && firestore) {
-      const qUpcoming = query(collection(firestore, 'appointments'), where('professionalId', '==', user.uid), where('status', '==', 'scheduled'), where('startTime', '>=', startOfDay(new Date())), orderBy('startTime', 'asc'));
-      const qPending = query(collection(firestore, 'appointments'), where('professionalId', '==', user.uid), where('status', '==', 'scheduled'), where('startTime', '<', startOfDay(new Date())), orderBy('startTime', 'asc'));
-      const qCompleted = query(collection(firestore, 'appointments'), where('professionalId', '==', user.uid), where('status', '==', 'completed'), orderBy('startTime', 'desc'), limit(10));
-      
-      Promise.all([getDocs(qUpcoming), getDocs(qPending), getDocs(qCompleted)]).then(([up, pen, comp]) => {
-        setUpcomingAppointments(up.docs.map(d => ({id: d.id, ...d.data()} as Appointment)));
-        setPendingAppointments(pen.docs.map(d => ({id: d.id, ...d.data()} as Appointment)));
-        setCompletedAppointments(comp.docs.map(d => ({id: d.id, ...d.data()} as Appointment)));
-      });
-    }
-  }, [user, firestore, isUserLoading]);
+  const qUpcoming = useMemoFirebase(() => 
+    (!isUserLoading && user && firestore) ? query(collection(firestore, 'appointments'), where('professionalId', '==', user.uid), where('status', '==', 'scheduled'), where('startTime', '>=', startOfDay(new Date())), orderBy('startTime', 'asc')) : null
+  , [user, firestore, isUserLoading]);
+  const { data: upcomingAppointments } = useCollection<Appointment>(qUpcoming);
+
+  const qPending = useMemoFirebase(() => 
+    (!isUserLoading && user && firestore) ? query(collection(firestore, 'appointments'), where('professionalId', '==', user.uid), where('status', '==', 'scheduled'), where('startTime', '<', startOfDay(new Date())), orderBy('startTime', 'asc')) : null
+  , [user, firestore, isUserLoading]);
+  const { data: pendingAppointments } = useCollection<Appointment>(qPending);
+
+  const qCompleted = useMemoFirebase(() => 
+    (!isUserLoading && user && firestore) ? query(collection(firestore, 'appointments'), where('professionalId', '==', user.uid), where('status', '==', 'completed'), orderBy('startTime', 'desc'), limit(10)) : null
+  , [user, firestore, isUserLoading]);
+  const { data: completedAppointments } = useCollection<Appointment>(qCompleted);
 
   const wrapComplete = async (apt: Appointment) => {
     setIsUpdating(apt.id);
@@ -753,7 +995,15 @@ function ProfessionalDashboard({
     <div key={appointment.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-lg border">
       <div className="flex items-center gap-4">
         <Avatar><AvatarImage src={appointment.customerPhotoURL} /><AvatarFallback>{appointment.customerName?.charAt(0)}</AvatarFallback></Avatar>
-        <div><p className="font-semibold">{appointment.customerName}</p><p className="text-sm text-muted-foreground">{appointment.serviceName} • {format(appointment.startTime.toDate(), "HH:mm")}</p></div>
+        <div>
+          <div className="flex items-center gap-2">
+            <p className="font-semibold">{appointment.customerName}</p>
+            {appointment.type === 'guest' && (
+              <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200 text-[10px] py-0 h-4">Novo Cliente</Badge>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground">{appointment.serviceName} • {format(appointment.startTime.toDate(), "HH:mm")}</p>
+        </div>
       </div>
       <div className="flex items-center gap-2">
         <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1" onClick={() => wrapComplete(appointment)} disabled={isUpdating === appointment.id}>
@@ -772,8 +1022,18 @@ function ProfessionalDashboard({
   );
 
   return (
-    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
-       <h1 className="text-3xl font-headline font-bold">Olá, {userProfile.name}!</h1>
+     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
+       <div className="flex justify-between items-center">
+         <h1 className="text-3xl font-headline font-bold">Olá, {userProfile.name}!</h1>
+         <div className="flex items-center gap-2">
+           <Button onClick={onQuickSaleOpen} variant="outline" className="gap-2">
+             <ShoppingBag className="h-4 w-4" /> Venda Balcão
+           </Button>
+           <Button onClick={onQuickServiceOpen} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
+             <Zap className="h-4 w-4" /> Novo Atendimento
+           </Button>
+         </div>
+       </div>
        <Card><CardHeader><CardTitle>Ações Necessárias</CardTitle><CardDescription>Agendamentos passados pendentes.</CardDescription></CardHeader><CardContent><div className="space-y-4">{pendingAppointments?.length ? pendingAppointments.map(a => <AppointmentItem key={a.id} appointment={a} />) : <p className="text-muted-foreground text-center">Tudo em dia!</p>}</div></CardContent></Card>
        <Card><CardHeader><CardTitle>Próximos Horários</CardTitle></CardHeader><CardContent><div className="space-y-4">{upcomingAppointments?.length ? upcomingAppointments.map(a => <AppointmentItem key={a.id} appointment={a} />) : <p className="text-muted-foreground text-center">Nenhum agendamento para hoje.</p>}</div></CardContent></Card>
        
@@ -790,7 +1050,18 @@ function ProfessionalDashboard({
                    <Avatar className="h-8 w-8"><AvatarImage src={apt.customerPhotoURL} /><AvatarFallback>{apt.customerName?.charAt(0)}</AvatarFallback></Avatar>
                    <div>
                      <p className="font-medium text-sm">{apt.customerName}</p>
-                     <p className="text-[10px] text-muted-foreground">{apt.serviceName} • {format(apt.startTime.toDate(), "dd/MM 'às' HH:mm")}</p>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted-foreground mt-0.5">
+                        <span className="flex items-center gap-1">
+                          <CalendarIcon className="h-3 w-3" />
+                          Execução: {format(apt.startTime.toDate(), "dd/MM HH:mm")}
+                        </span>
+                        {apt.completedAt && (
+                          <span className="flex items-center gap-1 text-emerald-600 font-medium">
+                            <Check className="h-3 w-3" />
+                            Baixa: {format(apt.completedAt.toDate(), "dd/MM HH:mm")}
+                          </span>
+                        )}
+                      </div>
                    </div>
                    {apt.completionPhotos && apt.completionPhotos.length > 0 && (
                      <div className="h-8 w-8 relative flex-shrink-0 rounded-md overflow-hidden border ml-2">
@@ -819,14 +1090,24 @@ function ProfessionalDashboard({
        <footer className="p-8 text-center text-slate-600 mt-auto opacity-40">
         <div className="flex flex-col items-center gap-1">
           <p className="text-xs font-medium">Powered by <span className="font-bold text-primary">Invivio Tecnologia</span></p>
-          <p className="text-[10px] font-bold text-primary">Invivio Velo v1.00055</p>
+          <p className="text-[10px] font-bold text-primary">Invivio Velo v1.00056</p>
         </div>
       </footer>
     </div>
   );
 }
 
-function ClientDashboard({ userProfile }: { userProfile: UserProfile }) {
+function ClientDashboard({ 
+  userProfile, 
+  onCancelClick,
+  onEditAppointment,
+  settings 
+}: { 
+  userProfile: UserProfile,
+  onCancelClick: (apt: Appointment) => void,
+  onEditAppointment: (apt: Appointment) => void,
+  settings: EstablishmentSettings | undefined
+}) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const [appointments, setAppointments] = useState<Appointment[] | null>(null);
@@ -841,16 +1122,42 @@ function ClientDashboard({ userProfile }: { userProfile: UserProfile }) {
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
       <div className="flex justify-between items-center"><h1 className="text-3xl font-headline font-bold">Olá, {userProfile.name}!</h1><Button asChild><Link href="/book-appointment">Novo Agendamento</Link></Button></div>
-      <Card><CardHeader><CardTitle>Seus Agendamentos</CardTitle></CardHeader><CardContent><div className="space-y-4">{appointments?.length ? appointments.map(apt => (
-        <div key={apt.id} className="p-4 border rounded-lg flex justify-between items-center">
-          <div><p className="font-bold">{apt.serviceName}</p><p className="text-sm text-muted-foreground">{format(apt.startTime.toDate(), "EEEE, dd/MM 'às' HH:mm", {locale: ptBR})}</p></div>
-          <Badge>Confirmado</Badge>
-        </div>
-      )) : <p className="text-muted-foreground text-center py-8">Você não tem agendamentos ativos.</p>}</div></CardContent></Card>
-      <footer className="p-8 text-center text-slate-600 mt-auto opacity-40">
+      <Card><CardHeader><CardTitle>Seus Agendamentos</CardTitle></CardHeader><CardContent><div className="space-y-4">{appointments?.length ? appointments.map(apt => {
+        const limitHours = settings?.cancellationTimeLimitHours || 24;
+        const canCancel = isBefore(new Date(), subHours(apt.startTime.toDate(), limitHours));
+        
+        return (
+          <div key={apt.id} className="p-4 border rounded-lg flex justify-between items-center gap-4 bg-card/50 hover:bg-card transition-colors">
+            <div className="flex-1 min-w-0">
+              <p className="font-bold truncate">{apt.serviceName}</p>
+              <p className="text-sm text-muted-foreground truncate">{format(apt.startTime.toDate(), "EEEE, dd/MM 'às' HH:mm", {locale: ptBR})}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Badge variant="outline" className="bg-primary/5 hidden sm:inline-flex">Confirmado</Badge>
+              {canCancel && (
+                <>
+                  <Button variant="ghost" size="icon" className="text-primary hover:bg-primary/10 h-8 w-8" onClick={() => onEditAppointment(apt)} title={`Alterar horário (até ${limitHours}h antes)`}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 h-8 w-8" onClick={() => onCancelClick(apt)} title={`Cancelar antecipadamente (até ${limitHours}h antes)`}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      }) : <p className="text-muted-foreground text-center py-8">Você não tem agendamentos ativos.</p>}</div></CardContent></Card>
+      
+      <div className="text-xs text-muted-foreground bg-muted p-4 rounded-lg flex items-start gap-2 max-w-full">
+        <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+        <p>Cancelamentos e alterações só podem ser realizados com até <strong>{settings?.cancellationTimeLimitHours || 24} horas</strong> de antecedência. Para imprevistos de última hora, por favor contate o estabelecimento diretamente.</p>
+      </div>
+
+      <footer className="text-center text-slate-600 mt-auto opacity-40 py-8">
         <div className="flex flex-col items-center gap-1">
           <p className="text-xs font-medium">Powered by <span className="font-bold text-primary">Invivio Tecnologia</span></p>
-          <p className="text-[10px] font-bold text-primary">Invivio Velo v1.00055</p>
+          <p className="text-[10px] font-bold text-primary">Invivio Velo v1.00056</p>
         </div>
       </footer>
     </div>

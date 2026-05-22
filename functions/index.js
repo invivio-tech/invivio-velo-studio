@@ -181,6 +181,36 @@ exports.updateuserpassword = onCall(async (request) => {
         });
         return { success: true, message: 'Senha atualizada com sucesso.' };
     } catch (error) {
+        // Se o usuário não existe no Auth, tentamos criar baseado no Firestore
+        if (error.code === 'auth/user-not-found') {
+            try {
+                const userDoc = await admin.firestore().collection('users').doc(userId).get();
+                if (!userDoc.exists) {
+                    throw new HttpsError('not-found', 'Perfil do usuário não encontrado no banco de dados.');
+                }
+                
+                const userData = userDoc.data();
+                if (!userData.email) {
+                    throw new HttpsError('failed-precondition', 'Usuário não possui e-mail cadastrado.');
+                }
+
+                await admin.auth().createUser({
+                    uid: userId,
+                    email: userData.email,
+                    displayName: userData.name,
+                    password: newPassword
+                });
+
+                return { success: true, message: 'Conta de acesso criada e senha configurada.' };
+            } catch (createError) {
+                console.error('Erro ao criar usuário no Auth:', createError);
+                if (createError.code === 'auth/email-already-exists') {
+                    throw new HttpsError('already-exists', 'Este e-mail já está em uso por outra conta de acesso.');
+                }
+                throw new HttpsError('internal', 'Não foi possível criar a conta de acesso para este usuário.');
+            }
+        }
+        
         console.error('Erro ao atualizar senha:', error);
         throw new HttpsError('internal', 'Erro ao processar a redefinição de senha.');
     }
@@ -343,3 +373,215 @@ async function sendNotificationToUser(userId, title, body) {
         console.error('Erro ao enviar mensagens FCM:', error);
     }
 }
+
+/**
+ * Scheduled: Verificar clientes sumidos (Oi Sumido)
+ * Executa todos os dias às 09:00 (Horário de Brasília)
+ */
+exports.dailyretargetingcheck = onSchedule('0 9 * * *', async (event) => {
+    // 1. Busca configurações personalizadas do estabelecimento
+    const settingsDoc = await admin.firestore().collection('establishmentSettings').doc('main').get();
+    if (!settingsDoc.exists) {
+        console.log('FCM Retargeting: Configurações do estabelecimento não encontradas.');
+        return null;
+    }
+    
+    const settings = settingsDoc.data();
+    const active = settings.retargetingActive || false;
+    const days = parseInt(settings.retargetingDays || 30, 10);
+    const customTitle = settings.retargetingTitle || 'Saudades de você! 👋';
+    const customBody = settings.retargetingBody || 'Já faz [DIAS] dias desde a sua última visita. Acreditamos que já está na hora de dar aquele trato no visual!';
+
+    if (!active) {
+        console.log('FCM Retargeting: Automação "Oi Sumido" desativada.');
+        return null;
+    }
+
+    console.log(`FCM Retargeting: Iniciando verificação de clientes inativos há ${days} dias...`);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // 2. Busca todos os clientes cadastrados
+    const usersSnapshot = await admin.firestore().collection('users')
+        .where('role', '==', 'client')
+        .get();
+
+    const promises = [];
+
+    for (const userDoc of usersSnapshot.docs) {
+        const userData = userDoc.data();
+        const userId = userDoc.id;
+        const tokens = userData.fcmTokens || [];
+
+        if (tokens.length === 0) continue;
+
+        // Busca todos os agendamentos deste cliente 
+        // Filtramos e ordenamos na memória para garantir que não dê erro de falta de índice composto no Firestore
+        const appointmentsSnapshot = await admin.firestore().collection('appointments')
+            .where('customerId', '==', userId)
+            .get();
+
+        if (appointmentsSnapshot.empty) continue;
+
+        const completedAppointments = appointmentsSnapshot.docs
+            .map(d => d.data())
+            .filter(app => app.status === 'completed' && app.startTime)
+            .sort((a, b) => b.startTime.toMillis() - a.startTime.toMillis());
+
+        if (completedAppointments.length === 0) continue;
+
+        const lastAppointment = completedAppointments[0];
+        const lastAppointmentTime = lastAppointment.startTime;
+
+        if (lastAppointmentTime) {
+            const lastAppDate = lastAppointmentTime.toDate();
+            lastAppDate.setHours(0, 0, 0, 0);
+
+            // Calcula a diferença exata em dias
+            const timeDiff = today.getTime() - lastAppDate.getTime();
+            const diffInDays = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+
+            if (diffInDays === days) {
+                // Personaliza o título e o corpo substituindo as tags
+                const title = customTitle.replace('[NOME]', userData.name || 'cliente');
+                const body = customBody
+                    .replace('[NOME]', userData.name || 'cliente')
+                    .replace('[DIAS]', days.toString());
+
+                console.log(`FCM Retargeting: Disparando notificação "Oi Sumido" para ${userData.name} (${userId}) - inativo há exatamente ${days} dias.`);
+                promises.push(sendNotificationToUser(userId, title, body));
+            }
+        }
+    }
+
+    if (promises.length > 0) {
+        return Promise.all(promises);
+    }
+    
+    console.log('FCM Retargeting: Nenhum cliente atende aos critérios de inatividade hoje.');
+    return null;
+});
+
+/**
+ * Scheduled: Processar notificações push agendadas
+ * Executa a cada 5 minutos
+ */
+exports.processscheduledpush = onSchedule('every 5 minutes', async (event) => {
+    const now = admin.firestore.Timestamp.now();
+    
+    console.log('FCM Scheduler: Verificando notificações agendadas pendentes...');
+    
+    // Busca pushes pendentes que deveriam ter sido enviados até agora
+    const pendingSnapshot = await admin.firestore().collection('pushLogs')
+        .where('status', '==', 'pending')
+        .where('scheduledFor', '<=', now)
+        .get();
+
+    if (pendingSnapshot.empty) {
+        console.log('FCM Scheduler: Nenhuma notificação agendada pendente.');
+        return null;
+    }
+
+    console.log(`FCM Scheduler: Encontradas ${pendingSnapshot.size} notificações para enviar.`);
+
+    // Busca todos os tokens de usuários
+    const usersSnapshot = await admin.firestore().collection('users').get();
+    const allTokens = [];
+    usersSnapshot.forEach(doc => {
+        const userData = doc.data();
+        const tokens = userData.fcmTokens || [];
+        if (Array.isArray(tokens)) {
+            allTokens.push(...tokens);
+        }
+    });
+
+    if (allTokens.length === 0) {
+        console.log('FCM Scheduler: Nenhum dispositivo registrado no sistema.');
+        // Marca todas como concluídas com 0 envios
+        const batch = admin.firestore().batch();
+        pendingSnapshot.forEach(doc => {
+            batch.update(doc.ref, {
+                status: 'sent',
+                sentCount: 0,
+                failureCount: 0,
+                sentAt: now,
+                note: 'Nenhum dispositivo registrado'
+            });
+        });
+        return batch.commit();
+    }
+
+    const promises = [];
+
+    for (const doc of pendingSnapshot.docs) {
+        const pushData = doc.data();
+        const message = {
+            notification: { 
+                title: pushData.title, 
+                body: pushData.body 
+            },
+            webpush: {
+                fcmOptions: {
+                    link: '/'
+                }
+            },
+            tokens: allTokens
+        };
+
+        const sendPromise = admin.messaging().sendEachForMulticast(message)
+            .then(async (response) => {
+                console.log(`FCM Scheduler: Envio agendado concluído para ${response.successCount} dispositivos. Falhas: ${response.failureCount}`);
+                
+                await doc.ref.update({
+                    status: 'sent',
+                    sentCount: response.successCount,
+                    failureCount: response.failureCount,
+                    sentAt: now
+                });
+
+                // Limpeza de tokens inválidos
+                if (response.failureCount > 0) {
+                    const failedTokens = [];
+                    response.responses.forEach((resp, idx) => {
+                        if (!resp.success) {
+                            const errorCode = resp.error?.code;
+                            if (errorCode === 'messaging/registration-token-not-registered' ||
+                                errorCode === 'messaging/invalid-registration-token') {
+                                failedTokens.push(allTokens[idx]);
+                            }
+                        }
+                    });
+
+                    if (failedTokens.length > 0) {
+                        const batchUpdate = admin.firestore().batch();
+                        usersSnapshot.forEach(userDoc => {
+                            const userData = userDoc.data();
+                            const userTokens = userData.fcmTokens || [];
+                            const hasFailed = userTokens.some(t => failedTokens.includes(t));
+                            if (hasFailed) {
+                                const updatedTokens = userTokens.filter(t => !failedTokens.includes(t));
+                                batchUpdate.update(userDoc.ref, { fcmTokens: updatedTokens });
+                            }
+                        });
+                        await batchUpdate.commit();
+                        console.log(`FCM Scheduler: Limpeza de ${failedTokens.length} tokens inválidos.`);
+                    }
+                }
+            })
+            .catch(async (error) => {
+                console.error('FCM Scheduler: Erro ao enviar notificação agendada:', error);
+                await doc.ref.update({
+                    status: 'failed',
+                    error: error.message,
+                    sentAt: now
+                });
+            });
+            
+        promises.push(sendPromise);
+    }
+
+    return Promise.all(promises);
+});
+
+
