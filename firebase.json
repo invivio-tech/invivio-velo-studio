@@ -9,7 +9,8 @@
                 "**/node_modules/**"
             ],
             "frameworksBackend": {
-                "region": "southamerica-east1"
+                "region": "southamerica-east1",
+                "memory": "512MiB"
             }
         },
         {
@@ -21,7 +22,8 @@
                 "**/node_modules/**"
             ],
             "frameworksBackend": {
-                "region": "southamerica-east1"
+                "region": "southamerica-east1",
+                "memory": "512MiB"
             }
         }
     ],
