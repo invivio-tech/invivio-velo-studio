@@ -145,6 +145,8 @@ export default function StorePage() {
     }
   };
 
+  const establishmentStoreSubtitle = settings?.storeSubtitle || getStoreSubtitle(establishmentCategory);
+
   const productsCollection = useMemoFirebase(
     () => (firestore ? collection(firestore, 'products') : null),
     [firestore]
@@ -307,7 +309,7 @@ export default function StorePage() {
             Leve o melhor para casa
           </h2>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-            {getStoreSubtitle(establishmentCategory)}
+            {establishmentStoreSubtitle}
           </p>
         </div>
       </div>

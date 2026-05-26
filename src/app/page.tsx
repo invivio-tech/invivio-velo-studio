@@ -84,9 +84,10 @@ export default function LandingPage() {
     name: 'Barbearia Inteligente',
     about: 'Fundada em 2024, nossa barbearia nasceu com o propósito de resgatar a essência das barbearias clássicas, incorporando tecnologia para oferecer uma experiência única e conveniente. Nossos profissionais são artistas apaixonados, dedicados a entregar o melhor resultado para cada cliente. Utilizamos produtos de alta qualidade e as técnicas mais apuradas para garantir que seu cabelo e barba estejam sempre impecáveis. Venha nos visitar e descubra por que somos a escolha inteligente para o homem moderno.',
     heroTitle: 'Estilo e Precisão em Cada Corte.',
-    heroSubtitle: 'Experimente a combinação perfeita de tradição e modernidade. Na Barbearia Inteligente, cuidamos do seu visual com a maestria que você merece.',
+    heroSubtitle: 'Experimente a combination perfeita de tradição e modernidade. Na Barbearia Inteligente, cuidamos do seu visual com a maestria que você merece.',
     servicesTitle: 'Nossos Serviços Premium',
     servicesSubtitle: 'Do clássico ao contemporâneo, temos o serviço perfeito para você.',
+    storeSubtitle: 'Produtos profissionais usados pelos nossos barbeiros, disponíveis para você.',
     address: 'Rua da Barbearia, 123 - Centro, Sua Cidade',
     whatsapp: '5511999998888',
     instagram: 'barbearia.inteligente',
@@ -121,6 +122,8 @@ export default function LandingPage() {
         return 'Produtos profissionais usados pelos nossos profissionais, disponíveis para você.';
     }
   };
+
+  const establishmentStoreSubtitle = settings?.storeSubtitle || getStoreSubtitle(establishmentCategory);
 
 
   return (
@@ -375,7 +378,7 @@ export default function LandingPage() {
                 </div>
                 <h2 className="text-3xl md:text-4xl font-headline font-bold">Produtos em Destaque</h2>
                 <p className="text-muted-foreground max-w-md">
-                  {getStoreSubtitle(establishmentCategory)}
+                  {establishmentStoreSubtitle}
                 </p>
               </div>
               <Button variant="outline" asChild className="shrink-0">

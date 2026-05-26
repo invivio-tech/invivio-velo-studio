@@ -37,6 +37,7 @@ export interface EstablishmentSettings {
   heroSubtitle: string;
   servicesTitle: string;
   servicesSubtitle: string;
+  storeSubtitle?: string;
   address: string;
   whatsapp?: string;
   instagram?: string;
@@ -77,6 +78,7 @@ const formSchema = z.object({
   heroSubtitle: z.string().min(10, { message: 'O subtítulo é obrigatório.' }),
   servicesTitle: z.string().min(5, { message: 'O título dos serviços é obrigatório.' }),
   servicesSubtitle: z.string().min(10, { message: 'O subtítulo dos serviços é obrigatório.' }),
+  storeSubtitle: z.string().optional(),
   address: z.string().min(10, { message: 'O endereço é obrigatório.' }),
   whatsapp: z.string().optional(),
   instagram: z.string().optional(),
@@ -143,6 +145,7 @@ export default function EstablishmentPage() {
     heroSubtitle: 'Experimente a combinação perfeita de tradição e modernidade. Na Barbearia Inteligente, cuidamos do seu visual com a maestria que você merece.',
     servicesTitle: 'Nossos Serviços Premium',
     servicesSubtitle: 'Do clássico ao contemporâneo, temos o serviço perfeito para você.',
+    storeSubtitle: 'Produtos profissionais usados pelos nossos barbeiros, disponíveis para você. Reserve online e retire no balcão.',
     address: 'Rua da Barbearia, 123 - Centro, Sua Cidade',
     whatsapp: '',
     instagram: '',
@@ -194,6 +197,7 @@ export default function EstablishmentPage() {
         pointsPenaltyForNoShow: settings.pointsPenaltyForNoShow === undefined ? 5 : settings.pointsPenaltyForNoShow,
         professionalCommissionPercentage: settings.professionalCommissionPercentage === undefined ? 25 : settings.professionalCommissionPercentage,
         productImageDescription: settings.productImageDescription || '',
+        storeSubtitle: settings.storeSubtitle || '',
         allowProfessionalToCompleteAppointment: settings.allowProfessionalToCompleteAppointment === undefined ? true : settings.allowProfessionalToCompleteAppointment,
         birthdayTitle: settings.birthdayTitle || 'Feliz Aniversário! 🎂',
         birthdayMessage: settings.birthdayMessage || 'A equipe da Barbearia East Side te deseja um dia incrível e muito sucesso!',
@@ -712,6 +716,29 @@ export default function EstablishmentPage() {
                       <FormItem>
                         <FormLabel>Subtítulo da Seção de Serviços</FormLabel>
                         <FormControl><Textarea placeholder="Ex: Do clássico ao contemporâneo, temos o serviço perfeito para você." {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  </div>
+
+                  <Separator />
+
+                  {/* Seção Loja */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Seção da Loja</h3>
+                    <FormField control={form.control} name="storeSubtitle" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Subtítulo / Descrição da Loja</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Ex: Produtos profissionais usados pelos nossos barbeiros, disponíveis para você. Reserve online e retire no balcão." 
+                            className="min-h-24" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Aparecerá como descrição da loja na Landing Page e no cabeçalho da página de produtos.
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )} />
