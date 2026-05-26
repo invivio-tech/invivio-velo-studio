@@ -3,8 +3,9 @@
 // ─── Imports ───────────────────────────────────────────────────────────────────
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { collection, addDoc } from 'firebase/firestore';
-import { useFirestore, useCollection, useMemoFirebase, useUserProfile } from '@/firebase';
+import { collection, addDoc, doc } from 'firebase/firestore';
+import { useFirestore, useCollection, useMemoFirebase, useUserProfile, useDoc } from '@/firebase';
+import type { EstablishmentSettings } from '@/app/establishment/page';
 import { ShoppingCart, ShoppingBag, Plus, Minus, Trash2, X, Store, Package, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -121,6 +122,28 @@ export default function StorePage() {
   const firestore = useFirestore();
   const { userProfile, isLoading: isProfileLoading } = useUserProfile();
   const { toast } = useToast();
+
+  const settingsRef = useMemoFirebase(
+    () => (firestore ? doc(firestore, 'establishmentSettings', 'main') : null),
+    [firestore]
+  );
+  const { data: settings } = useDoc<EstablishmentSettings>(settingsRef);
+  const establishmentCategory = settings?.businessCategory || 'barbershop';
+
+  const getStoreSubtitle = (category: string) => {
+    switch (category) {
+      case 'barbershop':
+        return 'Produtos profissionais usados pelos nossos barbeiros, disponíveis para você. Reserve online e retire no balcão.';
+      case 'beauty_salon':
+        return 'Produtos profissionais usados pelos nossos cabeleireiros e esteticistas, disponíveis para você. Reserve online e retire no balcão.';
+      case 'clinic':
+        return 'Produtos profissionais recomendados pelos nossos especialistas, disponíveis para você. Reserve online e retire no balcão.';
+      case 'petshop':
+        return 'Produtos de alta qualidade usados pelos nossos profissionais de pet care, disponíveis para você. Reserve online e retire no balcão.';
+      default:
+        return 'Produtos profissionais usados pelos nossos profissionais, disponíveis para você. Reserve online e retire no balcão.';
+    }
+  };
 
   const productsCollection = useMemoFirebase(
     () => (firestore ? collection(firestore, 'products') : null),
@@ -284,8 +307,7 @@ export default function StorePage() {
             Leve o melhor para casa
           </h2>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-            Produtos profissionais usados pelos nossos barbeiros, disponíveis para você. 
-            Reserve online e retire no balcão.
+            {getStoreSubtitle(establishmentCategory)}
           </p>
         </div>
       </div>

@@ -105,6 +105,22 @@ export default function LandingPage() {
   const establishmentInstagram = settings?.instagram;
   const establishmentLogo = settings?.logoUrl;
   const establishmentAboutImageUrl = settings?.aboutImageUrl;
+  const establishmentCategory = settings?.businessCategory || defaultSettings.businessCategory;
+
+  const getStoreSubtitle = (category: string) => {
+    switch (category) {
+      case 'barbershop':
+        return 'Produtos profissionais usados pelos nossos barbeiros, disponíveis para você.';
+      case 'beauty_salon':
+        return 'Produtos profissionais usados pelos nossos cabeleireiros e esteticistas, disponíveis para você.';
+      case 'clinic':
+        return 'Produtos profissionais recomendados pelos nossos especialistas, disponíveis para você.';
+      case 'petshop':
+        return 'Produtos de alta qualidade usados pelos nossos profissionais de pet care, disponíveis para você.';
+      default:
+        return 'Produtos profissionais usados pelos nossos profissionais, disponíveis para você.';
+    }
+  };
 
 
   return (
@@ -359,7 +375,7 @@ export default function LandingPage() {
                 </div>
                 <h2 className="text-3xl md:text-4xl font-headline font-bold">Produtos em Destaque</h2>
                 <p className="text-muted-foreground max-w-md">
-                  Produtos profissionais usados pelos nossos barbeiros, disponíveis para você.
+                  {getStoreSubtitle(establishmentCategory)}
                 </p>
               </div>
               <Button variant="outline" asChild className="shrink-0">
