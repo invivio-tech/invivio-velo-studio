@@ -25,6 +25,19 @@
                 "region": "southamerica-east1",
                 "memory": "512MiB"
             }
+        },
+        {
+            "target": "site-cliente",
+            "source": ".",
+            "ignore": [
+                "firebase.json",
+                "**/.*",
+                "**/node_modules/**"
+            ],
+            "frameworksBackend": {
+                "region": "southamerica-east1",
+                "memory": "512MiB"
+            }
         }
     ],
     "functions": [
