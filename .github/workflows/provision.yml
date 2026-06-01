@@ -1,4 +1,5 @@
 name: Provisionamento Automático (Firebase Hosting)
+
 on:
   workflow_dispatch:
     inputs:
@@ -10,32 +11,43 @@ on:
         description: 'ID do Banco de Dados no Firestore'
         required: true
         type: string
+
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Clonar repositório
         uses: actions/checkout@v4
+
       - name: ⚙️ Configurar Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
+
       - name: 📦 Instalar Dependências
         run: npm ci
+
       - name: 🔑 Injetar Variáveis de Ambiente
         run: |
           echo "NEXT_PUBLIC_FIREBASE_DATABASE_ID=${{ github.event.inputs.database_id }}" >> .env.production
           echo "NEXT_PUBLIC_FIREBASE_PROJECT_ID=invivio-velo-admin" >> .env.production
+          echo "NEXT_PUBLIC_FIREBASE_API_KEY=${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}" >> .env.production
+          echo "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}" >> .env.production
+          echo "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}" >> .env.production
+          echo "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}" >> .env.production
+          echo "NEXT_PUBLIC_FIREBASE_APP_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}" >> .env.production
+
       - name: 🛠️ Build do Frontend (Next.js)
         run: npm run build
+
       - name: 🚀 Instalar Firebase CLI e Mapear Alvo
         run: |
           npm install -g firebase-tools
-          # O comando abaixo instrui o Firebase a apontar o alvo local "site-cliente" para a URL correta do cliente gerada na nuvem
           firebase target:apply hosting site-cliente ${{ github.event.inputs.site_id }} --project invivio-velo-admin
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
       - name: 🌐 Publicar no Firebase Hosting (Multi-Site)
         run: firebase deploy --only hosting:site-cliente --project invivio-velo-admin --non-interactive
         env:
