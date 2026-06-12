@@ -44,6 +44,7 @@ jobs:
       - name: 🚀 Instalar Firebase CLI e Mapear Alvo
         run: |
           npm install -g firebase-tools
+          firebase experiments:enable webframeworks
           firebase target:apply hosting site-cliente ${{ github.event.inputs.site_id }} --project invivio-velo-admin
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
