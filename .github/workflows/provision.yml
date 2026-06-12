@@ -51,7 +51,7 @@ jobs:
           FIREBASE_CLI_EXPERIMENTS: webframeworks
 
       - name: 🌐 Publicar no Firebase Hosting (Multi-Site)
-        run: firebase deploy --only hosting:site-cliente --project invivio-velo-admin --non-interactive
+        run: firebase deploy --only hosting:site-cliente --project invivio-velo-admin --non-interactive --force
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
           FIREBASE_CLI_EXPERIMENTS: webframeworks
