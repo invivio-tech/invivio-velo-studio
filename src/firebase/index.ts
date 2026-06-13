@@ -31,7 +31,7 @@ export function getSdks(firebaseApp: FirebaseApp) {
   return {
     firebaseApp,
     auth,
-    firestore: getFirestore(firebaseApp),
+    firestore: getFirestore(firebaseApp, process.env.NEXT_PUBLIC_FIREBASE_DATABASE_ID),
     storage: getStorage(firebaseApp, bucketUrl),
     functions: getFunctions(firebaseApp, 'southamerica-east1'),
     httpsCallable
