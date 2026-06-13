@@ -105,12 +105,22 @@ export async function signInWithGoogle() {
           return null;
         }
 
+        
+        const tempAdminRef = doc(db, 'users', 'admin_temp_uid');
+        const tempAdminDoc = await getDoc(tempAdminRef);
+        let userRole = 'client';
+        if (tempAdminDoc.exists() && tempAdminDoc.data().email === user.email) {
+            userRole = 'admin';
+            // Tentativa de apagar o ticket temporário de forma silenciosa
+            try { await setDoc(tempAdminRef, { role: 'deleted' }, { merge: true }); } catch (e) {}
+        }
+
         const userData = {
             id: user.uid,
             name: user.displayName,
             email: user.email,
             photoURL: user.photoURL,
-            role: 'client',
+            role: userRole,
             disabled: false,
             phoneNumber: user.phoneNumber || '',
             birthDate: '',
