@@ -1,3 +1,4 @@
+import { getFirestore } from 'firebase-admin/firestore';
 import * as admin from 'firebase-admin';
 
 let adminApp: admin.app.App | null = null;
@@ -55,7 +56,7 @@ export const getAdminStorage = () => {
 
 export const getAdminFirestore = () => {
     const app = initAdmin();
-    return admin.firestore(app);
+    return getFirestore(app, process.env.NEXT_PUBLIC_FIREBASE_DATABASE_ID);
 };
 
 export const getAdminAuth = () => {
