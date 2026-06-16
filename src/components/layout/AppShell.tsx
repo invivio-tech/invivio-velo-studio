@@ -23,6 +23,8 @@ const appRoutes = [
   '/orders',
   '/sales-dashboard',
   '/financial-report',
+  '/admin',
+  '/club',
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -48,12 +50,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (isAppPage) {
     return (
       <SidebarProvider>
-        <div className="flex">
-          <AppSidebar />
-          <main className="flex-1">
-            {children}
-          </main>
-        </div>
+        <AppSidebar />
+        <main className="flex-1 w-full relative flex flex-col min-h-screen max-w-full overflow-x-hidden pt-16 md:pt-0">
+          {children}
+        </main>
       </SidebarProvider>
     );
   }

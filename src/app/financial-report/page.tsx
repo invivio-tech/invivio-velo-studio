@@ -79,6 +79,16 @@ interface EstablishmentSettings {
   name?: string;
 }
 
+interface MembershipInvoice {
+  id: string;
+  membershipId: string;
+  amount: number;
+  dueDate: Timestamp;
+  status: string;
+  paidAt?: Timestamp | null;
+  createdAt: Timestamp;
+}
+
 export default function FinancialReportPage() {
   const { user, isUserLoading } = useUser();
   const { userProfile, isLoading: isProfileLoading } = useUserProfile();
@@ -193,16 +203,43 @@ export default function FinancialReportPage() {
   );
   const { data: expenses, isLoading: expensesLoading } = useCollection<Expense>(expensesRef);
 
+  // Fetch Invoices
+  const membershipInvoicesRef = useMemoFirebase(
+    () => {
+      if (!firestore || !user) return null;
+      return query(
+        collection(firestore, 'membershipInvoices'),
+        where('status', '==', 'paid')
+      );
+    },
+    [firestore, user]
+  );
+  const { data: membershipInvoicesRaw, isLoading: membershipInvoicesLoading } = useCollection<MembershipInvoice>(membershipInvoicesRef);
+
   // Calculations
   const stats = useMemo(() => {
     const serviceRevenue = appointments?.reduce((acc, apt) => acc + Number(apt.servicePrice), 0) || 0;
     const productRevenue = orders?.filter(o => o.status === 'completed' || o.status === 'paid')
                                  .reduce((acc, o) => acc + Number(o.totalValue), 0) || 0;
     
-    const grossRevenue = serviceRevenue + productRevenue;
+    // Filter invoices locally
+    const subscriptionRevenue = (membershipInvoicesRaw || []).filter(inv => {
+      if (!inv.paidAt) return false;
+      const date = inv.paidAt.toDate();
+      return date.getTime() >= dateRange.start.getTime() && date.getTime() <= dateRange.end.getTime();
+    }).reduce((acc, inv) => acc + Number(inv.amount), 0);
+    
+    const grossRevenue = serviceRevenue + productRevenue + subscriptionRevenue;
     
     const manualExpenses = expenses?.reduce((acc, exp) => acc + Number(exp.value), 0) || 0;
-    const commissions = serviceRevenue * (commissionPercentage / 100);
+    
+    // Calculate commissions correctly, respecting commissionBaseValue for subscriptions
+    const commissions = appointments?.reduce((acc, apt) => {
+      const baseValue = apt.isSubscriptionUsage && apt.commissionBaseValue !== undefined
+        ? Number(apt.commissionBaseValue)
+        : Number(apt.servicePrice || 0);
+      return acc + (baseValue * (commissionPercentage / 100));
+    }, 0) || 0;
     
     const totalOutflows = manualExpenses + commissions;
     const netProfit = grossRevenue - totalOutflows;
@@ -211,6 +248,7 @@ export default function FinancialReportPage() {
     return {
       serviceRevenue,
       productRevenue,
+      subscriptionRevenue,
       grossRevenue,
       manualExpenses,
       commissions,
@@ -218,12 +256,13 @@ export default function FinancialReportPage() {
       netProfit,
       profitMargin
     };
-  }, [appointments, orders, expenses, commissionPercentage]);
+  }, [appointments, orders, expenses, membershipInvoicesRaw, commissionPercentage, dateRange]);
 
   // Chart Data
   const revenueChartData = [
     { name: 'Serviços', value: stats.serviceRevenue, color: '#10b981' },
-    { name: 'Produtos', value: stats.productRevenue, color: '#3b82f6' }
+    { name: 'Produtos', value: stats.productRevenue, color: '#3b82f6' },
+    { name: 'Assinaturas', value: stats.subscriptionRevenue, color: '#a855f7' }
   ].filter(d => d.value > 0);
 
   const profitChartData = [
@@ -231,7 +270,7 @@ export default function FinancialReportPage() {
     { name: 'Despesas/Comissões', value: stats.totalOutflows, color: '#f43f5e' }
   ];
 
-  const isLoading = isUserLoading || isProfileLoading || appointmentsLoading || ordersLoading || expensesLoading;
+  const isLoading = isUserLoading || isProfileLoading || appointmentsLoading || ordersLoading || expensesLoading || membershipInvoicesLoading;
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -435,6 +474,13 @@ export default function FinancialReportPage() {
                   <span>Vendas de Produtos</span>
                 </div>
                 <span className="font-semibold">{formatCurrency(stats.productRevenue)}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-purple-500" />
+                  <span>Mensalidades de Assinatura</span>
+                </div>
+                <span className="font-semibold">{formatCurrency(stats.subscriptionRevenue)}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">

@@ -1,217 +1,267 @@
 'use client';
 
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 import { 
-  BarberPoleIcon 
-} from '@/components/icons/barber-pole-icon';
-import { 
-  Calendar, 
-  ShoppingBag, 
-  Sparkles, 
-  Users, 
-  ShieldCheck, 
+  CalendarCheck, 
   TrendingUp, 
-  Scissors, 
-  Zap,
+  Users, 
+  Sparkles, 
+  ShieldCheck, 
+  BarChart3, 
+  Smartphone,
   ArrowRight,
-  ChevronRight,
-  Package,
-  Layers,
-  FileText
+  CheckCircle2
 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 
-export default function AboutPage() {
+export default function AboutLandingPage() {
   return (
-    <div className="min-h-screen bg-background pb-20 overflow-x-hidden">
-      {/* ─── Hero Section ─────────────────────────────────────────── */}
-      <section className="relative py-20 px-4 md:px-8 border-b bg-gradient-to-br from-primary/5 via-background to-secondary/5 overflow-hidden">
-        <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-primary/10 rounded-full blur-3xl opacity-50 animate-pulse"></div>
-        <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-96 h-96 bg-secondary/10 rounded-full blur-3xl opacity-50"></div>
-        
-        <div className="max-w-5xl mx-auto text-center relative z-10">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-6 border border-primary/20 animate-fade-in">
-            <Sparkles className="w-4 h-4" /> Versão 1.0 "Velo" Premium
+    <div className="min-h-screen bg-zinc-950 text-zinc-50 font-sans selection:bg-emerald-500/30">
+      
+      {/* HEADER / NAV */}
+      <header className="fixed top-0 w-full z-50 bg-zinc-950/80 backdrop-blur-lg border-b border-white/5">
+        <div className="container mx-auto px-6 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+              <Sparkles className="w-5 h-5 text-white" />
+            </div>
+            <span className="font-extrabold text-xl tracking-tight">VELO</span>
           </div>
-          <h1 className="text-4xl md:text-6xl font-headline font-bold tracking-tight mb-6 bg-gradient-to-r from-foreground to-foreground/60 bg-clip-text">
-            O Futuro da sua <span className="text-primary italic">Barbearia</span>, <br />
-            em um só lugar.
-          </h1>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto leading-relaxed">
-            Uma plataforma completa que une a tradição da barbearia com a tecnologia de ponta, 
-            proporcionando uma experiência inigualável para clientes e uma gestão poderosa para administradores.
-          </p>
+          <div className="flex items-center gap-4">
+            <Link href="/" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors hidden sm:block">
+              Voltar ao Painel
+            </Link>
+            <Link href="https://invivio.com.br" target="_blank">
+              <Button className="bg-white text-zinc-950 hover:bg-zinc-200 rounded-full font-semibold px-6">
+                Falar com Consultor
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      {/* HERO SECTION */}
+      <section className="relative pt-40 pb-20 md:pt-52 md:pb-32 overflow-hidden">
+        {/* Background glow effects */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-emerald-500/20 rounded-full blur-[120px] pointer-events-none" />
+        
+        <div className="container mx-auto px-6 relative z-10 text-center max-w-4xl">
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <span className="inline-block py-1 px-3 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-medium mb-6">
+              A Evolução Definitiva
+            </span>
+            <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-tight">
+              A gestão do seu <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500">Negócio</span> no Piloto Automático
+            </h1>
+            <p className="text-lg md:text-2xl text-zinc-400 mb-10 max-w-2xl mx-auto leading-relaxed">
+              Transforme clientes em assinantes. Automatize agendamentos, garanta receita previsível e impulsione seu negócio com o sistema mais inteligente do mercado.
+            </p>
+            
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Button size="lg" className="h-14 px-8 text-lg font-semibold rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 shadow-xl shadow-emerald-500/20 w-full sm:w-auto transition-all hover:scale-105">
+                Ver Demonstração <ArrowRight className="ml-2 w-5 h-5" />
+              </Button>
+              <Button size="lg" variant="outline" className="h-14 px-8 text-lg font-semibold rounded-full border-zinc-700 bg-zinc-900/50 hover:bg-zinc-800 text-white w-full sm:w-auto">
+                Conhecer Recursos
+              </Button>
+            </div>
+          </div>
         </div>
       </section>
 
-      <div className="max-w-6xl mx-auto px-4 md:px-8 mt-16 space-y-24">
-        
-        {/* ─── Seção 1: Gestão de Serviços ─────────────────────────── */}
-        <section className="space-y-8">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div className="space-y-3">
-              <Badge variant="outline" className="px-3 py-1 font-semibold uppercase tracking-wider text-[10px] text-primary border-primary/30">Experiência do Salão</Badge>
-              <h2 className="text-3xl font-headline font-bold flex items-center gap-3">
-                <Scissors className="text-primary h-8 w-8" /> Gestão de Serviços
-              </h2>
-              <p className="text-muted-foreground max-w-xl">Agendamentos rápidos, profissionais qualificados e um sistema de fidelidade que valoriza cada visita.</p>
+      {/* CORE FEATURES GRID */}
+      <section className="py-24 bg-zinc-900/30 relative">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-16 animate-in fade-in duration-700">
+            <h2 className="text-3xl md:text-5xl font-bold mb-4">Um ecossistema completo para o seu negócio</h2>
+            <p className="text-zinc-400 text-lg max-w-3xl mx-auto">
+              Esqueça os sistemas que funcionam apenas como "caderninhos digitais". O Velo é uma plataforma robusta que unifica Agendamento, Pagamentos Recorrentes, Gestão Financeira avançada e Inteligência Artificial.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {/* Feature 1 */}
+            <div className="p-8 rounded-3xl bg-zinc-900/50 border border-white/5 backdrop-blur-sm hover:bg-zinc-800/50 transition-colors group flex flex-col h-full animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100 fill-mode-both">
+              <div className="w-14 h-14 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <Sparkles className="w-7 h-7 text-purple-400" />
+              </div>
+              <h3 className="text-xl font-bold mb-4">Clubes de Assinatura (MRR)</h3>
+              <p className="text-zinc-400 leading-relaxed mb-6 flex-grow">
+                Transforme serviços avulsos em receita recorrente garantida todo mês. Blinde seu caixa contra a sazonalidade e garanta previsibilidade financeira.
+              </p>
+              <ul className="space-y-2 mt-auto">
+                <li className="flex items-start gap-2 text-sm text-zinc-300"><CheckCircle2 className="w-4 h-4 text-purple-500 shrink-0 mt-0.5" /> Planos ilimitados ou com limites de uso.</li>
+                <li className="flex items-start gap-2 text-sm text-zinc-300"><CheckCircle2 className="w-4 h-4 text-purple-500 shrink-0 mt-0.5" /> Geração de faturas e cobrança automática.</li>
+                <li className="flex items-start gap-2 text-sm text-zinc-300"><CheckCircle2 className="w-4 h-4 text-purple-500 shrink-0 mt-0.5" /> Dashboard em tempo real analisando o Lucro Bruto e a Saúde de cada plano.</li>
+              </ul>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <FeatureCard 
-              icon={<Calendar className="w-6 h-6" />}
-              title="Agendamento Inteligente"
-              description="Escolha de serviços, seleção de profissionais e visualização de horários livres em tempo real com confirmação imediata."
-            />
-            <FeatureCard 
-              icon={<Users className="w-6 h-6" />}
-              title="Gestão de Equipe"
-              description="Painel específico para cada barbeiro visualizar sua produção, gerenciar sua agenda e acompanhar comissões."
-            />
-            <FeatureCard 
-              icon={<Zap className="w-6 h-6" />}
-              title="Programa de Fidelidade"
-              description="Acúmulo automático de pontos por atendimentos concluídos, trocáveis por descontos ou serviços gratuitos."
-            />
-          </div>
-        </section>
-
-        {/* ─── Seção 2: Loja Premium ───────────────────────────────── */}
-        <section className="space-y-8">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div className="space-y-3">
-              <Badge variant="outline" className="px-3 py-1 font-semibold uppercase tracking-wider text-[10px] text-secondary border-secondary/30">Vendas e Produtos</Badge>
-              <h2 className="text-3xl font-headline font-bold flex items-center gap-3">
-                <ShoppingBag className="text-secondary h-8 w-8" /> Loja Premium & E-commerce
-              </h2>
-              <p className="text-muted-foreground max-w-xl">Leve a barbearia para casa com uma vitrine moderna de produtos profissionais e reserva online inteligente.</p>
+            {/* Feature 2 */}
+            <div className="p-8 rounded-3xl bg-zinc-900/50 border border-white/5 backdrop-blur-sm hover:bg-zinc-800/50 transition-colors group flex flex-col h-full animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200 fill-mode-both">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <CalendarCheck className="w-7 h-7 text-emerald-400" />
+              </div>
+              <h3 className="text-xl font-bold mb-4">Agendamento & Autoatendimento</h3>
+              <p className="text-zinc-400 leading-relaxed mb-6 flex-grow">
+                Uma vitrine digital impecável para o seu cliente final. Ele agenda 24/7 sem precisar trocar uma única mensagem no WhatsApp com a recepção.
+              </p>
+              <ul className="space-y-2 mt-auto">
+                <li className="flex items-start gap-2 text-sm text-zinc-300"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" /> O sistema detecta assinantes e zera o preço do serviço automaticamente no checkout.</li>
+                <li className="flex items-start gap-2 text-sm text-zinc-300"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" /> Prevenção inteligente contra choques de horário.</li>
+                <li className="flex items-start gap-2 text-sm text-zinc-300"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" /> Design premium e responsivo para celular.</li>
+              </ul>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <FeatureCard 
-              variant="secondary"
-              icon={<Package className="w-6 h-6" />}
-              title="Vitrine Digital"
-              description="Catálogo de produtos elegante com filtros por categoria e busca otimizada."
-            />
-            <FeatureCard 
-              variant="secondary"
-              icon={<ChevronRight className="w-6 h-6" />}
-              title="Reserva e Retirada"
-              description="Clientes reservam produtos online e realizam o pagamento/retirada no balcão da barbearia."
-            />
-            <FeatureCard 
-              variant="secondary"
-              icon={<Layers className="w-6 h-6" />}
-              title="Gestão de Estoque"
-              description="Controle rigoroso de unidades disponíveis com baixa automática no momento da retirada."
-            />
-            <FeatureCard 
-              variant="secondary"
-              icon={<Sparkles className="w-6 h-6" />}
-              title="IA de Produto"
-              description="Geração automática de descrições comerciais persuasivas utilizando Inteligência Artificial."
-            />
-          </div>
-        </section>
+            {/* Feature 3 */}
+            <div className="p-8 rounded-3xl bg-zinc-900/50 border border-white/5 backdrop-blur-sm hover:bg-zinc-800/50 transition-colors group flex flex-col h-full animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300 fill-mode-both">
+              <div className="w-14 h-14 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <BarChart3 className="w-7 h-7 text-blue-400" />
+              </div>
+              <h3 className="text-xl font-bold mb-4">Gestão Financeira & Comissões</h3>
+              <p className="text-zinc-400 leading-relaxed mb-6 flex-grow">
+                Nunca mais perca horas calculando o pagamento da equipe. O Velo resolve a matemática complexa de repasses de forma blindada e livre de erros.
+              </p>
+              <ul className="space-y-2 mt-auto">
+                <li className="flex items-start gap-2 text-sm text-zinc-300"><CheckCircle2 className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" /> Rateio automático de comissões por profissional.</li>
+                <li className="flex items-start gap-2 text-sm text-zinc-300"><CheckCircle2 className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" /> "Valor Base de Repasse" para assinaturas (protege sua margem).</li>
+                <li className="flex items-start gap-2 text-sm text-zinc-300"><CheckCircle2 className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" /> DRE completo: Serviços + Loja + Assinaturas vs Custos.</li>
+              </ul>
+            </div>
 
-        {/* ─── Seção 3: Administração e Inteligência ─────────────────── */}
-        <section className="relative p-8 md:p-12 rounded-[2rem] border bg-muted/30 overflow-hidden">
-          <div className="absolute top-0 right-0 p-8 opacity-5">
-             <BarberPoleIcon className="w-64 h-64" />
+            {/* Feature 4 */}
+            <div className="p-8 rounded-3xl bg-zinc-900/50 border border-white/5 backdrop-blur-sm hover:bg-zinc-800/50 transition-colors group flex flex-col h-full animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100 fill-mode-both">
+              <div className="w-14 h-14 rounded-2xl bg-rose-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <Smartphone className="w-7 h-7 text-rose-400" />
+              </div>
+              <h3 className="text-xl font-bold mb-4">Programa de Fidelidade (Rewards)</h3>
+              <p className="text-zinc-400 leading-relaxed mb-6 flex-grow">
+                Gamifique a relação com seu público. Acabe com os "cartõezinhos de papel" e faça o cliente voltar mais vezes para acumular benefícios.
+              </p>
+              <ul className="space-y-2 mt-auto">
+                <li className="flex items-start gap-2 text-sm text-zinc-300"><CheckCircle2 className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" /> Acúmulo 100% automatizado a cada serviço finalizado.</li>
+                <li className="flex items-start gap-2 text-sm text-zinc-300"><CheckCircle2 className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" /> Resgate de pontos direto pelo aplicativo do cliente.</li>
+                <li className="flex items-start gap-2 text-sm text-zinc-300"><CheckCircle2 className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" /> Loja integrada para troca por produtos físicos ou serviços VIP.</li>
+              </ul>
+            </div>
+
+            {/* Feature 5 */}
+            <div className="p-8 rounded-3xl bg-zinc-900/50 border border-white/5 backdrop-blur-sm hover:bg-zinc-800/50 transition-colors group flex flex-col h-full animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200 fill-mode-both">
+              <div className="w-14 h-14 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <Users className="w-7 h-7 text-amber-400" />
+              </div>
+              <h3 className="text-xl font-bold mb-4">Marketing com Inteligência Artificial</h3>
+              <p className="text-zinc-400 leading-relaxed mb-6 flex-grow">
+                Uma agência de marketing embutida no seu sistema. O Velo possui Agentes de IA prontos para trabalhar a favor do faturamento do seu negócio.
+              </p>
+              <ul className="space-y-2 mt-auto">
+                <li className="flex items-start gap-2 text-sm text-zinc-300"><CheckCircle2 className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" /> Criação de Copy persuasiva para Promoções com 1 clique.</li>
+                <li className="flex items-start gap-2 text-sm text-zinc-300"><CheckCircle2 className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" /> Geração de descrições atraentes para novos planos de assinatura.</li>
+                <li className="flex items-start gap-2 text-sm text-zinc-300"><CheckCircle2 className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" /> Análise de dados e auditoria inteligente.</li>
+              </ul>
+            </div>
+
+            {/* Feature 6 */}
+            <div className="p-8 rounded-3xl bg-zinc-900/50 border border-white/5 backdrop-blur-sm hover:bg-zinc-800/50 transition-colors group flex flex-col h-full animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300 fill-mode-both">
+              <div className="w-14 h-14 rounded-2xl bg-zinc-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <ShieldCheck className="w-7 h-7 text-zinc-400" />
+              </div>
+              <h3 className="text-xl font-bold mb-4">Centro de Comando (Multi-Tenant)</h3>
+              <p className="text-zinc-400 leading-relaxed mb-6 flex-grow">
+                Gestão centralizada para redes. Se você tem mais de uma unidade ou opera franquias, o Velo oferece controle absoluto sobre o seu ecossistema.
+              </p>
+              <ul className="space-y-2 mt-auto">
+                <li className="flex items-start gap-2 text-sm text-zinc-300"><CheckCircle2 className="w-4 h-4 text-zinc-500 shrink-0 mt-0.5" /> Visão global de todas as unidades ativas e inativas.</li>
+                <li className="flex items-start gap-2 text-sm text-zinc-300"><CheckCircle2 className="w-4 h-4 text-zinc-500 shrink-0 mt-0.5" /> Monitoramento técnico e auditoria de logs centralizada.</li>
+                <li className="flex items-start gap-2 text-sm text-zinc-300"><CheckCircle2 className="w-4 h-4 text-zinc-500 shrink-0 mt-0.5" /> Banco de dados totalmente isolado e seguro para cada filial.</li>
+              </ul>
+            </div>
+
           </div>
-          
-          <div className="relative z-10 grid md:grid-cols-2 gap-12 items-center">
-            <div className="space-y-6">
-              <h2 className="text-3xl font-headline font-bold">Inteligência de Negócio</h2>
-              <p className="text-muted-foreground leading-relaxed">
-                Nossa retaguarda foi projetada para dar ao administrador total controle financeiro e operacional. 
-                Decisões baseadas em dados reais de faturamento de serviços e loja.
+        </div>
+      </section>
+
+      {/* HIGHLIGHT SECTION */}
+      <section className="py-24 relative overflow-hidden animate-in fade-in duration-1000">
+        <div className="container mx-auto px-6">
+          <div className="flex flex-col lg:flex-row items-center gap-16">
+            <div className="w-full lg:w-1/2 space-y-8">
+              <h2 className="text-3xl md:text-5xl font-bold leading-tight">
+                Criado para faturar <br />
+                <span className="text-emerald-400">Todo Santo Mês.</span>
+              </h2>
+              <p className="text-zinc-400 text-lg leading-relaxed">
+                Você já perdeu noites de sono fazendo contas de quanto ia entrar no mês para cobrir os custos fixos? Com o módulo de Clubes do Velo, você inicia o mês sabendo exatamente qual o seu faturamento mínimo (MRR).
               </p>
               
               <ul className="space-y-4">
-                <li className="flex gap-3 items-start">
-                  <div className="mt-1 bg-primary/20 p-1 rounded-full"><TrendingUp className="w-4 h-4 text-primary" /></div>
-                  <div>
-                    <span className="font-bold">Dashboard Multi-Receita:</span> Visão separada de faturamento por profissionais e vendas da loja.
-                  </div>
-                </li>
-                <li className="flex gap-3 items-start">
-                  <div className="mt-1 bg-primary/20 p-1 rounded-full"><FileText className="w-4 h-4 text-primary" /></div>
-                  <div>
-                    <span className="font-bold">Relatório Financeiro:</span> Extrato mensal de entradas com integração total de pedidos e serviços concluídos.
-                  </div>
-                </li>
-                <li className="flex gap-3 items-start">
-                  <div className="mt-1 bg-primary/20 p-1 rounded-full"><ShieldCheck className="w-4 h-4 text-primary" /></div>
-                  <div>
-                    <span className="font-bold">Gestão de Invoices:</span> Controle de pagamentos, balanços e acerto de contas com a equipe.
-                  </div>
-                </li>
+                {[
+                  'Crie planos de assinatura personalizados em 1 minuto.',
+                  'Cobrança e faturas automáticas.',
+                  'Comissões dos profissionais blindadas (Você define o repasse).',
+                  'Dashboard em tempo real da saúde dos planos.'
+                ].map((item, i) => (
+                  <li key={i} className="flex items-start gap-3">
+                    <CheckCircle2 className="w-6 h-6 text-emerald-500 shrink-0" />
+                    <span className="text-zinc-300">{item}</span>
+                  </li>
+                ))}
               </ul>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
-               <div className="space-y-4">
-                 <div className="bg-card border rounded-2xl p-6 shadow-sm">
-                    <span className="text-3xl font-bold text-primary">100%</span>
-                    <p className="text-xs text-muted-foreground uppercase font-bold tracking-tighter">Integrado</p>
-                 </div>
-                 <div className="bg-primary text-primary-foreground rounded-2xl p-6 shadow-lg shadow-primary/20">
-                    <span className="text-3xl font-bold">IA</span>
-                    <p className="text-xs opacity-70 uppercase font-bold tracking-tighter">Nativa</p>
-                 </div>
-               </div>
-               <div className="pt-8 space-y-4">
-                  <div className="bg-card border rounded-2xl p-6 shadow-sm">
-                    <span className="text-3xl font-bold text-foreground">Cloud</span>
-                    <p className="text-xs text-muted-foreground uppercase font-bold tracking-tighter">Firebase Infrastructure</p>
-                 </div>
-                 <div className="bg-card border rounded-2xl p-6 shadow-sm">
-                    <span className="text-xl font-bold">Segurança</span>
-                    <p className="text-xs text-muted-foreground uppercase font-bold tracking-tighter">RBCA Access</p>
-                 </div>
-               </div>
+            <div className="w-full lg:w-1/2">
+              {/* Mockup Dashboard Illustration */}
+              <div className="relative rounded-2xl bg-gradient-to-tr from-zinc-900 to-zinc-800 border border-zinc-700 p-2 shadow-2xl shadow-emerald-500/10">
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent rounded-2xl" />
+                <div className="bg-zinc-950 rounded-xl overflow-hidden relative z-10 border border-zinc-800/50">
+                  <div className="h-10 border-b border-zinc-800 flex items-center px-4 gap-2 bg-zinc-900/50">
+                    <div className="w-3 h-3 rounded-full bg-red-500/50" />
+                    <div className="w-3 h-3 rounded-full bg-yellow-500/50" />
+                    <div className="w-3 h-3 rounded-full bg-green-500/50" />
+                  </div>
+                  <div className="p-6 space-y-4">
+                    <div className="flex justify-between items-center mb-8">
+                      <div className="h-6 w-32 bg-zinc-800 rounded animate-pulse" />
+                      <div className="h-8 w-8 bg-emerald-500/20 rounded-full" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="h-24 bg-zinc-800/50 rounded-lg p-4 border border-zinc-800">
+                        <div className="h-4 w-20 bg-zinc-700 rounded mb-4" />
+                        <div className="h-8 w-24 bg-emerald-500/30 rounded" />
+                      </div>
+                      <div className="h-24 bg-zinc-800/50 rounded-lg p-4 border border-zinc-800">
+                        <div className="h-4 w-20 bg-zinc-700 rounded mb-4" />
+                        <div className="h-8 w-24 bg-zinc-700 rounded" />
+                      </div>
+                    </div>
+                    <div className="h-40 bg-zinc-800/30 rounded-lg border border-zinc-800 mt-4 p-4 flex items-end gap-2 justify-between">
+                      <div className="w-1/6 h-[40%] bg-emerald-500/40 rounded-t" />
+                      <div className="w-1/6 h-[60%] bg-emerald-500/50 rounded-t" />
+                      <div className="w-1/6 h-[30%] bg-emerald-500/30 rounded-t" />
+                      <div className="w-1/6 h-[80%] bg-emerald-500/60 rounded-t" />
+                      <div className="w-1/6 h-[100%] bg-emerald-500/80 rounded-t" />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </section>
-
-        {/* ─── Rodapé da Página ────────────────────────────────────── */}
-        <section className="text-center py-12 border-t">
-          <p className="text-sm font-medium text-muted-foreground flex items-center justify-center gap-2">
-            Desenvolvido pela <span className="text-primary font-bold">Invivio Tecnologia</span> • v1.00056
-          </p>
-        </section>
-      </div>
-    </div>
-  );
-}
-
-function FeatureCard({ 
-  icon, 
-  title, 
-  description, 
-  variant = 'primary' 
-}: { 
-  icon: React.ReactNode, 
-  title: string, 
-  description: string,
-  variant?: 'primary' | 'secondary'
-}) {
-  const iconColor = variant === 'primary' ? 'text-primary' : 'text-secondary';
-  const bgColor = variant === 'primary' ? 'bg-primary/5' : 'bg-secondary/5';
-  
-  return (
-    <Card className="border-border/50 hover:border-primary/50 transition-all duration-300 group hover:shadow-xl hover:shadow-primary/5">
-      <CardContent className="pt-8">
-        <div className={`w-12 h-12 rounded-xl ${bgColor} ${iconColor} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
-          {icon}
         </div>
-        <h3 className="font-headline font-bold text-lg mb-3">{title}</h3>
-        <p className="text-muted-foreground text-sm leading-relaxed">{description}</p>
-      </CardContent>
-    </Card>
+      </section>
+
+      {/* CTA FOOTER */}
+      <section className="py-24 border-t border-white/5 relative">
+        <div className="absolute inset-0 bg-emerald-500/5" />
+        <div className="container mx-auto px-6 relative z-10 text-center max-w-3xl">
+          <h2 className="text-4xl md:text-5xl font-bold mb-6">Pronto para modernizar a sua gestão?</h2>
+          <p className="text-zinc-400 text-lg mb-10">
+            Junte-se à revolução na gestão de estabelecimentos. Menos tempo perdendo dinheiro em planilhas, mais tempo entregando a melhor experiência.
+          </p>
+          <Button size="lg" asChild className="h-16 px-10 text-lg font-semibold rounded-full bg-white text-zinc-950 hover:bg-zinc-200 shadow-xl shadow-white/10 transition-transform hover:scale-105">
+            <Link href="https://invivio.com.br" target="_blank">Agendar Demonstração Gratuita</Link>
+          </Button>
+        </div>
+      </section>
+      
+    </div>
   );
 }

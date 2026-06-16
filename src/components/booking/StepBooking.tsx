@@ -80,6 +80,10 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Subscription State
+  const [activeMembershipPlan, setActiveMembershipPlan] = useState<any>(null);
+  const [useSubscription, setUseSubscription] = useState(true);
 
   // Availability state
   const [dailyAppointments, setDailyAppointments] = useState<Appointment[]>([]);
@@ -119,6 +123,23 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
         if (settingsSnap.exists()) {
           setEstablishmentSettings(settingsSnap.data() as ScheduleSettings);
         }
+
+        // Fetch user membership if logged in
+        if (user) {
+          const membershipsQ = query(
+            collection(firestore, 'userMemberships'),
+            where('userId', '==', user.uid),
+            where('status', '==', 'active')
+          );
+          const membershipsSnap = await getDocs(membershipsQ);
+          if (!membershipsSnap.empty) {
+            const activeMembership = membershipsSnap.docs[0].data();
+            const planDoc = await getDoc(doc(firestore, 'membershipPlans', activeMembership.planId));
+            if (planDoc.exists()) {
+              setActiveMembershipPlan({ id: planDoc.id, ...planDoc.data() } as any);
+            }
+          }
+        }
       } catch (error) {
         console.error("Error fetching booking data:", error);
       } finally {
@@ -126,7 +147,7 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
       }
     }
     fetchData();
-  }, [firestore]);
+  }, [firestore, user]);
 
   // Fetch daily data (appointments, blocked times)
   useEffect(() => {
@@ -242,6 +263,14 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
         reminderSent: false,
         notes: ''
       };
+
+      const isServiceIncluded = activeMembershipPlan?.includedServiceIds?.includes(selectedService.id);
+      if (user && activeMembershipPlan && useSubscription && isServiceIncluded) {
+        appointmentData.isSubscriptionUsage = true;
+        appointmentData.servicePrice = 0;
+        appointmentData.commissionBaseValue = activeMembershipPlan.commissionBaseValue || 0;
+        appointmentData.subscriptionPlanId = activeMembershipPlan.id;
+      }
 
       if (user) {
         appointmentData.customerId = user.uid;
@@ -476,8 +505,28 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
               )}
             </div>
 
-            {/* Guest Info */}
+            {/* Guest Info & Subscription */}
             <div className="space-y-4 pt-4 border-t border-border/50">
+              {activeMembershipPlan && activeMembershipPlan.includedServiceIds?.includes(selectedService?.id) && (
+                <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4 mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <h4 className="font-bold text-purple-700 dark:text-purple-400">Assinante {activeMembershipPlan.name}</h4>
+                      <p className="text-xs text-muted-foreground mt-1">Este serviço está incluso no seu plano com 100% de desconto!</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={useSubscription}
+                        onChange={(e) => setUseSubscription(e.target.checked)}
+                      />
+                      <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                    </label>
+                  </div>
+                </div>
+              )}
+              
               <h4 className="font-bold flex items-center gap-2 px-1">Seus dados para contato</h4>
               <div className="space-y-3">
                 <input
@@ -507,7 +556,11 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
               onClick={handleBooking}
               className="flex-[2] py-4 px-6 rounded-2xl bg-primary text-white font-bold hover:opacity-90 transition-all disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-2"
             >
-              {isSubmitting ? 'Agendando...' : 'Finalizar Agendamento'} <ArrowRight className="w-5 h-5" />
+              {isSubmitting ? 'Agendando...' : (
+                useSubscription && activeMembershipPlan?.includedServiceIds?.includes(selectedService?.id) 
+                  ? 'Agendar Gratuitamente (Clube)' 
+                  : 'Finalizar Agendamento'
+              )} <ArrowRight className="w-5 h-5" />
             </button>
           </div>
         </div>

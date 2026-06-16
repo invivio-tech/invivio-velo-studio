@@ -38,6 +38,7 @@ import {
   Tags,
   ShoppingCart,
   Receipt,
+  Activity,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -61,6 +62,9 @@ const adminOperationsItems = [
 const adminServicesItems = [
   { href: '/services', label: 'Serviços', icon: BookOpen },
   { href: '/categories', label: 'Categorias', icon: LayoutGrid },
+  { href: '/admin/memberships', label: 'Planos de Assinatura', icon: Sparkles },
+  { href: '/admin/memberships/dashboard', label: 'Saúde do Clube', icon: Activity },
+  { href: '/admin/subscribers', label: 'Assinantes', icon: Users },
 ];
 
 const adminFinanceMarketingItems = [
@@ -93,6 +97,7 @@ const clientMenuItems = [
   { href: '/schedule', label: 'Meus Agendamentos', icon: Calendar },
   { href: '/book-appointment', label: 'Agendar', icon: PlusCircle },
   { href: '/services', label: 'Serviços', icon: BookOpen },
+  { href: '/club', label: 'Clube de Vantagens', icon: Sparkles },
   { href: '/store', label: 'Loja', icon: ShoppingBag },
   { href: '/rewards', label: 'Meus Pontos', icon: Gift },
 ];
@@ -143,9 +148,9 @@ export default function AppSidebar() {
 
   return (
     <>
-      <div className="md:hidden p-2 absolute top-2 left-2 z-50">
-        <Button size="icon" variant="ghost" onClick={toggleSidebar}>
-          <PanelLeft className="h-6 w-6" />
+      <div className="md:hidden fixed top-3 left-3 z-50">
+        <Button size="icon" variant="outline" className="bg-background/80 backdrop-blur-md shadow-md rounded-full h-10 w-10 border-zinc-200 dark:border-zinc-800" onClick={toggleSidebar}>
+          <PanelLeft className="h-5 w-5" />
         </Button>
       </div>
       <Sidebar collapsible="icon">

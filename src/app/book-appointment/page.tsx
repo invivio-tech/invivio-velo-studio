@@ -88,6 +88,19 @@ export default function BookAppointmentPage() {
   const establishmentSettingsRef = useMemoFirebase(() => firestore ? doc(firestore, 'establishmentSettings', 'main') : null, [firestore]);
   const { data: establishmentSettings, isLoading: areEstablishmentSettingsLoading } = useDoc<EstablishmentSettings>(establishmentSettingsRef);
 
+  // Membership Data
+  const userMembershipsCollection = useMemoFirebase(
+    () => firestore && user ? query(collection(firestore, 'userMemberships'), where('userId', '==', user.uid), where('status', '==', 'active')) : null,
+    [firestore, user]
+  );
+  const { data: userMemberships, isLoading: areMembershipsLoading } = useCollection<any>(userMembershipsCollection);
+
+  const membershipPlansCollection = useMemoFirebase(
+    () => firestore ? collection(firestore, 'membershipPlans') : null,
+    [firestore]
+  );
+  const { data: membershipPlans, isLoading: arePlansLoading } = useCollection<any>(membershipPlansCollection);
+
   // State for daily data fetched via getDocs
   const [dailyAppointments, setDailyAppointments] = useState<Appointment[] | null>(null);
   const [areAppointmentsLoading, setAreAppointmentsLoading] = useState(false);
@@ -282,6 +295,12 @@ export default function BookAppointmentPage() {
     setStep(4);
   }
 
+  const activeMembership = userMemberships?.[0];
+  const activePlan = membershipPlans?.find(p => p.id === activeMembership?.planId);
+  const isServiceCovered = selectedService ? activePlan?.includedServiceIds?.includes(selectedService.id) : false;
+  const hasUsageRemaining = activeMembership ? (activeMembership.maxUsesPerMonth === 999 || activeMembership.usageCount < activeMembership.maxUsesPerMonth) : false;
+  const isCoveredByPlan = !!(isServiceCovered && hasUsageRemaining);
+
   const handleConfirmBooking = async () => {
     if (!user || !userProfile || !firestore || !selectedService || !selectedDate || !selectedTime || !finalProfessional) {
       toast({ title: 'Erro', description: 'Faltam informações para o agendamento.', variant: 'destructive' });
@@ -292,6 +311,8 @@ export default function BookAppointmentPage() {
     const [hours, minutes] = selectedTime.split(':').map(Number);
     const startTime = set(selectedDate, { hours, minutes, seconds: 0, milliseconds: 0 });
     const endTime = addMinutes(startTime, parseDuration(selectedService.duration));
+
+    const finalPrice = isCoveredByPlan ? 0 : selectedService.price;
 
     const newAppointment = {
       customerId: user.uid,
@@ -304,18 +325,27 @@ export default function BookAppointmentPage() {
       startTime: Timestamp.fromDate(startTime),
       endTime: Timestamp.fromDate(endTime),
       status: 'scheduled',
-      notes: '',
+      notes: isCoveredByPlan ? 'Incluso no Clube de Assinaturas' : '',
       // Denormalized data
       serviceName: selectedService.name,
       professionalName: finalProfessional.name,
       serviceDuration: selectedService.duration,
-      servicePrice: selectedService.price,
+      servicePrice: finalPrice,
       reminderSent: false,
     };
 
     try {
       const appointmentsRef = collection(firestore, 'appointments');
-      const docRef = await addDoc(appointmentsRef, newAppointment);
+      await addDoc(appointmentsRef, newAppointment);
+      
+      // Update membership usage if covered
+      if (isCoveredByPlan && activeMembership?.id) {
+        const membershipRef = doc(firestore, 'userMemberships', activeMembership.id);
+        await updateDoc(membershipRef, {
+          usageCount: activeMembership.usageCount + 1
+        });
+      }
+
       toast({ title: 'Agendamento Confirmado!', description: `Seu horário para ${selectedService.name} às ${selectedTime} foi confirmado.` });
       router.push('/schedule');
     } catch (e) {
@@ -341,7 +371,7 @@ export default function BookAppointmentPage() {
   );
 
   const areSlotsLoading = areAppointmentsLoading || areBlockedTimesLoading;
-  const isLoading = isUserLoading || isProfileLoading || areServicesLoading || areProfessionalsLoading || areScheduleSettingsLoading || areEstablishmentSettingsLoading || areCategoriesLoading;
+  const isLoading = isUserLoading || isProfileLoading || areServicesLoading || areProfessionalsLoading || areScheduleSettingsLoading || areEstablishmentSettingsLoading || areCategoriesLoading || areMembershipsLoading || arePlansLoading;
 
   if (isLoading) {
     return (
@@ -371,8 +401,8 @@ export default function BookAppointmentPage() {
 
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Step 1: Select Service */}
-        <StepHeader stepNum={1} title="Escolha o Serviço">
-          <Accordion type="multiple" className="w-full" defaultValue={categories?.map(c => c.id)}>
+        <StepHeader stepNum={1} title="Escolha a Categoria e o Serviço">
+          <Accordion type="single" collapsible className="w-full">
             {areCategoriesLoading ? (
               <div className="space-y-4">
                 <Skeleton className="h-12 w-full" />
@@ -487,6 +517,21 @@ export default function BookAppointmentPage() {
                 <div className="flex items-center gap-2"><User className="w-5 h-5 text-primary" /><span><strong>Profissional:</strong> {finalProfessional.name}</span></div>
                 <div className="flex items-center gap-2"><CalendarIcon className="w-5 h-5 text-primary" /><span><strong>Data:</strong> {format(selectedDate, 'PPP', { locale: ptBR })}</span></div>
                 <div className="flex items-center gap-2"><Clock className="w-5 h-5 text-primary" /><span><strong>Horário:</strong> {selectedTime}</span></div>
+                
+                {isCoveredByPlan ? (
+                  <div className="mt-4 p-4 bg-primary/10 border border-primary/20 rounded-md">
+                    <p className="font-semibold text-primary mb-1">Benefício do Clube Aplicado 🎉</p>
+                    <div className="flex justify-between items-center text-lg">
+                      <span className="line-through text-muted-foreground">R$ {selectedService.price.toFixed(2).replace('.', ',')}</span>
+                      <span className="font-bold text-primary">R$ 0,00</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-4 flex justify-between items-center text-lg">
+                    <span className="font-semibold">Valor Total:</span>
+                    <span className="font-bold">R$ {selectedService.price.toFixed(2).replace('.', ',')}</span>
+                  </div>
+                )}
               </CardContent>
               <CardFooter className="flex-col items-start gap-4">
                 <Button onClick={handleConfirmBooking} size="lg" disabled={isSubmitting}>

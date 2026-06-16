@@ -42,6 +42,42 @@
                 }
             ]
         },
+        {
+            "collectionGroup": "appointments",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "status",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "subscriptionPlanId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "startTime",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "appointments",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "isSubscriptionUsage",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "status",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "startTime",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
 
         {
             "collectionGroup": "appointments",
@@ -199,6 +235,20 @@
             },
             {
               "fieldPath": "scheduledFor",
+              "order": "ASCENDING"
+            }
+          ]
+        },
+        {
+          "collectionGroup": "membershipInvoices",
+          "queryScope": "COLLECTION",
+          "fields": [
+            {
+              "fieldPath": "status",
+              "order": "ASCENDING"
+            },
+            {
+              "fieldPath": "paidAt",
               "order": "ASCENDING"
             }
           ]
