@@ -153,11 +153,21 @@ export default function SchedulePage() {
         const isCreatingRegistration = !!(newStatus === 'completed' && completionData?.registration?.create && appointment.type === 'guest');
 
         // --- FASE DE LEITURA (READS MUST COME FIRST) ---
+        let commPct = settings.commissionPercentage || 50;
+
         if (appointment.customerId && !isCreatingRegistration) {
           const clientProfileRef = doc(firestore, 'users', appointment.customerId);
           const clientDoc = await transaction.get(clientProfileRef);
           if (clientDoc.exists()) {
             currentPoints = clientDoc.data().loyaltyPoints || 0;
+          }
+        }
+        
+        if (newStatus === 'completed') {
+          const professionalProfileRef = doc(firestore, 'users', appointment.professionalId);
+          const professionalDoc = await transaction.get(professionalProfileRef);
+          if (professionalDoc.exists() && professionalDoc.data().commissionPercentage !== undefined) {
+            commPct = professionalDoc.data().commissionPercentage;
           }
         }
 
@@ -242,6 +252,14 @@ export default function SchedulePage() {
 
         if (newStatus === 'completed') {
           updatePayload.completedAt = Timestamp.now();
+          
+          // Calcular e congelar a comissão no documento do agendamento
+          const baseValue = appointment.isSubscriptionUsage && appointment.commissionBaseValue !== undefined
+            ? Number(appointment.commissionBaseValue)
+            : Number(appointment.servicePrice || 0);
+            
+          updatePayload.commissionPercentageVigente = commPct;
+          updatePayload.commissionAmount = baseValue * (commPct / 100);
         }
 
         if (isNowClient && appointment.type === 'guest') {
@@ -1067,6 +1085,11 @@ function ProfessionalDashboard({
                      <div className="h-8 w-8 relative flex-shrink-0 rounded-md overflow-hidden border ml-2">
                         <img src={apt.completionPhotos[0]} alt="Serviço" className="h-full w-full object-cover" />
                      </div>
+                   )}
+                   {apt.commissionAmount !== undefined && (
+                     <Badge className="ml-4 bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-0 shadow-sm font-bold">
+                       + R$ {Number(apt.commissionAmount).toFixed(2).replace('.', ',')}
+                     </Badge>
                    )}
                  </div>
                  <div className="flex items-center gap-2">

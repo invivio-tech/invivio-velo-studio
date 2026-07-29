@@ -38,6 +38,7 @@ import {
   Tags,
   ShoppingCart,
   Receipt,
+  Activity,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -61,6 +62,9 @@ const adminOperationsItems = [
 const adminServicesItems = [
   { href: '/services', label: 'Serviços', icon: BookOpen },
   { href: '/categories', label: 'Categorias', icon: LayoutGrid },
+  { href: '/admin/memberships', label: 'Planos de Assinatura', icon: Sparkles },
+  { href: '/admin/memberships/dashboard', label: 'Saúde do Clube', icon: Activity },
+  { href: '/admin/subscribers', label: 'Assinantes', icon: Users },
 ];
 
 const adminFinanceMarketingItems = [
@@ -93,6 +97,8 @@ const clientMenuItems = [
   { href: '/schedule', label: 'Meus Agendamentos', icon: Calendar },
   { href: '/book-appointment', label: 'Agendar', icon: PlusCircle },
   { href: '/services', label: 'Serviços', icon: BookOpen },
+  { href: '/club', label: 'Clube de Vantagens', icon: Sparkles },
+  { href: '/club/billing', label: 'Meus Pagamentos', icon: Receipt },
   { href: '/store', label: 'Loja', icon: ShoppingBag },
   { href: '/rewards', label: 'Meus Pontos', icon: Gift },
 ];
@@ -143,12 +149,7 @@ export default function AppSidebar() {
 
   return (
     <>
-      <div className="md:hidden p-2 absolute top-2 left-2 z-50">
-        <Button size="icon" variant="ghost" onClick={toggleSidebar}>
-          <PanelLeft className="h-6 w-6" />
-        </Button>
-      </div>
-      <Sidebar collapsible="icon">
+      <Sidebar collapsible="icon" className="hidden md:flex">
         <SidebarContent>
           <SidebarHeader className="h-20 flex items-center justify-center">
             <Link href="/schedule" className="flex items-center gap-2 p-2 w-full">
@@ -178,7 +179,7 @@ export default function AppSidebar() {
               {userProfile.role === 'admin' ? (
                 <>
                   {/* Agenda e Equipe */}
-                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2">
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2 group-data-[collapsible=icon]:hidden">
                     <span>Agenda e Equipe</span>
                   </div>
                   <SidebarMenu>
@@ -201,7 +202,7 @@ export default function AppSidebar() {
                   <SidebarSeparator className="my-2 opacity-10" />
 
                   {/* Serviços e Catálogo */}
-                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2">
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2 group-data-[collapsible=icon]:hidden">
                     <span>Serviços e Catálogo</span>
                   </div>
                   <SidebarMenu>
@@ -224,7 +225,7 @@ export default function AppSidebar() {
                   <SidebarSeparator className="my-2 opacity-10" />
 
                   {/* Financeiro e Marketing */}
-                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2">
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2 group-data-[collapsible=icon]:hidden">
                     <span>Financeiro e Marketing</span>
                   </div>
                   <SidebarMenu>
@@ -247,7 +248,7 @@ export default function AppSidebar() {
                   <SidebarSeparator className="my-2 opacity-10" />
 
                   {/* Loja e Produtos */}
-                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2">
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2 group-data-[collapsible=icon]:hidden">
                     <span>Loja e Produtos</span>
                   </div>
                   <SidebarMenu>
@@ -270,7 +271,7 @@ export default function AppSidebar() {
                   <SidebarSeparator className="my-2 opacity-10" />
 
                   {/* Configurações */}
-                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2">
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2 group-data-[collapsible=icon]:hidden">
                     <span>Estabelecimento</span>
                   </div>
                   <SidebarMenu>

@@ -149,6 +149,16 @@ export default function AgendaViewPage() {
       await runTransaction(firestore, async (transaction) => {
         const appointmentDoc = await transaction.get(appointmentRef);
         if (!appointmentDoc.exists()) throw new Error('Agendamento não encontrado');
+        const appointmentData = appointmentDoc.data();
+
+        let commPct = settings?.commissionPercentage || 50;
+        if (newStatus === 'completed') {
+            const professionalProfileRef = doc(firestore, 'users', appointmentData.professionalId);
+            const professionalDoc = await transaction.get(professionalProfileRef);
+            if (professionalDoc.exists() && professionalDoc.data().commissionPercentage !== undefined) {
+                commPct = professionalDoc.data().commissionPercentage;
+            }
+        }
 
         const updateData: any = {
           status: newStatus,
@@ -157,6 +167,15 @@ export default function AgendaViewPage() {
           completionNotes: completionData?.notes || '',
           completionPhotos: completionData?.photos || []
         };
+
+        if (newStatus === 'completed') {
+            const baseValue = appointmentData.isSubscriptionUsage && appointmentData.commissionBaseValue !== undefined
+                ? Number(appointmentData.commissionBaseValue)
+                : Number(appointmentData.servicePrice || 0);
+
+            updateData.commissionPercentageVigente = commPct;
+            updateData.commissionAmount = baseValue * (commPct / 100);
+        }
 
         transaction.update(appointmentRef, updateData);
       });

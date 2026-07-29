@@ -27,7 +27,7 @@ import type { Service } from '@/app/services/page';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { EstablishmentSettings } from '@/app/establishment/page';
 import type { Product } from '@/types/store';
-import { Instagram, Star, Scissors as ScissorsIcon, User as UserIcon, ShoppingBag, Package, ArrowRight } from 'lucide-react';
+import { Instagram, Star, Scissors as ScissorsIcon, User as UserIcon, ShoppingBag, Package, ArrowRight, Sparkles, CheckCircle2 } from 'lucide-react';
 
 export default function LandingPage() {
   const heroImage = PlaceHolderImages.find((p) => p.id === 'landing-hero');
@@ -57,6 +57,13 @@ export default function LandingPage() {
     [firestore]
   );
   const { data: featuredProducts, isLoading: areProductsLoading } = useCollection<Product>(featuredProductsQuery);
+
+  // Fetch Membership Plans (up to 3 active plans)
+  const membershipPlansQuery = useMemoFirebase(
+    () => (firestore ? query(collection(firestore, 'membershipPlans'), where('isActive', '==', true), limit(3)) : null),
+    [firestore]
+  );
+  const { data: membershipPlans, isLoading: arePlansLoading } = useCollection<any>(membershipPlansQuery);
 
   // Fetch Portfolio (Completed Appointments with Photos)
   const portfolioQuery = useMemoFirebase(() => {
@@ -300,6 +307,85 @@ export default function LandingPage() {
             </Button>
           </div>
         </section>
+
+        {/* Membership Plans Section */}
+        {(arePlansLoading || (membershipPlans && membershipPlans.length > 0)) && (
+          <section id="club" className="container py-16 md:py-24 bg-primary/5 rounded-3xl my-8 mx-auto max-w-[95%]">
+            <div className="flex flex-col items-center text-center mb-12">
+              <Sparkles className="h-12 w-12 text-primary mb-4" />
+              <h2 className="text-3xl md:text-4xl font-headline font-bold">Clube de Vantagens</h2>
+              <p className="text-muted-foreground mt-4 max-w-2xl text-lg">
+                Assine nossos planos mensais e garanta seu visual impecável com economia, prioridade na agenda e benefícios exclusivos.
+              </p>
+            </div>
+
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto">
+              {arePlansLoading &&
+                [...Array(3)].map((_, i) => (
+                  <Card key={i} className="flex flex-col">
+                    <CardHeader className="text-center pt-8 pb-4">
+                      <Skeleton className="h-8 w-3/4 mx-auto mb-2" />
+                      <Skeleton className="h-4 w-full mx-auto" />
+                    </CardHeader>
+                    <CardContent className="flex-1">
+                      <Skeleton className="h-16 w-1/2 mx-auto mb-6" />
+                      <div className="space-y-3">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-5/6" />
+                        <Skeleton className="h-4 w-4/5" />
+                      </div>
+                    </CardContent>
+                    <CardFooter className="pb-8">
+                      <Skeleton className="h-12 w-full" />
+                    </CardFooter>
+                  </Card>
+                ))}
+
+              {!arePlansLoading && membershipPlans?.map((plan) => (
+                <Card key={plan.id} className="flex flex-col bg-background relative overflow-hidden transition-all hover:shadow-xl border-2 hover:border-primary/50">
+                  {plan.imageUrl && (
+                    <div className="w-full h-40 relative overflow-hidden">
+                      <img src={plan.imageUrl} alt={plan.name} className="object-cover w-full h-full opacity-90 transition-transform duration-500 hover:scale-105" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+                    </div>
+                  )}
+                  <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-bl-lg z-10">
+                    Recomendado
+                  </div>
+                  <CardHeader className={`text-center pb-4 relative z-10 ${plan.imageUrl ? 'pt-0 -mt-10' : 'pt-8'}`}>
+                    <CardTitle className="font-headline text-2xl">{plan.name}</CardTitle>
+                    <CardDescription className="text-sm mt-2">{plan.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex-1 text-center">
+                    <div className="flex justify-center items-baseline gap-1 mb-6">
+                      <span className="text-4xl font-bold font-headline text-primary">R${plan.price.toFixed(2).replace('.', ',')}</span>
+                      <span className="text-muted-foreground font-medium text-sm">/mês</span>
+                    </div>
+                    <ul className="space-y-3 text-sm text-left mx-auto max-w-[250px]">
+                      <li className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+                        <span>{plan.maxUsesPerMonth === 999 ? 'Uso Ilimitado' : `Até ${plan.maxUsesPerMonth} atendimentos/mês`}</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+                        <span>Desconto automático no site</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+                        <span>Prioridade na agenda</span>
+                      </li>
+                    </ul>
+                  </CardContent>
+                  <CardFooter className="pt-4 pb-8">
+                    <Button className="w-full text-md h-12" asChild>
+                      <Link href="/club">Quero Assinar</Link>
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Portfolio Section */}
         {portfolioItems.length > 0 && (
