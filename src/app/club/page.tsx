@@ -127,9 +127,16 @@ export default function ClubPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm font-medium">
-              Uso Mensal: {activeOrPendingMembership.usageCount} / {activeOrPendingMembership.maxUsesPerMonth === 999 ? 'Ilimitado' : activeOrPendingMembership.maxUsesPerMonth}
-            </p>
+            {(() => {
+              const activePlan = plans?.find(p => p.id === activeOrPendingMembership.planId);
+              const maxUses = activePlan?.maxUsesPerMonth || 0;
+              const currentUsage = activeOrPendingMembership.usageThisMonth || activeOrPendingMembership.usageCount || 0;
+              return (
+                <p className="text-sm font-medium">
+                  Uso Mensal: {currentUsage} / {maxUses === 999 ? 'Ilimitado' : maxUses}
+                </p>
+              );
+            })()}
           </CardContent>
         </Card>
       )}

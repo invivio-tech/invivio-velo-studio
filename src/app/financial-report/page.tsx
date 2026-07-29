@@ -233,8 +233,13 @@ export default function FinancialReportPage() {
     
     const manualExpenses = expenses?.reduce((acc, exp) => acc + Number(exp.value), 0) || 0;
     
-    // Calculate commissions correctly, respecting commissionBaseValue for subscriptions
+    // Calculate commissions correctly, prioritizing frozen values (commissionAmount)
     const commissions = appointments?.reduce((acc, apt) => {
+      if (apt.commissionAmount !== undefined) {
+        return acc + Number(apt.commissionAmount);
+      }
+      
+      // Retrocompatibilidade para agendamentos antigos
       const baseValue = apt.isSubscriptionUsage && apt.commissionBaseValue !== undefined
         ? Number(apt.commissionBaseValue)
         : Number(apt.servicePrice || 0);

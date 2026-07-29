@@ -81,6 +81,10 @@ export function PlanHealthDialog({ isOpen, onOpenChange, plan, commissionPercent
     const actualRevenue = monthlyInvoices.reduce((acc, inv) => acc + Number(inv.amount), 0);
 
     const totalCosts = appointments.reduce((acc, apt) => {
+      if (apt.commissionAmount !== undefined) {
+        return acc + Number(apt.commissionAmount);
+      }
+      // Retrocompatibilidade
       const baseValue = apt.commissionBaseValue !== undefined ? Number(apt.commissionBaseValue) : 0;
       return acc + (baseValue * (commissionPercentage / 100));
     }, 0);
@@ -198,7 +202,7 @@ export function PlanHealthDialog({ isOpen, onOpenChange, plan, commissionPercent
             </div>
             
             <div className="text-xs text-muted-foreground text-center">
-              Os custos são baseados na taxa de comissão padrão de {commissionPercentage}% aplicada sobre o Valor Unitário para Repasse configurado no plano.
+              Os custos refletem as comissões baseadas nos serviços executados neste mês através do plano de assinatura.
             </div>
           </div>
         )}

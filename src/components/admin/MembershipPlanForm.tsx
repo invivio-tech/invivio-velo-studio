@@ -31,7 +31,7 @@ export interface MembershipPlan {
   price: number;
   includedServiceIds: string[];
   maxUsesPerMonth: number;
-  commissionBaseValue: number;
+  commissionRepassPercentage?: number;
   isActive: boolean;
   imageUrl?: string;
   imagePrompt?: string;
@@ -50,7 +50,7 @@ export default function MembershipPlanForm({ isOpen, setIsOpen, plan, onSave }: 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState<number | ''>('');
-  const [commissionBaseValue, setCommissionBaseValue] = useState<number | ''>('');
+  const [commissionRepassPercentage, setCommissionRepassPercentage] = useState<number | ''>(100);
   const [includedServiceIds, setIncludedServiceIds] = useState<string[]>([]);
   const [maxUsesPerMonth, setMaxUsesPerMonth] = useState<number | ''>(999);
   const [isActive, setIsActive] = useState(true);
@@ -184,7 +184,7 @@ export default function MembershipPlanForm({ isOpen, setIsOpen, plan, onSave }: 
       setName(plan.name);
       setDescription(plan.description);
       setPrice(plan.price);
-      setCommissionBaseValue(plan.commissionBaseValue ?? '');
+      setCommissionRepassPercentage(plan.commissionRepassPercentage ?? 100);
       setIncludedServiceIds(plan.includedServiceIds || []);
       setMaxUsesPerMonth(plan.maxUsesPerMonth);
       setIsActive(plan.isActive);
@@ -194,7 +194,7 @@ export default function MembershipPlanForm({ isOpen, setIsOpen, plan, onSave }: 
       setName('');
       setDescription('');
       setPrice('');
-      setCommissionBaseValue('');
+      setCommissionRepassPercentage(100);
       setIncludedServiceIds([]);
       setMaxUsesPerMonth(999);
       setIsActive(true);
@@ -205,7 +205,7 @@ export default function MembershipPlanForm({ isOpen, setIsOpen, plan, onSave }: 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || price === '' || commissionBaseValue === '') return;
+    if (!name || price === '' || commissionRepassPercentage === '') return;
 
     setIsSaving(true);
     try {
@@ -213,7 +213,7 @@ export default function MembershipPlanForm({ isOpen, setIsOpen, plan, onSave }: 
         name,
         description,
         price: Number(price),
-        commissionBaseValue: Number(commissionBaseValue),
+        commissionRepassPercentage: Number(commissionRepassPercentage),
         includedServiceIds,
         maxUsesPerMonth: Number(maxUsesPerMonth),
         isActive,
@@ -312,15 +312,17 @@ export default function MembershipPlanForm({ isOpen, setIsOpen, plan, onSave }: 
           </div>
           
           <div className="space-y-2 p-3 bg-secondary/30 border border-secondary rounded-lg">
-            <Label htmlFor="commissionBaseValue">Valor Unitário para Repasse (R$)</Label>
-            <p className="text-xs text-muted-foreground mb-2">Este valor será a base para calcular a comissão do profissional. Ex: Se preencher 50, o barbeiro receberá sua % padrão em cima de R$ 50,00 por corte.</p>
+            <Label htmlFor="commissionRepassPercentage">Percentual para Repasse (%)</Label>
+            <p className="text-xs text-muted-foreground mb-2">Este percentual será aplicado sobre o valor original do serviço para definir a base de comissão. Ex: 100% repassa o valor integral, 80% repassa com desconto.</p>
             <Input
-              id="commissionBaseValue"
+              id="commissionRepassPercentage"
               type="number"
-              step="0.01"
-              placeholder="Ex: 50.00"
-              value={commissionBaseValue}
-              onChange={(e) => setCommissionBaseValue(e.target.value === '' ? '' : Number(e.target.value))}
+              step="1"
+              min="0"
+              max="100"
+              placeholder="Ex: 100"
+              value={commissionRepassPercentage}
+              onChange={(e) => setCommissionRepassPercentage(e.target.value === '' ? '' : Number(e.target.value))}
               required
             />
           </div>

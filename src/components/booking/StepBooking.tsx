@@ -133,10 +133,16 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
           );
           const membershipsSnap = await getDocs(membershipsQ);
           if (!membershipsSnap.empty) {
-            const activeMembership = membershipsSnap.docs[0].data();
+            const membershipDoc = membershipsSnap.docs[0];
+            const activeMembership = membershipDoc.data();
             const planDoc = await getDoc(doc(firestore, 'membershipPlans', activeMembership.planId));
             if (planDoc.exists()) {
-              setActiveMembershipPlan({ id: planDoc.id, ...planDoc.data() } as any);
+              setActiveMembershipPlan({ 
+                id: planDoc.id, 
+                membershipDocId: membershipDoc.id,
+                usageThisMonth: activeMembership.usageThisMonth || 0,
+                ...planDoc.data() 
+              } as any);
             }
           }
         }
@@ -268,7 +274,8 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
       if (user && activeMembershipPlan && useSubscription && isServiceIncluded) {
         appointmentData.isSubscriptionUsage = true;
         appointmentData.servicePrice = 0;
-        appointmentData.commissionBaseValue = activeMembershipPlan.commissionBaseValue || 0;
+        const repassPct = (activeMembershipPlan as any).commissionRepassPercentage ?? 100;
+        appointmentData.commissionBaseValue = (selectedService.price * repassPct) / 100;
         appointmentData.subscriptionPlanId = activeMembershipPlan.id;
       }
 
@@ -282,6 +289,18 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
 
       await addDoc(collection(firestore, 'appointments'), appointmentData);
 
+      // Increment usage if subscription was used
+      if (appointmentData.isSubscriptionUsage && activeMembershipPlan?.membershipDocId) {
+         try {
+           const membershipRef = doc(firestore, 'userMemberships', activeMembershipPlan.membershipDocId);
+           await updateDoc(membershipRef, {
+             usageThisMonth: (activeMembershipPlan.usageThisMonth || 0) + 1
+           });
+         } catch (err) {
+           console.error("Erro ao abater limite de uso do plano:", err);
+         }
+      }
+
       setBookingSuccess(true);
       if (onComplete) onComplete();
     } catch (error) {
@@ -294,6 +313,11 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
 
   const nextStep = () => setStep(s => s + 1);
   const prevStep = () => setStep(s => s - 1);
+
+  const professionalsForService = React.useMemo(() => {
+    if (!selectedService || !professionals) return [];
+    return professionals.filter(p => p.serviceIds?.includes(selectedService.id));
+  }, [selectedService, professionals]);
 
   if (loading) {
     return (
@@ -418,24 +442,33 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
           </div>
           
           <div className="grid grid-cols-2 gap-4">
-            {professionals.map((prof) => (
-              <button
-                key={prof.id}
-                onClick={() => { setSelectedProfessional(prof); nextStep(); }}
-                className={`p-6 rounded-2xl border-2 text-center transition-all hover:border-primary ${
-                  selectedProfessional?.id === prof.id ? 'border-primary bg-primary/5' : 'border-border'
-                }`}
-              >
-                <div className="w-16 h-16 bg-muted rounded-full mx-auto mb-4 flex items-center justify-center overflow-hidden border border-border">
-                  {prof.photoURL ? (
-                    <img src={prof.photoURL} alt={prof.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <User className="w-8 h-8 text-muted-foreground" />
-                  )}
+            {professionalsForService.length > 0 ? (
+              professionalsForService.map((prof) => (
+                <button
+                  key={prof.id}
+                  onClick={() => { setSelectedProfessional(prof); nextStep(); }}
+                  className={`p-6 rounded-2xl border-2 text-center transition-all hover:border-primary ${
+                    selectedProfessional?.id === prof.id ? 'border-primary bg-primary/5' : 'border-border'
+                  }`}
+                >
+                  <div className="w-16 h-16 bg-muted rounded-full mx-auto mb-4 flex items-center justify-center overflow-hidden border border-border">
+                    {prof.photoURL ? (
+                      <img src={prof.photoURL} alt={prof.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="w-8 h-8 text-muted-foreground" />
+                    )}
+                  </div>
+                  <h3 className="font-bold">{prof.name}</h3>
+                </button>
+              ))
+            ) : (
+              <div className="col-span-2 p-8 text-center bg-background rounded-2xl border border-dashed flex flex-col items-center justify-center space-y-3">
+                <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center">
+                  <User className="w-6 h-6 text-muted-foreground" />
                 </div>
-                <h3 className="font-bold">{prof.name}</h3>
-              </button>
-            ))}
+                <p className="text-muted-foreground">Não há profissionais disponíveis para o serviço selecionado. Por favor, volte e escolha outro serviço.</p>
+              </div>
+            )}
           </div>
           
           <button onClick={prevStep} className="flex items-center text-muted-foreground hover:text-primary transition-colors">

@@ -91,6 +91,10 @@ export default function MembershipsDashboardPage() {
       const planAppointments = appointments.filter(apt => apt.subscriptionPlanId === plan.id);
       
       const totalCosts = planAppointments.reduce((acc, apt) => {
+        if (apt.commissionAmount !== undefined) {
+          return acc + Number(apt.commissionAmount);
+        }
+        // Retrocompatibilidade para dados antigos
         const baseValue = apt.commissionBaseValue !== undefined ? Number(apt.commissionBaseValue) : 0;
         return acc + (baseValue * (commissionPercentage / 100));
       }, 0);

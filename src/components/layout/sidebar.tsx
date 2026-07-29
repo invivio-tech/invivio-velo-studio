@@ -98,6 +98,7 @@ const clientMenuItems = [
   { href: '/book-appointment', label: 'Agendar', icon: PlusCircle },
   { href: '/services', label: 'Serviços', icon: BookOpen },
   { href: '/club', label: 'Clube de Vantagens', icon: Sparkles },
+  { href: '/club/billing', label: 'Meus Pagamentos', icon: Receipt },
   { href: '/store', label: 'Loja', icon: ShoppingBag },
   { href: '/rewards', label: 'Meus Pontos', icon: Gift },
 ];
@@ -148,12 +149,7 @@ export default function AppSidebar() {
 
   return (
     <>
-      <div className="md:hidden fixed top-3 left-3 z-50">
-        <Button size="icon" variant="outline" className="bg-background/80 backdrop-blur-md shadow-md rounded-full h-10 w-10 border-zinc-200 dark:border-zinc-800" onClick={toggleSidebar}>
-          <PanelLeft className="h-5 w-5" />
-        </Button>
-      </div>
-      <Sidebar collapsible="icon">
+      <Sidebar collapsible="icon" className="hidden md:flex">
         <SidebarContent>
           <SidebarHeader className="h-20 flex items-center justify-center">
             <Link href="/schedule" className="flex items-center gap-2 p-2 w-full">
@@ -183,7 +179,7 @@ export default function AppSidebar() {
               {userProfile.role === 'admin' ? (
                 <>
                   {/* Agenda e Equipe */}
-                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2">
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2 group-data-[collapsible=icon]:hidden">
                     <span>Agenda e Equipe</span>
                   </div>
                   <SidebarMenu>
@@ -206,7 +202,7 @@ export default function AppSidebar() {
                   <SidebarSeparator className="my-2 opacity-10" />
 
                   {/* Serviços e Catálogo */}
-                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2">
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2 group-data-[collapsible=icon]:hidden">
                     <span>Serviços e Catálogo</span>
                   </div>
                   <SidebarMenu>
@@ -229,7 +225,7 @@ export default function AppSidebar() {
                   <SidebarSeparator className="my-2 opacity-10" />
 
                   {/* Financeiro e Marketing */}
-                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2">
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2 group-data-[collapsible=icon]:hidden">
                     <span>Financeiro e Marketing</span>
                   </div>
                   <SidebarMenu>
@@ -252,7 +248,7 @@ export default function AppSidebar() {
                   <SidebarSeparator className="my-2 opacity-10" />
 
                   {/* Loja e Produtos */}
-                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2">
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2 group-data-[collapsible=icon]:hidden">
                     <span>Loja e Produtos</span>
                   </div>
                   <SidebarMenu>
@@ -275,7 +271,7 @@ export default function AppSidebar() {
                   <SidebarSeparator className="my-2 opacity-10" />
 
                   {/* Configurações */}
-                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2">
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2 group-data-[collapsible=icon]:hidden">
                     <span>Estabelecimento</span>
                   </div>
                   <SidebarMenu>

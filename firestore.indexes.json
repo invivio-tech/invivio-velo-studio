@@ -78,7 +78,6 @@
                 }
             ]
         },
-
         {
             "collectionGroup": "appointments",
             "queryScope": "COLLECTION",
@@ -89,7 +88,7 @@
                 },
                 {
                     "fieldPath": "startTime",
-                    "order": "ASCENDING"
+                    "order": "DESCENDING"
                 }
             ]
         },

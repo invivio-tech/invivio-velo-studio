@@ -298,7 +298,9 @@ export default function BookAppointmentPage() {
   const activeMembership = userMemberships?.[0];
   const activePlan = membershipPlans?.find(p => p.id === activeMembership?.planId);
   const isServiceCovered = selectedService ? activePlan?.includedServiceIds?.includes(selectedService.id) : false;
-  const hasUsageRemaining = activeMembership ? (activeMembership.maxUsesPerMonth === 999 || activeMembership.usageCount < activeMembership.maxUsesPerMonth) : false;
+  const maxUses = activePlan?.maxUsesPerMonth || 0;
+  const currentUsage = activeMembership ? (activeMembership.usageThisMonth || activeMembership.usageCount || 0) : 0;
+  const hasUsageRemaining = activeMembership && activePlan ? (maxUses === 999 || currentUsage < maxUses) : false;
   const isCoveredByPlan = !!(isServiceCovered && hasUsageRemaining);
 
   const handleConfirmBooking = async () => {
@@ -314,7 +316,7 @@ export default function BookAppointmentPage() {
 
     const finalPrice = isCoveredByPlan ? 0 : selectedService.price;
 
-    const newAppointment = {
+    const newAppointment: any = {
       customerId: user.uid,
       customerName: userProfile.name || user.displayName || 'Cliente',
       customerPhotoURL: userProfile.photoURL || user.photoURL || '',
@@ -334,6 +336,13 @@ export default function BookAppointmentPage() {
       reminderSent: false,
     };
 
+    if (isCoveredByPlan && activePlan) {
+      newAppointment.isSubscriptionUsage = true;
+      const repassPct = (activePlan as any).commissionRepassPercentage ?? 100;
+      newAppointment.commissionBaseValue = (selectedService.price * repassPct) / 100;
+      newAppointment.subscriptionPlanId = activePlan.id;
+    }
+
     try {
       const appointmentsRef = collection(firestore, 'appointments');
       await addDoc(appointmentsRef, newAppointment);
@@ -341,8 +350,10 @@ export default function BookAppointmentPage() {
       // Update membership usage if covered
       if (isCoveredByPlan && activeMembership?.id) {
         const membershipRef = doc(firestore, 'userMemberships', activeMembership.id);
+        const currentUsage = activeMembership.usageThisMonth || activeMembership.usageCount || 0;
         await updateDoc(membershipRef, {
-          usageCount: activeMembership.usageCount + 1
+          usageThisMonth: currentUsage + 1,
+          usageCount: currentUsage + 1 // Keep both for backward compatibility if needed
         });
       }
 
@@ -441,21 +452,30 @@ export default function BookAppointmentPage() {
         {/* Step 2: Select Professional */}
         {step >= 2 && selectedService && (
           <StepHeader stepNum={2} title="Escolha o Profissional">
-            <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-              <Card onClick={() => handleSelectProfessional('any')} className="cursor-pointer hover:border-primary transition-colors flex flex-col items-center justify-center p-4">
-                <Users className="w-10 h-10 mb-2 text-muted-foreground" />
-                <p className="font-semibold text-center">Qualquer um disponível</p>
-              </Card>
-              {professionalsForService.map(prof => (
-                <Card key={prof.id} onClick={() => handleSelectProfessional(prof)} className="cursor-pointer hover:border-primary transition-colors flex flex-col items-center justify-center p-4">
-                  <Avatar className="w-12 h-12 mb-2">
-                    <AvatarImage src={prof.photoURL || ''} alt={prof.name} />
-                    <AvatarFallback>{prof.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <p className="font-semibold text-center">{prof.name}</p>
+            {professionalsForService.length > 0 ? (
+              <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+                <Card onClick={() => handleSelectProfessional('any')} className="cursor-pointer hover:border-primary transition-colors flex flex-col items-center justify-center p-4">
+                  <Users className="w-10 h-10 mb-2 text-muted-foreground" />
+                  <p className="font-semibold text-center">Qualquer um disponível</p>
                 </Card>
-              ))}
-            </div>
+                {professionalsForService.map(prof => (
+                  <Card key={prof.id} onClick={() => handleSelectProfessional(prof)} className="cursor-pointer hover:border-primary transition-colors flex flex-col items-center justify-center p-4">
+                    <Avatar className="w-12 h-12 mb-2">
+                      <AvatarImage src={prof.photoURL || ''} alt={prof.name} />
+                      <AvatarFallback>{prof.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <p className="font-semibold text-center">{prof.name}</p>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="p-8 text-center bg-background rounded-2xl border border-dashed flex flex-col items-center justify-center space-y-3">
+                <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center">
+                  <User className="w-6 h-6 text-muted-foreground" />
+                </div>
+                <p className="text-muted-foreground">Não há profissionais disponíveis para realizar este serviço. Tente escolher outro serviço ou entre em contato com a barbearia.</p>
+              </div>
+            )}
             <div className="mt-6 flex justify-start">
               <Button variant="ghost" onClick={() => { setStep(1); setSelectedService(null); }} className="flex items-center gap-1">
                 <ArrowLeft className="w-4 h-4" /> Voltar para Serviços
@@ -527,9 +547,16 @@ export default function BookAppointmentPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="mt-4 flex justify-between items-center text-lg">
-                    <span className="font-semibold">Valor Total:</span>
-                    <span className="font-bold">R$ {selectedService.price.toFixed(2).replace('.', ',')}</span>
+                  <div className="mt-4 flex flex-col gap-2">
+                    {activeMembership && (
+                      <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 rounded-md text-sm">
+                        ⚠️ Este serviço não está coberto pelo seu plano atual ou seu limite mensal já foi atingido. O valor integral será aplicado.
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center text-lg">
+                      <span className="font-semibold">Valor Total:</span>
+                      <span className="font-bold">R$ {selectedService.price.toFixed(2).replace('.', ',')}</span>
+                    </div>
                   </div>
                 )}
               </CardContent>

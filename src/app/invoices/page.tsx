@@ -234,7 +234,20 @@ export default function InvoicesPage() {
     allAppointmentsRaw?.forEach(apt => {
       const pId = apt.professionalId;
       if (!acc[pId]) acc[pId] = { professionalId: pId, name: apt.professionalName || 'Desconhecido', email: '', totalEarned: 0, totalPaid: 0, balance: 0 };
-      acc[pId].totalEarned += Number(apt.servicePrice) * (commissionPercentage / 100);
+      
+      if (apt.commissionAmount !== undefined) {
+        acc[pId].totalEarned += Number(apt.commissionAmount);
+      } else {
+        // Retrocompatibilidade para agendamentos antigos
+        const userCustomComm = usersRaw?.find(u => u.id === pId)?.commissionPercentage;
+        const commPct = userCustomComm !== undefined ? userCustomComm : commissionPercentage;
+        
+        const baseValue = apt.isSubscriptionUsage && apt.commissionBaseValue !== undefined
+            ? Number(apt.commissionBaseValue)
+            : Number(apt.servicePrice || 0);
+
+        acc[pId].totalEarned += (baseValue * (commPct / 100));
+      }
     });
 
     transactionsRaw?.forEach(tx => {
