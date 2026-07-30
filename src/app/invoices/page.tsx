@@ -64,6 +64,18 @@ interface EstablishmentSettings {
   name?: string;
 }
 
+interface MembershipInvoice {
+  id: string;
+  membershipId: string;
+  userId: string;
+  planId: string;
+  amount: number;
+  dueDate: Timestamp;
+  status: 'pending' | 'paid' | 'cancelled';
+  paidAt?: Timestamp | null;
+  createdAt: Timestamp;
+}
+
 export default function InvoicesPage() {
   const { user, isUserLoading } = useUser();
   const { userProfile, isLoading: isProfileLoading } = useUserProfile();
@@ -137,6 +149,19 @@ export default function InvoicesPage() {
   );
   const { data: ordersRaw, isLoading: ordersLoading } = useCollection<Order>(ordersRef);
 
+  const membershipInvoicesRef = useMemoFirebase(
+    () => {
+      if (!firestore || !user) return null;
+      let q = query(
+        collection(firestore, 'membershipInvoices'),
+        where('status', '==', 'paid')
+      );
+      return q;
+    },
+    [firestore, user]
+  );
+  const { data: membershipInvoicesRaw, isLoading: membershipInvoicesLoading } = useCollection<MembershipInvoice>(membershipInvoicesRef);
+
   const expensesRef = useMemoFirebase(
     () => {
       if (!firestore || !user || userProfile?.role !== 'admin') return null;
@@ -209,7 +234,20 @@ export default function InvoicesPage() {
     allAppointmentsRaw?.forEach(apt => {
       const pId = apt.professionalId;
       if (!acc[pId]) acc[pId] = { professionalId: pId, name: apt.professionalName || 'Desconhecido', email: '', totalEarned: 0, totalPaid: 0, balance: 0 };
-      acc[pId].totalEarned += Number(apt.servicePrice) * (commissionPercentage / 100);
+      
+      if (apt.commissionAmount !== undefined) {
+        acc[pId].totalEarned += Number(apt.commissionAmount);
+      } else {
+        // Retrocompatibilidade para agendamentos antigos
+        const userCustomComm = usersRaw?.find(u => u.id === pId)?.commissionPercentage;
+        const commPct = userCustomComm !== undefined ? userCustomComm : commissionPercentage;
+        
+        const baseValue = apt.isSubscriptionUsage && apt.commissionBaseValue !== undefined
+            ? Number(apt.commissionBaseValue)
+            : Number(apt.servicePrice || 0);
+
+        acc[pId].totalEarned += (baseValue * (commPct / 100));
+      }
     });
 
     transactionsRaw?.forEach(tx => {
@@ -230,7 +268,7 @@ export default function InvoicesPage() {
     return acc;
   }, [allAppointmentsRaw, transactionsRaw, commissionPercentage, usersRaw]);
 
-  const isLoading = isUserLoading || isProfileLoading || appointmentsLoading || ordersLoading || expensesLoading || recurringExpensesLoading || allApptsLoading || txsLoading || usersLoading;
+  const isLoading = isUserLoading || isProfileLoading || appointmentsLoading || ordersLoading || expensesLoading || recurringExpensesLoading || allApptsLoading || txsLoading || usersLoading || membershipInvoicesLoading;
 
   if (isLoading || !userProfile) {
     return (
@@ -251,6 +289,13 @@ export default function InvoicesPage() {
   // For no-show we could (if we charged a fee), but currently only completed has full price guaranteed.
   const completedAppointments = appointmentsRaw?.filter(a => a.status === 'completed') || [];
   const completedOrders = ordersRaw?.filter(o => o.status === 'completed' || o.status === 'paid') || [];
+  
+  // Filter invoices locally to avoid complex Firestore indexing/caching bugs
+  const paidMembershipInvoices = (membershipInvoicesRaw || []).filter(inv => {
+    if (!inv.paidAt) return false;
+    const date = inv.paidAt.toDate();
+    return date.getTime() >= startOfCurrentMonth.getTime() && date.getTime() <= endOfCurrentMonth.getTime();
+  });
 
   // Filter based on user role
   const role = userProfile.role;
@@ -281,6 +326,15 @@ export default function InvoicesPage() {
       client: o.clientName,
       value: o.totalValue,
       type: 'order' as const
+    })),
+    ...paidMembershipInvoices.map(inv => ({
+      id: inv.id,
+      date: inv.paidAt ? inv.paidAt.toDate() : inv.createdAt.toDate(),
+      description: 'Mensalidade de Assinatura',
+      professional: 'Clube/Assinatura',
+      client: 'Assinante',
+      value: inv.amount,
+      type: 'subscription' as const
     }))
   ].sort((a, b) => b.date.getTime() - a.date.getTime());
 
@@ -305,7 +359,9 @@ export default function InvoicesPage() {
 
   const serviceRevenueTotal = viewDataServices.reduce((acc, apt) => acc + Number(apt.servicePrice), 0);
   const orderRevenueTotal = role === 'admin' ? completedOrders.reduce((acc, o) => acc + Number(o.totalValue), 0) : 0;
-  const totalRevenue = serviceRevenueTotal + orderRevenueTotal;
+  const subscriptionRevenueTotal = role === 'admin' ? paidMembershipInvoices.reduce((acc, inv) => acc + Number(inv.amount), 0) : 0;
+  
+  const totalRevenue = serviceRevenueTotal + orderRevenueTotal + subscriptionRevenueTotal;
   const totalExpenses = allExpenses.reduce((acc, exp) => acc + Number(exp.value), 0);
   const netProfit = totalRevenue - totalExpenses;
 
@@ -321,9 +377,13 @@ export default function InvoicesPage() {
         commissionToPay: 0,
       };
     }
+    const baseValue = apt.isSubscriptionUsage && apt.commissionBaseValue !== undefined 
+      ? Number(apt.commissionBaseValue) 
+      : Number(apt.servicePrice);
+
     acc[profId].totalServices += 1;
-    acc[profId].totalRevenue += Number(apt.servicePrice);
-    acc[profId].commissionToPay += Number(apt.servicePrice) * (commissionPercentage / 100);
+    acc[profId].totalRevenue += baseValue; // We use base value for professional's own metrics
+    acc[profId].commissionToPay += baseValue * (commissionPercentage / 100);
     return acc;
   }, {} as Record<string, { name: string, totalServices: number, totalRevenue: number, commissionToPay: number }>);
 
@@ -604,7 +664,7 @@ export default function InvoicesPage() {
             </CardHeader>
             <CardContent className="pt-4">
               <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
-              <p className="text-xs text-muted-foreground mt-1">{viewDataServices.length} Serviços + {completedOrders.length} Pedidos</p>
+              <p className="text-xs text-muted-foreground mt-1">{viewDataServices.length} Serviços + {completedOrders.length} Pedidos + {paidMembershipInvoices.length} Faturas</p>
             </CardContent>
           </Card>
 
@@ -660,6 +720,7 @@ export default function InvoicesPage() {
                         <TableCell>
                           {item.description}
                           {item.type === 'order' && <Badge variant="outline" className="ml-2 bg-blue-500/10 text-blue-700 border-blue-200">Loja</Badge>}
+                          {item.type === 'subscription' && <Badge variant="outline" className="ml-2 bg-purple-500/10 text-purple-700 border-purple-200">Assinatura</Badge>}
                         </TableCell>
                         <TableCell>{item.professional}</TableCell>
                         <TableCell>{item.client}</TableCell>

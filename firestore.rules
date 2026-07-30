@@ -7,10 +7,12 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() || resource.data.role == 'professional';
+      allow write: if isSignedIn();
       
       match /scheduleSettings/main {
-        allow read, write: if isSignedIn();
+        allow read: if true;
+        allow write: if isSignedIn();
       }
       match /blockedTimes/{blockedTimeId} {
         allow read, write: if isSignedIn();
@@ -18,8 +20,9 @@ service cloud.firestore {
     }
 
     match /appointments/{appointmentId} {
-      allow read: if isSignedIn() || resource.data.isPortfolioFeatured == true;
-      allow write: if isSignedIn();
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isSignedIn();
     }
 
     match /invoices/{invoiceId} {
@@ -57,6 +60,16 @@ service cloud.firestore {
       allow write: if isSignedIn();
     }
 
+    // ── Memberships (Clube de Assinatura) ─────────────────
+    match /membershipPlans/{planId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /userMemberships/{membershipId} {
+      allow read, write: if isSignedIn();
+    }
+
     // ── Store Collections ──────────────────────────────────
     // Product categories: anyone can read (for the public storefront),
     // only authenticated users (admins) can write.
@@ -78,6 +91,12 @@ service cloud.firestore {
       allow create: if true;
       allow read, update: if isSignedIn();
       allow delete: if isSignedIn();
+    }
+    
+    // Membership Invoices
+    match /membershipInvoices/{document=**} {
+      // Temporarily allow anyone signed in to manage invoices during MVP
+      allow read, write: if isSignedIn();
     }
     
     match /scheduleSettings/{docId} {

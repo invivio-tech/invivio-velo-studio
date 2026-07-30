@@ -222,7 +222,7 @@ export default function UsersPage() {
                               Gestão de Horários
                             </DropdownMenuItem>
                             <DropdownMenuItem onSelect={() => router.push(`/team/${user.id}/appointments`)}>
-                              Ver Agenda
+                              Agenda e Histórico
                             </DropdownMenuItem>
                           </>
                         )}
