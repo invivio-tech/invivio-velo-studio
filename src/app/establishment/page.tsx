@@ -65,6 +65,15 @@ export interface EstablishmentSettings {
   cardColor?: string;
   accentColor?: string;
   borderColor?: string;
+  planLimits?: {
+    team: { maxProfessionals: number };
+    store: { enabled: boolean; maxProducts: number };
+    club: { enabled: boolean };
+    rewards: { enabled: boolean };
+    marketing: { enabled: boolean };
+    financial: { enabled: boolean };
+    whatsappBot: { enabled: boolean };
+  };
 }
 
 const formSchema = z.object({

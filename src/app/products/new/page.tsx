@@ -12,6 +12,12 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useCollection, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import type { EstablishmentSettings } from '@/app/establishment/page';
+import { AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import Link from 'next/link';
 
 export default function NewProductPage() {
   const router = useRouter();
@@ -24,6 +30,12 @@ export default function NewProductPage() {
       router.push('/dashboard');
     }
   }, [userProfile, isProfileLoading, router]);
+
+  const settingsRef = useMemoFirebase(() => (firestore ? doc(firestore, 'establishmentSettings', 'main') : null), [firestore]);
+  const { data: settings, isLoading: areSettingsLoading } = useDoc<EstablishmentSettings>(settingsRef);
+
+  const productsQuery = useMemoFirebase(() => (firestore ? collection(firestore, 'products') : null), [firestore]);
+  const { data: products, isLoading: areProductsLoading } = useCollection(productsQuery);
 
   const handleSave = async (values: any) => {
     if (!firestore) return;
@@ -56,7 +68,7 @@ export default function NewProductPage() {
     }
   };
 
-  const isLoading = isProfileLoading || !userProfile || userProfile.role !== 'admin';
+  const isLoading = isProfileLoading || areSettingsLoading || areProductsLoading || !userProfile || userProfile.role !== 'admin';
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -84,6 +96,18 @@ export default function NewProductPage() {
              </div>
            </CardContent>
         </Card>
+      ) : settings?.planLimits?.store?.maxProducts !== undefined && products && products.length >= settings.planLimits.store.maxProducts ? (
+        <Alert variant="destructive" className="max-w-4xl">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Limite de Produtos Atingido</AlertTitle>
+          <AlertDescription className="mt-2 space-y-4">
+            <p>O seu plano atual permite o cadastro de no máximo <strong>{settings.planLimits.store.maxProducts}</strong> produtos.</p>
+            <p>Para adicionar mais itens ao seu catálogo, você precisará fazer um upgrade no seu plano.</p>
+            <Button variant="outline" className="mt-4 bg-background text-foreground" asChild>
+              <Link href="/products">Voltar para a Loja</Link>
+            </Button>
+          </AlertDescription>
+        </Alert>
       ) : (
         <Card className="w-full max-w-4xl">
           <CardHeader>
