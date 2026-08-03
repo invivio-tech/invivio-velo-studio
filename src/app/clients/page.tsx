@@ -28,7 +28,8 @@ import {
 import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { PasswordResetDialog } from '@/components/admin/PasswordResetDialog';
-import { Key } from 'lucide-react';
+import { Key, PlusCircle } from 'lucide-react';
+import { NewClientDialog } from '@/components/admin/NewClientDialog';
 
 export default function ClientsPage() {
   const firestore = useFirestore();
@@ -46,6 +47,9 @@ export default function ClientsPage() {
   // Password Reset State
   const [isResetOpen, setIsResetOpen] = useState(false);
   const [resetTarget, setResetTarget] = useState<{ id: string, name: string } | null>(null);
+
+  // New Client State
+  const [isNewClientOpen, setIsNewClientOpen] = useState(false);
 
   const handleOpenReset = (clientId: string, clientName: string) => {
     setResetTarget({ id: clientId, name: clientName });
@@ -181,13 +185,17 @@ export default function ClientsPage() {
   return (
     <>
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <ContactRound className="w-8 h-8 text-secondary" />
           <h1 className="text-3xl font-headline font-bold tracking-tight">
             Gestão de Clientes
           </h1>
         </div>
+        <Button onClick={() => setIsNewClientOpen(true)} className="w-full sm:w-auto">
+          <PlusCircle className="w-4 h-4 mr-2" />
+          Novo Cliente
+        </Button>
       </div>
       <Card>
         <CardHeader>
@@ -333,6 +341,10 @@ export default function ClientsPage() {
         onOpenChange={setIsResetOpen}
         userId={resetTarget?.id || ''}
         userName={resetTarget?.name || ''}
+    />
+    <NewClientDialog
+        isOpen={isNewClientOpen}
+        onOpenChange={setIsNewClientOpen}
     />
     </>
   );
