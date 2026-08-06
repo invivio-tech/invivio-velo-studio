@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useFirestore, useCollection, useMemoFirebase, useUserProfile } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { useFirestore, useCollection, useMemoFirebase, useUserProfile, useDoc } from '@/firebase';
+import { collection, query, where, doc } from 'firebase/firestore';
 import { createAccountByAdmin } from '@/firebase/auth/client';
+import type { EstablishmentSettings } from '@/app/establishment/page';
+import type { UserProfile } from '@/firebase';
 import type { ServiceWithId } from '@/app/services/page';
 import { useToast } from '@/hooks/use-toast';
 
@@ -19,7 +21,8 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, UserPlus } from 'lucide-react';
+import { Loader2, UserPlus, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Link from 'next/link';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -46,6 +49,12 @@ export default function NewUserPage() {
 
   const servicesCollection = useMemoFirebase(() => (firestore ? collection(firestore, 'services') : null), [firestore]);
   const { data: allServices, isLoading: areServicesLoading } = useCollection<ServiceWithId>(servicesCollection);
+
+  const settingsRef = useMemoFirebase(() => (firestore ? doc(firestore, 'establishmentSettings', 'main') : null), [firestore]);
+  const { data: settings, isLoading: areSettingsLoading } = useDoc<EstablishmentSettings>(settingsRef);
+
+  const professionalsQuery = useMemoFirebase(() => (firestore ? query(collection(firestore, 'users'), where('role', '==', 'professional')) : null), [firestore]);
+  const { data: professionals, isLoading: areProfessionalsLoading } = useCollection<UserProfile>(professionalsQuery);
 
   const form = useForm<NewUserFormValues>({
     resolver: zodResolver(formSchema),
@@ -102,7 +111,7 @@ export default function NewUserPage() {
     }
   }
 
-  const isLoading = isAdminLoading || areServicesLoading;
+  const isLoading = isAdminLoading || areServicesLoading || areSettingsLoading || areProfessionalsLoading;
 
   if (isLoading || !adminProfile || adminProfile.role !== 'admin' || !allServices) {
     return (
@@ -144,10 +153,24 @@ export default function NewUserPage() {
           Adicionar Novo Membro
         </h1>
       </div>
-      <Card className="w-full max-w-2xl">
-        <CardHeader>
-          <CardTitle className="font-headline">Dados do Membro</CardTitle>
-          <CardDescription>Crie uma conta para um novo profissional, administrador ou cliente.</CardDescription>
+
+      {settings?.planLimits?.team?.maxProfessionals !== undefined && professionals && professionals.length >= settings.planLimits.team.maxProfessionals ? (
+        <Alert variant="destructive" className="max-w-2xl">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Limite de Profissionais Atingido</AlertTitle>
+          <AlertDescription className="mt-2 space-y-4">
+            <p>O seu plano atual permite o cadastro de no máximo <strong>{settings.planLimits.team.maxProfessionals}</strong> profissionais.</p>
+            <p>Para adicionar mais membros à sua equipe, você precisará fazer um upgrade no seu plano.</p>
+            <Button variant="outline" className="mt-4 bg-background" asChild>
+              <Link href="/team">Voltar para a Equipe</Link>
+            </Button>
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <Card className="w-full max-w-2xl">
+          <CardHeader>
+            <CardTitle className="font-headline">Dados do Membro</CardTitle>
+            <CardDescription>Crie uma conta para um novo profissional, administrador ou cliente.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -315,8 +338,9 @@ export default function NewUserPage() {
               </div>
             </form>
           </Form>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

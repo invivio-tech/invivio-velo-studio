@@ -130,6 +130,30 @@ export default function AppSidebar() {
   const establishmentName = settings?.name || 'Barbearia Inteligente';
   const establishmentLogo = settings?.logoUrl;
 
+  const storeEnabled = settings?.planLimits?.store?.enabled ?? true;
+  const clubEnabled = settings?.planLimits?.club?.enabled ?? true;
+  const rewardsEnabled = settings?.planLimits?.rewards?.enabled ?? true;
+  const marketingEnabled = settings?.planLimits?.marketing?.enabled ?? true;
+  const financialEnabled = settings?.planLimits?.financial?.enabled ?? true;
+
+  const filteredAdminServicesItems = adminServicesItems.filter(item => {
+    if (!clubEnabled && (item.href === '/admin/memberships' || item.href === '/admin/memberships/dashboard' || item.href === '/admin/subscribers')) return false;
+    return true;
+  });
+
+  const filteredAdminFinanceMarketingItems = adminFinanceMarketingItems.filter(item => {
+    if (!financialEnabled && item.href === '/financial-report') return false;
+    if (!marketingEnabled && item.href === '/promotions') return false;
+    return true;
+  });
+
+  const filteredClientMenuItems = clientMenuItems.filter(item => {
+    if (!storeEnabled && item.href === '/store') return false;
+    if (!clubEnabled && (item.href === '/club' || item.href === '/club/billing')) return false;
+    if (!rewardsEnabled && item.href === '/rewards') return false;
+    return true;
+  });
+
   const handleLogout = async () => {
     await logout();
     router.push('/login');
@@ -149,7 +173,7 @@ export default function AppSidebar() {
 
   return (
     <>
-      <Sidebar collapsible="icon" className="hidden md:flex">
+      <Sidebar collapsible="icon">
         <SidebarContent>
           <SidebarHeader className="h-20 flex items-center justify-center">
             <Link href="/schedule" className="flex items-center gap-2 p-2 w-full">
@@ -206,7 +230,7 @@ export default function AppSidebar() {
                     <span>Serviços e Catálogo</span>
                   </div>
                   <SidebarMenu>
-                    {adminServicesItems.map((item) => (
+                    {filteredAdminServicesItems.map((item) => (
                       <SidebarMenuItem key={item.href}>
                         <SidebarMenuButton
                           asChild
@@ -229,7 +253,7 @@ export default function AppSidebar() {
                     <span>Financeiro e Marketing</span>
                   </div>
                   <SidebarMenu>
-                    {adminFinanceMarketingItems.map((item) => (
+                    {filteredAdminFinanceMarketingItems.map((item) => (
                       <SidebarMenuItem key={item.href}>
                         <SidebarMenuButton
                           asChild
@@ -247,28 +271,31 @@ export default function AppSidebar() {
 
                   <SidebarSeparator className="my-2 opacity-10" />
 
-                  {/* Loja e Produtos */}
-                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2 group-data-[collapsible=icon]:hidden">
-                    <span>Loja e Produtos</span>
-                  </div>
-                  <SidebarMenu>
-                    {storeMenuItems.map((item) => (
-                      <SidebarMenuItem key={item.href}>
-                        <SidebarMenuButton
-                          asChild
-                          isActive={pathname.startsWith(item.href)}
-                          tooltip={item.label}
-                        >
-                          <Link href={item.href}>
-                            <item.icon className="h-5 w-5" />
-                            <span className="truncate">{item.label}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-                  </SidebarMenu>
-
-                  <SidebarSeparator className="my-2 opacity-10" />
+                  {storeEnabled && (
+                    <>
+                      {/* Loja e Produtos */}
+                      <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2 group-data-[collapsible=icon]:hidden">
+                        <span>Loja e Produtos</span>
+                      </div>
+                      <SidebarMenu>
+                        {storeMenuItems.map((item) => (
+                          <SidebarMenuItem key={item.href}>
+                            <SidebarMenuButton
+                              asChild
+                              isActive={pathname.startsWith(item.href)}
+                              tooltip={item.label}
+                            >
+                              <Link href={item.href}>
+                                <item.icon className="h-5 w-5" />
+                                <span className="truncate">{item.label}</span>
+                              </Link>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        ))}
+                      </SidebarMenu>
+                      <SidebarSeparator className="my-2 opacity-10" />
+                    </>
+                  )}
 
                   {/* Configurações */}
                   <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2 group-data-[collapsible=icon]:hidden">
