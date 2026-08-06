@@ -3,7 +3,7 @@
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
@@ -31,7 +31,9 @@ export function getSdks(firebaseApp: FirebaseApp) {
   return {
     firebaseApp,
     auth,
-    firestore: getFirestore(firebaseApp, process.env.NEXT_PUBLIC_FIREBASE_DATABASE_ID),
+    firestore: firebaseConfig.databaseId
+      ? initializeFirestore(firebaseApp, {}, firebaseConfig.databaseId)
+      : getFirestore(firebaseApp),
     storage: getStorage(firebaseApp, bucketUrl),
     functions: getFunctions(firebaseApp, 'southamerica-east1'),
     httpsCallable
