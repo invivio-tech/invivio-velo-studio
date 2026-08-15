@@ -1088,6 +1088,7 @@ export default function EstablishmentPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+{/*
                   <div className="flex justify-end">
                     <Button type="button" variant="outline" size="sm" onClick={handleSuggestBirthday} disabled={isSuggestingBirthday}>
                       {isSuggestingBirthday ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
@@ -1121,13 +1122,14 @@ export default function EstablishmentPage() {
                       </FormItem>
                     )}
                   />
+*/}
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader>
                   <CardTitle className="font-headline flex items-center gap-2">
-                    <Bell className="h-5 w-5" /> Automação de Retenção (Oi Sumido)
+                    <Bell className="h-5 w-5" /> Retenção de Cliente
                   </CardTitle>
                   <CardDescription>
                     Configure mensagens automáticas (Push) para clientes que estão há muito tempo sem agendar.
@@ -1165,6 +1167,8 @@ export default function EstablishmentPage() {
                         </FormItem>
                       )}
                     />
+                  </div>
+{/*
                     <FormField
                       control={form.control}
                       name="retargetingTitle"
@@ -1175,10 +1179,7 @@ export default function EstablishmentPage() {
                           <FormMessage />
                         </FormItem>
                       )}
-                    />
-                  </div>
-
-                  <FormField
+                    />                  <FormField
                     control={form.control}
                     name="retargetingBody"
                     render={({ field }) => (
@@ -1194,6 +1195,7 @@ export default function EstablishmentPage() {
                       </FormItem>
                     )}
                   />
+*/}
                 </CardContent>
               </Card>
             </TabsContent>
