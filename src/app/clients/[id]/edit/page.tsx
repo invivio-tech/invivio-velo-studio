@@ -57,10 +57,15 @@ interface Appointment {
 }
 
 
-export default function EditClientPage() {
+import { use } from 'react';
+
+export default function EditClientPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
+  const userId = resolvedParams.id;
+
   const router = useRouter();
-  const params = useParams();
-  const userId = params?.id as string;
+  
+  
 
   const { userProfile: adminProfile, isLoading: isAdminLoading } = useUserProfile();
   const firestore = useFirestore();
