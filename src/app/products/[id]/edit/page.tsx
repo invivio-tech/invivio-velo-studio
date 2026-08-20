@@ -1,7 +1,6 @@
 'use client';
 
-import { use } from 'react';
-import { useRouter } from 'next/navigation';
+import {  useRouter , useParams } from 'next/navigation';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useFirestore, useUserProfile, useDoc, useMemoFirebase } from '@/firebase';
 import { Button } from '@/components/ui/button';
@@ -15,9 +14,10 @@ import { useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Product } from '@/types/store';
 
-export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+export default function EditProductPage() {
   const router = useRouter();
-  const { id } = use(params);
+  const params = useParams();
+  const id = params?.id as string;
   const firestore = useFirestore();
   const { toast } = useToast();
   const { userProfile, isLoading: isProfileLoading } = useUserProfile();

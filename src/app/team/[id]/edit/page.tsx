@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { use } from 'react';
-import { useRouter } from 'next/navigation';
+import {  useRouter , useParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -38,10 +37,10 @@ const formSchema = z.object({
 
 type UserManagementFormValues = z.infer<typeof formSchema>;
 
-export default function EditUserPage({ params }: { params: Promise<{ id: string }> }) {
+export default function EditUserPage() {
   const router = useRouter();
-  const paramsResolved = use(params);
-  const userId = paramsResolved.id as string;
+  const params = useParams();
+  const userId = params?.id as string;
 
   const { userProfile: adminProfile, isLoading: isAdminLoading } = useUserProfile();
   const firestore = useFirestore();

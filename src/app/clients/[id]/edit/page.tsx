@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import {  useRouter , useParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -57,11 +57,10 @@ interface Appointment {
 }
 
 
-import { use } from 'react';
 
-export default function EditClientPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params);
-  const userId = resolvedParams.id;
+export default function EditClientPage() {
+  const params = useParams();
+  const userId = params?.id as string;
 
   const router = useRouter();
   
