@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -55,7 +55,7 @@ type BlockTimeFormValues = z.infer<typeof blockTimeFormSchema>;
 export default function ProfessionalSchedulePage() {
   const router = useRouter();
   const params = useParams();
-  const userId = params.id as string;
+  const userId = params?.id as string;
 
   const { userProfile: adminProfile, isLoading: isAdminLoading } = useUserProfile();
   const firestore = useFirestore();

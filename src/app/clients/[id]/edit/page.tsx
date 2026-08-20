@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import {  useRouter , useParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -57,10 +57,14 @@ interface Appointment {
 }
 
 
+
 export default function EditClientPage() {
-  const router = useRouter();
   const params = useParams();
-  const userId = params.id as string;
+  const userId = params?.id as string;
+
+  const router = useRouter();
+  
+  
 
   const { userProfile: adminProfile, isLoading: isAdminLoading } = useUserProfile();
   const firestore = useFirestore();
@@ -468,7 +472,7 @@ export default function EditClientPage() {
                 {transactions.map((tx) => (
                   <TableRow key={tx.id}>
                     <TableCell className="text-xs">
-                      {format(tx.date.toDate(), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                      {tx.date?.toDate ? format(tx.date.toDate(), "dd/MM/yyyy HH:mm", { locale: ptBR }) : 'Data Inválida'}
                     </TableCell>
                     <TableCell className="max-w-[200px] truncate">{tx.description}</TableCell>
                     <TableCell className="text-right">
@@ -539,7 +543,7 @@ export default function EditClientPage() {
                 {appointments.map((appointment) => (
                   <TableRow key={appointment.id}>
                     <TableCell className="font-medium">
-                      {format(appointment.startTime.toDate(), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                      {appointment.startTime?.toDate ? format(appointment.startTime.toDate(), "dd/MM/yyyy HH:mm", { locale: ptBR }) : 'Data Inválida'}
                     </TableCell>
                     <TableCell>{appointment.serviceName}</TableCell>
                     <TableCell>{appointment.professionalName}</TableCell>

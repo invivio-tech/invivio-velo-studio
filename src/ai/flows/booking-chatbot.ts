@@ -49,7 +49,8 @@ const getProfessionals = ai.defineTool(
     const snapshot = await db.collection('users').where('role', '==', 'professional').get();
     return snapshot.docs.map(doc => ({
       id: doc.id,
-      name: doc.data().name
+      name: doc.data().name,
+      serviceIds: doc.data().serviceIds || []
     }));
   }
 );
@@ -176,11 +177,12 @@ export const bookingChatbotFlow = ai.defineFlow(
         Regras de Comportamento:
         1. Pergunte o que o cliente deseja fazer se ele ainda não disse.
         2. Use as ferramentas para consultar serviços e barbeiros quando necessário.
-        3. Quando o cliente escolher um serviço e data, verifique a disponibilidade do profissional.
-        4. Para confirmar, você PRECISA do Nome e WhatsApp do cliente. Se ele não informou, peça gentilmente.
-        5. Sempre confirme os detalhes (Serviço, Barbeiro, Data, Valor) antes de chamar a ferramenta 'confirm_booking'.
-        6. Mantenha as respostas curtas, amigáveis e use emojis ocasionalmente ✂️.
-        7. Se o cliente perguntar algo fora do contexto de barbearia, responda educadamente que você é focada em agendamentos.
+        3. MUITO IMPORTANTE: Quando o cliente escolher um serviço, use a ferramenta 'get_professionals' e cruze o 'id' do serviço escolhido com o array 'serviceIds' de cada profissional. Ofereça APENAS os profissionais que possuem o serviço na sua lista de especialidades.
+        4. Quando o cliente escolher um serviço, um profissional e uma data, verifique a disponibilidade de horário.
+        5. Para confirmar, você PRECISA do Nome e WhatsApp do cliente. Se ele não informou, peça gentilmente.
+        6. Sempre confirme os detalhes (Serviço, Barbeiro, Data, Valor) antes de chamar a ferramenta 'confirm_booking'.
+        7. Mantenha as respostas curtas, amigáveis e use emojis ocasionalmente ✂️.
+        8. Se o cliente perguntar algo fora do contexto de barbearia, responda educadamente que você é focada em agendamentos.
         
         Diretriz de Disponibilidade:
         - O horário de funcionamento é das 09:00 às 19:00.
