@@ -1,7 +1,7 @@
 'use client';
 
 import { use } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useFirestore, useUserProfile, useDoc, useMemoFirebase } from '@/firebase';
 import { Button } from '@/components/ui/button';
