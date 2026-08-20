@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { use } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { collection, query, where, orderBy, Timestamp, doc } from 'firebase/firestore';
 import { format, subMonths, addMonths, startOfMonth, endOfMonth, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -62,7 +62,7 @@ interface AppointmentWithDetails extends Appointment {
     service?: ServiceWithId;
 }
 
-export default function ProfessionalAppointmentsPage() {
+export default function ProfessionalAppointmentsPage({ params }: { params: Promise<{ id: string }> }) {
     const router = useRouter();
     const paramsResolved = use(params);
     const userId = paramsResolved.id as string;

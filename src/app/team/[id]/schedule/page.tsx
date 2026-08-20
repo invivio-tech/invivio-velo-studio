@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { use } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -53,7 +53,7 @@ const blockTimeFormSchema = z.object({
 
 type BlockTimeFormValues = z.infer<typeof blockTimeFormSchema>;
 
-export default function ProfessionalSchedulePage() {
+export default function ProfessionalSchedulePage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const paramsResolved = use(params);
   const userId = paramsResolved.id as string;

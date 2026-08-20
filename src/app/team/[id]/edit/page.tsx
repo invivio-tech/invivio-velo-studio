@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { use } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -38,7 +38,7 @@ const formSchema = z.object({
 
 type UserManagementFormValues = z.infer<typeof formSchema>;
 
-export default function EditUserPage() {
+export default function EditUserPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const paramsResolved = use(params);
   const userId = paramsResolved.id as string;
