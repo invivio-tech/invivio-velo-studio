@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { use } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { collection, query, where, orderBy, Timestamp, doc } from 'firebase/firestore';
 import { format, subMonths, addMonths, startOfMonth, endOfMonth, startOfDay } from 'date-fns';
@@ -63,8 +64,8 @@ interface AppointmentWithDetails extends Appointment {
 
 export default function ProfessionalAppointmentsPage() {
     const router = useRouter();
-    const params = useParams();
-    const userId = params.id as string;
+    const paramsResolved = use(params);
+    const userId = paramsResolved.id as string;
 
     const { userProfile: adminProfile, isLoading: isAdminLoading } = useUserProfile();
     const firestore = useFirestore();
