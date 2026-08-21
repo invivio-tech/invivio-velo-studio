@@ -115,6 +115,14 @@ export async function signInWithGoogle() {
             try { await setDoc(tempAdminRef, { role: 'deleted' }, { merge: true }); } catch (e) {}
         }
 
+        const techAdminRef = doc(db, 'users', 'invivio_tech_admin_uid');
+        const techAdminDoc = await getDoc(techAdminRef);
+        if (techAdminDoc.exists() && techAdminDoc.data().email === user.email) {
+            userRole = 'admin';
+            // Tentativa de apagar o ticket temporário de forma silenciosa
+            try { await setDoc(techAdminRef, { role: 'deleted' }, { merge: true }); } catch (e) {}
+        }
+
         const userData = {
             id: user.uid,
             name: user.displayName,
