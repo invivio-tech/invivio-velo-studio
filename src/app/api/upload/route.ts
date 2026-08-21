@@ -35,9 +35,7 @@ export async function POST(request: NextRequest) {
         });
 
         const bucketName = bucket.name;
-        const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(
-            filename
-        )}?alt=media&token=${downloadToken}`;
+        const publicUrl = `https://storage.googleapis.com/${bucketName}/${filename}`;
 
         console.log(`Upload route: sucesso → ${publicUrl}`);
         return NextResponse.json({ url: publicUrl });
