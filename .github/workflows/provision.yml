@@ -43,6 +43,8 @@ jobs:
           echo "NEXT_PUBLIC_FIREBASE_APP_ID=1:312528599255:web:094e31bb007d3dc472d892" >> .env.production
           echo "GEMINI_API_KEY=${{ github.event.inputs.gemini_api_key }}" >> .env.production
           echo "GOOGLE_GENAI_API_KEY=${{ github.event.inputs.gemini_api_key }}" >> .env.production
+          echo "GEMINI_API_KEY=${{ github.event.inputs.gemini_api_key }}" >> .env
+          echo "GOOGLE_GENAI_API_KEY=${{ github.event.inputs.gemini_api_key }}" >> .env
 
       - name: 🛠️ Build do Frontend (Next.js)
         run: npm run build
