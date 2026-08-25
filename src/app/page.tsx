@@ -184,7 +184,7 @@ export default function LandingPage() {
               <Link href="/login">Login</Link>
             </Button>
             <Button asChild>
-              <Link href="/signup">Agendar Agora</Link>
+              <Link href="/agendar">Agendar Agora</Link>
             </Button>
           </div>
         </div>
@@ -223,7 +223,7 @@ export default function LandingPage() {
               </>
             )}
             <Button size="lg" className="mt-6" asChild>
-              <Link href="/signup">Agendar Meu Horário</Link>
+              <Link href="/agendar">Agendar Meu Horário</Link>
             </Button>
           </div>
         </section>
