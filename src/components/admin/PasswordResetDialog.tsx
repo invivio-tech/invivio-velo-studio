@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Key } from 'lucide-react';
+import { firebaseConfig } from '@/firebase/config';
 import { initializeFirebase } from '@/firebase';
 
 interface PasswordResetDialogProps {
@@ -37,7 +38,11 @@ export function PasswordResetDialog({ isOpen, onOpenChange, userId, userName }: 
       const { httpsCallable } = initializeFirebase();
       const updatePasswordFn = httpsCallable(initializeFirebase().functions, 'updateuserpassword');
       
-      const result = await updatePasswordFn({ userId, newPassword });
+      const result = await updatePasswordFn({ 
+        userId, 
+        newPassword, 
+        databaseId: firebaseConfig.databaseId 
+      });
       
       if ((result.data as any).success) {
         toast({
