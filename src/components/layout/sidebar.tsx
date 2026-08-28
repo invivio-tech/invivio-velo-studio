@@ -39,6 +39,7 @@ import {
   ShoppingCart,
   Receipt,
   Activity,
+  MessageCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -57,6 +58,7 @@ const adminOperationsItems = [
   { href: '/agenda-view', label: 'Visão Agenda', icon: Monitor },
   { href: '/team', label: 'Equipe', icon: Users },
   { href: '/clients', label: 'Clientes', icon: ContactRound },
+  { href: '/admin/mensagens', label: 'Mensagens', icon: MessageCircle },
 ];
 
 const adminServicesItems = [
