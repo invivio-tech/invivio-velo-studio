@@ -22,7 +22,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Building, Loader2, Sparkles, Clock, Star, DollarSign, Upload, Bell, Palette, Undo2, Globe, Settings2 } from 'lucide-react';
+import { Building, Loader2, Bot, Sparkles, Clock, Star, DollarSign, Upload, Bell, Palette, Undo2, Globe, Settings2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -42,6 +42,7 @@ export interface EstablishmentSettings {
   whatsapp?: string;
   instagram?: string;
   context?: string;
+  aiTimeoutHours?: number;
   cancellationTimeLimitHours?: number;
   loyaltyPercentage?: number;
   pointsPenaltyForNoShow?: number;
@@ -91,6 +92,7 @@ const formSchema = z.object({
   address: z.string().min(10, { message: 'O endereço é obrigatório.' }),
   whatsapp: z.string().optional(),
   instagram: z.string().optional(),
+  aiTimeoutHours: z.coerce.number().min(1, { message: 'O valor mínimo é 1 hora.' }).optional(),
   cancellationTimeLimitHours: z.coerce.number().min(0, { message: 'O valor não pode ser negativo.' }).optional(),
   loyaltyPercentage: z.coerce.number().min(0, { message: 'O percentual não pode ser negativo.' }).max(100, { message: 'O máximo é 100%.' }).optional(),
   pointsPenaltyForNoShow: z.coerce.number().min(0, { message: 'A penalidade deve ser um valor positivo.' }).optional(),
@@ -159,6 +161,7 @@ export default function EstablishmentPage() {
     whatsapp: '',
     instagram: '',
     context: '',
+    aiTimeoutHours: 12,
     cancellationTimeLimitHours: 24,
     loyaltyPercentage: 10,
     pointsPenaltyForNoShow: 5,
@@ -201,6 +204,7 @@ export default function EstablishmentPage() {
         whatsapp: settings.whatsapp || '',
         instagram: settings.instagram || '',
         context: settings.context || '',
+        aiTimeoutHours: settings.aiTimeoutHours === undefined ? 12 : settings.aiTimeoutHours,
         cancellationTimeLimitHours: settings.cancellationTimeLimitHours === undefined ? 24 : settings.cancellationTimeLimitHours,
         loyaltyPercentage: settings.loyaltyPercentage === undefined ? 10 : settings.loyaltyPercentage,
         pointsPenaltyForNoShow: settings.pointsPenaltyForNoShow === undefined ? 5 : settings.pointsPenaltyForNoShow,
@@ -1005,6 +1009,31 @@ export default function EstablishmentPage() {
                         <FormControl>
                           <Switch checked={field.value} onCheckedChange={field.onChange} />
                         </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="font-headline flex items-center gap-2">
+                    <Bot className="h-5 w-5 text-primary" /> Inteligência Artificial
+                  </CardTitle>
+                  <CardDescription>Configurações do comportamento do seu assistente IA.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <FormField
+                    control={form.control}
+                    name="aiTimeoutHours"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Timeout de Retomada Automática (Horas)</FormLabel>
+                        <FormControl><Input type="number" placeholder="ex: 12" {...field} /></FormControl>
+                        <FormDescription>
+                          Quando você assumir uma conversa pausando a IA, a IA voltará a responder automaticamente após essa quantidade de horas sem atividade do cliente.
+                        </FormDescription>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
