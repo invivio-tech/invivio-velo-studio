@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
 
     // Use environment variable for the Admin API, fallback to production URL
     const adminUrl = process.env.NEXT_PUBLIC_VELO_ADMIN_URL || 'https://invivio-velo-admin.web.app';
-    const databaseId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    const databaseId = process.env.NEXT_PUBLIC_FIREBASE_DATABASE_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
     if (!databaseId) {
       return NextResponse.json({ error: 'Missing databaseId configuration' }, { status: 500 });
