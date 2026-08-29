@@ -39,6 +39,7 @@ import {
   ShoppingCart,
   Receipt,
   Activity,
+  MessageCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -57,6 +58,7 @@ const adminOperationsItems = [
   { href: '/agenda-view', label: 'Visão Agenda', icon: Monitor },
   { href: '/team', label: 'Equipe', icon: Users },
   { href: '/clients', label: 'Clientes', icon: ContactRound },
+  { href: '/admin/mensagens', label: 'Mensagens', icon: MessageCircle },
 ];
 
 const adminServicesItems = [
@@ -135,6 +137,12 @@ export default function AppSidebar() {
   const rewardsEnabled = settings?.planLimits?.rewards?.enabled ?? true;
   const marketingEnabled = settings?.planLimits?.marketing?.enabled ?? true;
   const financialEnabled = settings?.planLimits?.financial?.enabled ?? true;
+  const whatsappBotEnabled = settings?.planLimits?.whatsappBot?.enabled ?? false;
+
+  const filteredAdminOperationsItems = adminOperationsItems.filter(item => {
+    if (!whatsappBotEnabled && item.href === '/admin/mensagens') return false;
+    return true;
+  });
 
   const filteredAdminServicesItems = adminServicesItems.filter(item => {
     if (!clubEnabled && (item.href === '/admin/memberships' || item.href === '/admin/memberships/dashboard' || item.href === '/admin/subscribers')) return false;
@@ -207,7 +215,7 @@ export default function AppSidebar() {
                     <span>Agenda e Equipe</span>
                   </div>
                   <SidebarMenu>
-                    {adminOperationsItems.map((item) => (
+                    {filteredAdminOperationsItems.map((item) => (
                       <SidebarMenuItem key={item.href}>
                         <SidebarMenuButton
                           asChild

@@ -8,6 +8,15 @@ const { ptBR } = require('date-fns/locale');
 
 admin.initializeApp();
 
+const { getFirestore } = require('firebase-admin/firestore');
+
+function getDb(databaseId) {
+    if (databaseId) {
+        return getFirestore(databaseId);
+    }
+    return getFirestore();
+}
+
 // Configura a região global para todas as funções v2
 setGlobalOptions({ region: 'southamerica-east1' });
 
@@ -160,12 +169,13 @@ exports.updateuserpassword = onCall(async (request) => {
         throw new HttpsError('unauthenticated', 'O usuário deve estar logado.');
     }
 
-    const { userId, newPassword } = request.data;
+    const { userId, newPassword, databaseId } = request.data;
     const callerId = request.auth.uid;
+    const db = getDb(databaseId);
 
     // Se não for o próprio usuário, verifica se é admin
     if (callerId !== userId) {
-        const adminDoc = await admin.firestore().collection('users').doc(callerId).get();
+        const adminDoc = await db.collection('users').doc(callerId).get();
         if (!adminDoc.exists || adminDoc.data().role !== 'admin') {
             throw new HttpsError('permission-denied', 'Apenas administradores podem redefinir senhas de outros usuários.');
         }
@@ -184,7 +194,7 @@ exports.updateuserpassword = onCall(async (request) => {
         // Se o usuário não existe no Auth, tentamos criar baseado no Firestore
         if (error.code === 'auth/user-not-found') {
             try {
-                const userDoc = await admin.firestore().collection('users').doc(userId).get();
+                const userDoc = await db.collection('users').doc(userId).get();
                 if (!userDoc.exists) {
                     throw new HttpsError('not-found', 'Perfil do usuário não encontrado no banco de dados.');
                 }

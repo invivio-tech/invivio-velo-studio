@@ -22,7 +22,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Building, Loader2, Sparkles, Clock, Star, DollarSign, Upload, Bell, Palette, Undo2, Globe, Settings2 } from 'lucide-react';
+import { Building, Loader2, Bot, Sparkles, Clock, Star, DollarSign, Upload, Bell, Palette, Undo2, Globe, Settings2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -42,6 +42,7 @@ export interface EstablishmentSettings {
   whatsapp?: string;
   instagram?: string;
   context?: string;
+  aiTimeoutHours?: number;
   cancellationTimeLimitHours?: number;
   loyaltyPercentage?: number;
   pointsPenaltyForNoShow?: number;
@@ -52,6 +53,7 @@ export interface EstablishmentSettings {
   birthdayMessage?: string;
   businessCategory: 'barbershop' | 'beauty_salon' | 'clinic' | 'petshop' | 'other';
   businessTone: 'formal' | 'casual' | 'luxury' | 'friendly';
+  backgroundImageUrl?: string;
   retargetingActive?: boolean;
   retargetingDays?: number;
   retargetingTitle?: string;
@@ -91,6 +93,7 @@ const formSchema = z.object({
   address: z.string().min(10, { message: 'O endereço é obrigatório.' }),
   whatsapp: z.string().optional(),
   instagram: z.string().optional(),
+  aiTimeoutHours: z.coerce.number().min(1, { message: 'O valor mínimo é 1 hora.' }).optional(),
   cancellationTimeLimitHours: z.coerce.number().min(0, { message: 'O valor não pode ser negativo.' }).optional(),
   loyaltyPercentage: z.coerce.number().min(0, { message: 'O percentual não pode ser negativo.' }).max(100, { message: 'O máximo é 100%.' }).optional(),
   pointsPenaltyForNoShow: z.coerce.number().min(0, { message: 'A penalidade deve ser um valor positivo.' }).optional(),
@@ -105,6 +108,7 @@ const formSchema = z.object({
   businessTone: z.enum(['formal', 'casual', 'luxury', 'friendly'], {
     required_error: 'O tom de voz é obrigatório.',
   }),
+  backgroundImageUrl: z.string().optional().or(z.literal('')),
   retargetingActive: z.boolean().optional(),
   retargetingDays: z.coerce.number().min(1, { message: 'O valor mínimo é 1 dia.' }).optional(),
   retargetingTitle: z.string().optional(),
@@ -158,7 +162,9 @@ export default function EstablishmentPage() {
     address: 'Rua da Barbearia, 123 - Centro, Sua Cidade',
     whatsapp: '',
     instagram: '',
-    context: '',
+    backgroundImageUrl: '',
+    context: 'Somos uma barbearia com pegada moderna e profissional.',
+    aiTimeoutHours: 12,
     cancellationTimeLimitHours: 24,
     loyaltyPercentage: 10,
     pointsPenaltyForNoShow: 5,
@@ -201,6 +207,7 @@ export default function EstablishmentPage() {
         whatsapp: settings.whatsapp || '',
         instagram: settings.instagram || '',
         context: settings.context || '',
+        aiTimeoutHours: settings.aiTimeoutHours === undefined ? 12 : settings.aiTimeoutHours,
         cancellationTimeLimitHours: settings.cancellationTimeLimitHours === undefined ? 24 : settings.cancellationTimeLimitHours,
         loyaltyPercentage: settings.loyaltyPercentage === undefined ? 10 : settings.loyaltyPercentage,
         pointsPenaltyForNoShow: settings.pointsPenaltyForNoShow === undefined ? 5 : settings.pointsPenaltyForNoShow,
@@ -278,6 +285,32 @@ export default function EstablishmentPage() {
       toast({ variant: 'destructive', title: 'Erro no Upload', description: error?.message || 'Não foi possível enviar a imagem.' });
     } finally {
       setIsUploadingAboutImage(false);
+    }
+  };
+
+  const [isUploadingBackground, setIsUploadingBackground] = useState(false);
+
+  const handleBackgroundUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingBackground(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', 'uploads/establishment/background');
+      const response = await fetch('/api/upload', { method: 'POST', body: formData });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Falha no upload');
+      }
+      const { url } = await response.json();
+      form.setValue('backgroundImageUrl', url, { shouldValidate: true });
+      toast({ title: 'Upload concluído', description: 'A imagem de fundo foi salva com sucesso.' });
+    } catch (error: any) {
+      console.error('Error uploading background image:', error);
+      toast({ variant: 'destructive', title: 'Erro no Upload', description: error?.message || 'Não foi possível enviar a imagem.' });
+    } finally {
+      setIsUploadingBackground(false);
     }
   };
 
@@ -959,6 +992,67 @@ export default function EstablishmentPage() {
                       />
                     ))}
                   </div>
+
+                  {/* Background Image Upload */}
+                  <div className="pt-6 border-t mt-6">
+                    <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
+                      Plano de Fundo do Site (Opcional)
+                    </h4>
+                    <FormField control={form.control} name="backgroundImageUrl" render={({ field }) => (
+                      <FormItem>
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 p-4 border rounded-xl bg-slate-950/20">
+                          <div className="w-full sm:w-1/3 aspect-video bg-muted rounded-lg overflow-hidden border border-dashed flex items-center justify-center relative">
+                            {field.value ? (
+                              <img src={field.value} alt="Background" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="text-muted-foreground flex flex-col items-center">
+                                <Globe className="w-8 h-8 mb-2 opacity-50" />
+                                <span className="text-xs font-semibold">Sem Imagem</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 space-y-4">
+                            <div>
+                              <FormLabel className="text-base">Imagem de Fundo da Landing Page</FormLabel>
+                              <FormDescription>
+                                Esta imagem aparecerá no fundo da tela inicial do seu site.
+                              </FormDescription>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3">
+                              <div className="relative inline-block">
+                                <Input
+                                  type="file"
+                                  accept="image/*"
+                                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                  onChange={handleBackgroundUpload}
+                                  disabled={isUploadingBackground}
+                                />
+                                <Button type="button" variant="secondary" disabled={isUploadingBackground}>
+                                  {isUploadingBackground ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+                                  {field.value ? 'Trocar Imagem de Fundo' : 'Enviar Imagem de Fundo'}
+                                </Button>
+                              </div>
+                              {field.value && (
+                                <Button
+                                  type="button"
+                                  variant="destructive"
+                                  onClick={() => form.setValue('backgroundImageUrl', '', { shouldValidate: true })}
+                                  disabled={isUploadingBackground}
+                                >
+                                  Remover
+                                </Button>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Recomendação: Imagem horizontal (1920x1080px) em formato JPG ou WebP para melhor performance.
+                            </p>
+                          </div>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  </div>
+
                 </CardContent>
               </Card>
             </TabsContent>
@@ -1005,6 +1099,31 @@ export default function EstablishmentPage() {
                         <FormControl>
                           <Switch checked={field.value} onCheckedChange={field.onChange} />
                         </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="font-headline flex items-center gap-2">
+                    <Bot className="h-5 w-5 text-primary" /> Inteligência Artificial
+                  </CardTitle>
+                  <CardDescription>Configurações do comportamento do seu assistente IA.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <FormField
+                    control={form.control}
+                    name="aiTimeoutHours"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Timeout de Retomada Automática (Horas)</FormLabel>
+                        <FormControl><Input type="number" placeholder="ex: 12" {...field} /></FormControl>
+                        <FormDescription>
+                          Quando você assumir uma conversa pausando a IA, a IA voltará a responder automaticamente após essa quantidade de horas sem atividade do cliente.
+                        </FormDescription>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />

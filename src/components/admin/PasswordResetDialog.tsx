@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Key } from 'lucide-react';
+import { firebaseConfig } from '@/firebase/config';
 import { initializeFirebase } from '@/firebase';
 
 interface PasswordResetDialogProps {
@@ -20,6 +21,15 @@ export function PasswordResetDialog({ isOpen, onOpenChange, userId, userName }: 
   const [newPassword, setNewPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!isOpen) {
+      const timer = setTimeout(() => {
+        document.body.style.pointerEvents = '';
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +47,11 @@ export function PasswordResetDialog({ isOpen, onOpenChange, userId, userName }: 
       const { httpsCallable } = initializeFirebase();
       const updatePasswordFn = httpsCallable(initializeFirebase().functions, 'updateuserpassword');
       
-      const result = await updatePasswordFn({ userId, newPassword });
+      const result = await updatePasswordFn({ 
+        userId, 
+        newPassword, 
+        databaseId: firebaseConfig.databaseId 
+      });
       
       if ((result.data as any).success) {
         toast({

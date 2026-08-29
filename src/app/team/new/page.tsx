@@ -21,7 +21,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, UserPlus, AlertCircle } from 'lucide-react';
+import { Loader2, UserPlus, AlertCircle, Upload, User } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Link from 'next/link';
 import { Textarea } from '@/components/ui/textarea';
@@ -36,6 +36,7 @@ const formSchema = z.object({
   birthDate: z.string().optional(),
   address: z.string().optional(),
   notes: z.string().optional(),
+  photoURL: z.string().optional(),
 });
 
 type NewUserFormValues = z.infer<typeof formSchema>;
@@ -68,6 +69,7 @@ export default function NewUserPage() {
       birthDate: '',
       address: '',
       notes: '',
+      photoURL: '',
     },
   });
 
@@ -92,6 +94,7 @@ export default function NewUserPage() {
       birthDate: values.birthDate,
       address: values.address,
       notes: values.notes,
+      photoURL: values.photoURL,
     });
 
     setIsSaving(false);
@@ -110,6 +113,35 @@ export default function NewUserPage() {
       router.push('/team');
     }
   }
+
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingPhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', 'uploads/team');
+      
+      const response = await fetch('/api/upload', { method: 'POST', body: formData });
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Falha no upload');
+      }
+
+      form.setValue('photoURL', data.url, { shouldDirty: true });
+      toast({ title: 'Upload concluído', description: 'A foto foi enviada com sucesso.' });
+    } catch (error: any) {
+      console.error('Error uploading photo:', error);
+      toast({ variant: 'destructive', title: 'Erro no Upload', description: error?.message || 'Não foi possível enviar a foto.' });
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
 
   const isLoading = isAdminLoading || areServicesLoading || areSettingsLoading || areProfessionalsLoading;
 
@@ -175,6 +207,36 @@ export default function NewUserPage() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField control={form.control} name="photoURL" render={({ field }) => (
+                <FormItem className="flex flex-col sm:items-center gap-4 sm:flex-row p-4 border rounded-xl bg-muted/20">
+                  <div className="flex-shrink-0 w-24 h-24 rounded-full overflow-hidden border-2 border-border bg-muted flex items-center justify-center">
+                    {field.value ? (
+                      <img src={field.value} alt="Foto de perfil" className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="w-10 h-10 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2 w-full sm:w-auto">
+                    <FormLabel>Foto de Perfil</FormLabel>
+                    <div className="relative inline-block">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        onChange={handlePhotoUpload}
+                        disabled={isUploadingPhoto}
+                      />
+                      <Button type="button" variant="outline" disabled={isUploadingPhoto}>
+                        {isUploadingPhoto ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+                        {field.value ? 'Trocar Foto' : 'Enviar Foto'}
+                      </Button>
+                    </div>
+                    <FormDescription>Ideal para profissionais se conectarem com clientes.</FormDescription>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )} />
+
               <FormField control={form.control} name="name" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Nome Completo</FormLabel>

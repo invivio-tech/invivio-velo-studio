@@ -11,6 +11,10 @@ on:
         description: 'ID do Banco de Dados no Firestore'
         required: true
         type: string
+      gemini_api_key:
+        description: 'Chave de API do Gemini para IA'
+        required: false
+        type: string
 
 jobs:
   build_and_deploy:
@@ -34,9 +38,13 @@ jobs:
           echo "NEXT_PUBLIC_FIREBASE_PROJECT_ID=invivio-velo-admin" >> .env.production
           API_KEY="AIzaSyBwZhA" && API_KEY="${API_KEY}jFWG84Zc4N-m45fm4hjYr7hFKkPE" && echo "NEXT_PUBLIC_FIREBASE_API_KEY=$API_KEY" >> .env.production
           echo "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=invivio-velo-admin.firebaseapp.com" >> .env.production
-          echo "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=invivio-velo-admin.firebasestorage.app" >> .env.production
+          echo "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=invivio-velo-admin-storage" >> .env.production
           echo "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=312528599255" >> .env.production
           echo "NEXT_PUBLIC_FIREBASE_APP_ID=1:312528599255:web:094e31bb007d3dc472d892" >> .env.production
+          echo "GEMINI_API_KEY=${{ github.event.inputs.gemini_api_key }}" >> .env.production
+          echo "GOOGLE_GENAI_API_KEY=${{ github.event.inputs.gemini_api_key }}" >> .env.production
+          echo "GEMINI_API_KEY=${{ github.event.inputs.gemini_api_key }}" >> .env
+          echo "GOOGLE_GENAI_API_KEY=${{ github.event.inputs.gemini_api_key }}" >> .env
 
       - name: 🛠️ Build do Frontend (Next.js)
         run: npm run build
@@ -45,6 +53,7 @@ jobs:
         run: |
           npm install -g firebase-tools
           firebase experiments:enable webframeworks
+          firebase target:clear hosting site-cliente --project invivio-velo-admin || true
           firebase target:apply hosting site-cliente ${{ github.event.inputs.site_id }} --project invivio-velo-admin
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}

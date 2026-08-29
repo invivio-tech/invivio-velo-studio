@@ -114,6 +114,7 @@ export default function LandingPage() {
   const establishmentLogo = settings?.logoUrl;
   const establishmentAboutImageUrl = settings?.aboutImageUrl;
   const establishmentCategory = settings?.businessCategory || defaultSettings.businessCategory;
+  const establishmentBackgroundImageUrl = settings?.backgroundImageUrl;
 
   const getStoreSubtitle = (category: string) => {
     switch (category) {
@@ -184,7 +185,7 @@ export default function LandingPage() {
               <Link href="/login">Login</Link>
             </Button>
             <Button asChild>
-              <Link href="/signup">Agendar Agora</Link>
+              <Link href="/agendar">Agendar Agora</Link>
             </Button>
           </div>
         </div>
@@ -193,7 +194,13 @@ export default function LandingPage() {
       <main className="flex-1">
         {/* Hero Section */}
         <section className="relative h-[70vh] w-full flex items-center">
-          {heroImage && (
+          {establishmentBackgroundImageUrl ? (
+            <img
+              src={establishmentBackgroundImageUrl}
+              alt="Plano de Fundo"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          ) : heroImage ? (
             <Image
               src={heroImage.imageUrl}
               alt={heroImage.description}
@@ -202,7 +209,8 @@ export default function LandingPage() {
               data-ai-hint={heroImage.imageHint}
               priority
             />
-          )}
+          ) : null}
+          {establishmentBackgroundImageUrl && <div className="absolute inset-0 bg-black/40" />}
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-r from-background via-background/30 to-transparent" />
           <div className="relative z-10 container text-left">
@@ -223,7 +231,7 @@ export default function LandingPage() {
               </>
             )}
             <Button size="lg" className="mt-6" asChild>
-              <Link href="/signup">Agendar Meu Horário</Link>
+              <Link href="/agendar">Agendar Meu Horário</Link>
             </Button>
           </div>
         </section>
