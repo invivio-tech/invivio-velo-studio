@@ -139,6 +139,11 @@ export default function AppSidebar() {
   const financialEnabled = settings?.planLimits?.financial?.enabled ?? true;
   const whatsappBotEnabled = settings?.planLimits?.whatsappBot?.enabled ?? false;
 
+  const filteredAdminOperationsItems = adminOperationsItems.filter(item => {
+    if (!whatsappBotEnabled && item.href === '/admin/mensagens') return false;
+    return true;
+  });
+
   const filteredAdminServicesItems = adminServicesItems.filter(item => {
     if (!clubEnabled && (item.href === '/admin/memberships' || item.href === '/admin/memberships/dashboard' || item.href === '/admin/subscribers')) return false;
     return true;
@@ -147,7 +152,6 @@ export default function AppSidebar() {
   const filteredAdminFinanceMarketingItems = adminFinanceMarketingItems.filter(item => {
     if (!financialEnabled && item.href === '/financial-report') return false;
     if (!marketingEnabled && item.href === '/promotions') return false;
-    if (!whatsappBotEnabled && item.href === '/admin/mensagens') return false;
     return true;
   });
 
@@ -211,7 +215,7 @@ export default function AppSidebar() {
                     <span>Agenda e Equipe</span>
                   </div>
                   <SidebarMenu>
-                    {adminOperationsItems.map((item) => (
+                    {filteredAdminOperationsItems.map((item) => (
                       <SidebarMenuItem key={item.href}>
                         <SidebarMenuButton
                           asChild
