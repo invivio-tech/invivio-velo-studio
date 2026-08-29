@@ -137,6 +137,7 @@ export default function AppSidebar() {
   const rewardsEnabled = settings?.planLimits?.rewards?.enabled ?? true;
   const marketingEnabled = settings?.planLimits?.marketing?.enabled ?? true;
   const financialEnabled = settings?.planLimits?.financial?.enabled ?? true;
+  const whatsappBotEnabled = settings?.planLimits?.whatsappBot?.enabled ?? false;
 
   const filteredAdminServicesItems = adminServicesItems.filter(item => {
     if (!clubEnabled && (item.href === '/admin/memberships' || item.href === '/admin/memberships/dashboard' || item.href === '/admin/subscribers')) return false;
@@ -146,6 +147,7 @@ export default function AppSidebar() {
   const filteredAdminFinanceMarketingItems = adminFinanceMarketingItems.filter(item => {
     if (!financialEnabled && item.href === '/financial-report') return false;
     if (!marketingEnabled && item.href === '/promotions') return false;
+    if (!whatsappBotEnabled && item.href === '/admin/mensagens') return false;
     return true;
   });
 
