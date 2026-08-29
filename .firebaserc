@@ -23,6 +23,13 @@
           "invivio-velo-dev"
         ]
       }
+    },
+    "invivio-velo-admin": {
+      "hosting": {
+        "site-cliente": [
+          "linuxbarber5"
+        ]
+      }
     }
   },
   "etags": {}
