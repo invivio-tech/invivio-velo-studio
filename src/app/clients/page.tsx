@@ -7,7 +7,7 @@ import {
   useMemoFirebase,
   useUserProfile,
 } from '@/firebase';
-import { collection, query, where, doc, runTransaction, Timestamp } from 'firebase/firestore';
+import { collection, query, where, doc, runTransaction, Timestamp, getDocs } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -16,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, ContactRound, Search, Gift } from "lucide-react";
+import { MoreHorizontal, ContactRound, Search, Gift, Brain, MessageCircle, AlertTriangle, RefreshCw } from "lucide-react";
 import { Skeleton } from '@/components/ui/skeleton';
 import type { UserProfile } from '@/firebase';
 import {
@@ -30,6 +30,17 @@ import { Input } from '@/components/ui/input';
 import { PasswordResetDialog } from '@/components/admin/PasswordResetDialog';
 import { Key, PlusCircle } from 'lucide-react';
 import { NewClientDialog } from '@/components/admin/NewClientDialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
+interface CRMClientData extends UserProfile {
+  id: string;
+  lastVisitDate?: any | null; // Firestore Timestamp
+  avgReturnDays?: number | null;
+  daysSinceLastVisit?: number | null;
+  crmStatus?: 'NO_PRAZO' | 'ATRASADO' | 'RISCO_PERDA' | 'SEM_DADOS';
+}
 
 export default function ClientsPage() {
   const firestore = useFirestore();
@@ -50,6 +61,7 @@ export default function ClientsPage() {
 
   // New Client State
   const [isNewClientOpen, setIsNewClientOpen] = useState(false);
+  const [isRecalculating, setIsRecalculating] = useState(false);
 
   const handleOpenReset = (clientId: string, clientName: string) => {
     setResetTarget({ id: clientId, name: clientName });
@@ -65,23 +77,134 @@ export default function ClientsPage() {
   );
   const { data: clients, isLoading: areClientsLoading } = useCollection<UserProfile>(clientsQuery);
 
-  const filteredClients = useMemo(() => {
-    if (!clients) {
-      return [];
+  // AI CRM Calculation (now derived directly from saved User profile data to avoid huge reads)
+  const crmClients = useMemo<CRMClientData[]>(() => {
+    if (!clients) return [];
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    return clients.map((client: any) => {
+      let daysSinceLastVisit = null;
+      let crmStatus: 'NO_PRAZO' | 'ATRASADO' | 'RISCO_PERDA' | 'SEM_DADOS' = 'SEM_DADOS';
+
+      if (client.lastVisitDate) {
+        const lastVisit = client.lastVisitDate.toDate ? client.lastVisitDate.toDate() : new Date(client.lastVisitDate);
+        const lastVisitDay = new Date(lastVisit.getFullYear(), lastVisit.getMonth(), lastVisit.getDate());
+        daysSinceLastVisit = Math.floor((today.getTime() - lastVisitDay.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (client.avgReturnDays !== undefined && client.avgReturnDays !== null) {
+          const tolerance = 3;
+          if (daysSinceLastVisit <= client.avgReturnDays + tolerance) {
+            crmStatus = 'NO_PRAZO';
+          } else if (daysSinceLastVisit <= (client.avgReturnDays * 1.5)) {
+            crmStatus = 'ATRASADO';
+          } else {
+            crmStatus = 'RISCO_PERDA';
+          }
+        } else {
+          // Fallback if no avg return days
+          if (daysSinceLastVisit <= 30) crmStatus = 'NO_PRAZO';
+          else crmStatus = 'ATRASADO';
+        }
+      }
+
+      return {
+        ...client,
+        daysSinceLastVisit,
+        crmStatus
+      } as CRMClientData;
+    });
+  }, [clients]);
+
+  const handleRecalculateCRM = async () => {
+    if (!firestore || !clients) return;
+    setIsRecalculating(true);
+    toast({ title: 'Recalculando CRM...', description: 'Aguarde, processando histórico (isso pode levar 1 minuto).' });
+    
+    try {
+      // Manual fetch ONCE to save reads
+      const apptsSnap = await getDocs(query(collection(firestore, 'appointments'), where('status', '==', 'completed')));
+      const allAppointments = apptsSnap.docs.map(d => d.data());
+      
+      const now = new Date();
+      
+      const batchPromises = clients.map(async (client) => {
+        const clientAppts = allAppointments
+          .filter((a: any) => a.customerId === client.id)
+          .sort((a: any, b: any) => a.startTime.seconds - b.startTime.seconds);
+
+        if (clientAppts.length === 0) return;
+
+        const lastVisit = clientAppts[clientAppts.length - 1].startTime.toDate();
+        let avgReturnDays = null;
+        
+        if (clientAppts.length > 1) {
+          let totalDays = 0;
+          let intervals = 0;
+          for (let i = 1; i < clientAppts.length; i++) {
+            const prev = clientAppts[i-1].startTime.toDate();
+            const curr = clientAppts[i].startTime.toDate();
+            const prevDay = new Date(prev.getFullYear(), prev.getMonth(), prev.getDate());
+            const currDay = new Date(curr.getFullYear(), curr.getMonth(), curr.getDate());
+            const diffDays = Math.floor((currDay.getTime() - prevDay.getTime()) / (1000 * 60 * 60 * 24));
+            if (diffDays > 0) {
+              totalDays += diffDays;
+              intervals++;
+            }
+          }
+          if (intervals > 0) {
+            avgReturnDays = Math.round(totalDays / intervals);
+          }
+        }
+        
+        // Update user doc with new CRM metrics
+        await runTransaction(firestore, async (transaction) => {
+          const clientRef = doc(firestore, 'users', client.id);
+          transaction.update(clientRef, {
+            lastVisitDate: Timestamp.fromDate(lastVisit),
+            avgReturnDays: avgReturnDays
+          });
+        });
+      });
+      
+      await Promise.all(batchPromises);
+      toast({ title: 'Sucesso', description: 'Radar CRM atualizado com sucesso!' });
+    } catch(e: any) {
+      toast({ title: 'Erro', description: e.message || 'Falha ao processar.', variant: 'destructive' });
+    } finally {
+      setIsRecalculating(false);
     }
-    return clients.filter(
+  };
+
+  const filteredClients = useMemo(() => {
+    if (!crmClients) return [];
+    return crmClients.filter(
       (client) =>
         client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         client.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [clients, searchTerm]);
+    ).sort((a, b) => a.name.localeCompare(b.name));
+  }, [crmClients, searchTerm]);
+  
+  // Agrupamentos para o Radar
+  const overdueClients = useMemo(() => {
+    return crmClients
+      .filter(c => c.crmStatus === 'ATRASADO' || c.crmStatus === 'RISCO_PERDA')
+      .sort((a, b) => (b.daysSinceLastVisit || 0) - (a.daysSinceLastVisit || 0));
+  }, [crmClients]);
+
+  const onTrackClients = useMemo(() => {
+    return crmClients
+      .filter(c => c.crmStatus === 'NO_PRAZO')
+      .sort((a, b) => (a.daysSinceLastVisit || 0) - (b.daysSinceLastVisit || 0));
+  }, [crmClients]);
+
 
   useEffect(() => {
     if (!isProfileLoading && userProfile?.role !== 'admin') {
       router.push('/schedule');
     }
   }, [isProfileLoading, userProfile, router]);
-
 
   const handleOpenRedeem = (clientId: string, clientName: string, clientPoints: number) => {
     setRedeemClient({ id: clientId, name: clientName, points: clientPoints || 0 });
@@ -132,6 +255,24 @@ export default function ClientsPage() {
     }
   };
 
+  const handleSendWhatsapp = (client: CRMClientData) => {
+    if (!client.phoneNumber) {
+      toast({ title: 'Sem WhatsApp', description: 'O cliente não tem um telefone cadastrado.', variant: 'destructive' });
+      return;
+    }
+    const phone = client.phoneNumber.replace(/\D/g, '');
+    const firstVisit = !client.avgReturnDays;
+    let message = '';
+    
+    if (client.crmStatus === 'RISCO_PERDA') {
+      message = `Olá ${client.name}! Faz um tempinho que não te vemos por aqui. Saudade do seu visual em dia! Vamos agendar seu próximo horário conosco?`;
+    } else {
+      message = `Fala ${client.name}! Vi aqui que já faz ${client.daysSinceLastVisit} dias do seu último corte, vamos agendar para essa semana?`;
+    }
+
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  };
 
   if (isProfileLoading || !userProfile || userProfile.role !== 'admin') {
     return (
@@ -145,46 +286,21 @@ export default function ClientsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="font-headline">Todos os Clientes</CardTitle>
-            <CardDescription>Gerencie o acesso e visualize os detalhes dos seus clientes.</CardDescription>
+            <CardDescription>Carregando dados...</CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Pontos</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {[...Array(3)].map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell>
-                      <div className="flex items-center gap-4">
-                        <Skeleton className="h-10 w-10 rounded-full" />
-                        <div className="space-y-1">
-                          <Skeleton className="h-4 w-24" />
-                          <Skeleton className="h-3 w-32" />
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell><Skeleton className="h-6 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-12" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+             <Skeleton className="h-[400px] w-full" />
           </CardContent>
         </Card>
       </div>
     );
   }
 
+  const isLoadingData = areClientsLoading;
+
   return (
     <>
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 max-w-7xl mx-auto w-full">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <ContactRound className="w-8 h-8 text-secondary" />
@@ -197,145 +313,214 @@ export default function ClientsPage() {
           Novo Cliente
         </Button>
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-headline">Todos os Clientes</CardTitle>
-          <CardDescription>Gerencie o acesso e visualize os detalhes dos seus clientes.</CardDescription>
-          <div className="relative pt-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nome ou e-mail..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 w-full md:w-1/2 lg:w-1/3"
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Pontos</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(isProfileLoading || areClientsLoading) && [...Array(3)].map((_, i) => (
-                <TableRow key={i}>
-                  <TableCell>
-                    <div className="flex items-center gap-4">
-                      <Skeleton className="h-10 w-10 rounded-full" />
-                      <div className="space-y-1">
-                        <Skeleton className="h-4 w-24" />
-                        <Skeleton className="h-3 w-32" />
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell><Skeleton className="h-6 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-6 w-12" /></TableCell>
-                  <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
-                </TableRow>
-              ))}
-              {!(isProfileLoading || areClientsLoading) && filteredClients.map((client) => (
-                <TableRow key={client.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-4">
-                      <Avatar>
-                        <AvatarImage src={client.photoURL ?? ''} alt={client.name} />
-                        <AvatarFallback>{client.name ? client.name.charAt(0).toUpperCase() : 'C'}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">{client.name}</p>
-                        <p className="text-sm text-muted-foreground">{client.email}</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={client.disabled ? 'outline' : 'secondary'}>{client.disabled ? 'Inativo' : 'Ativo'}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                      {Math.floor(client.loyaltyPoints || 0)}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem onSelect={() => handleOpenRedeem(client.id, client.name, client.loyaltyPoints || 0)}>
-                          <Gift className="mr-2 h-4 w-4" />
-                          Resgatar Pontos
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => router.push(`/clients/${client.id}/edit`)}>
-                          Gerenciar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => handleOpenReset(client.id, client.name)} className="text-amber-600 dark:text-amber-400">
-                          <Key className="mr-2 h-4 w-4" />
-                          Redefinir Senha
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {!areClientsLoading && filteredClients.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
-                    Nenhum cliente encontrado.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
 
-      <Dialog open={isRedeemOpen} onOpenChange={setIsRedeemOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Resgatar Pontos</DialogTitle>
-            <DialogDescription>
-              O cliente <strong>{redeemClient?.name}</strong> possui <strong>{redeemClient?.points} pontos</strong> disponíveis.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleProcessRedeem} className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="rdmQty">Quantidade de Pontos a Resgatar/Descontar</Label>
-              <Input
-                id="rdmQty"
-                type="number"
-                step="1"
-                min="1"
-                required
-                value={redeemAmount}
-                onChange={(e) => setRedeemAmount(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="rdmDesc">Justificativa (Aparecerá no extrato dele)</Label>
-              <Input
-                id="rdmDesc"
-                type="text"
-                required
-                value={redeemDesc}
-                onChange={(e) => setRedeemDesc(e.target.value)}
-                placeholder="Ex. 1x Pomada Modeladora"
-              />
-            </div>
-            <DialogFooter className="mt-6">
-              <Button type="button" variant="ghost" onClick={() => setIsRedeemOpen(false)}>Cancelar</Button>
-              <Button type="submit">Confirmar Resgate</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <Tabs defaultValue="todos" className="w-full mt-6">
+        <TabsList className="grid w-full grid-cols-2 md:w-[400px]">
+          <TabsTrigger value="todos">Todos os Clientes</TabsTrigger>
+          <TabsTrigger value="radar" className="flex items-center gap-2">
+            <Brain className="w-4 h-4 text-purple-500" />
+            Radar Inteligente (CRM)
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="todos">
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-headline">Todos os Clientes</CardTitle>
+              <CardDescription>Base completa de clientes cadastrados no sistema.</CardDescription>
+              <div className="relative pt-4 max-w-md">
+                <Search className="absolute left-3 top-[calc(50%+8px)] -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome ou e-mail..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 w-full"
+                />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Pontos</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoadingData && [...Array(3)].map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell>
+                        <div className="flex items-center gap-4">
+                          <Skeleton className="h-10 w-10 rounded-full" />
+                          <div className="space-y-1">
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-3 w-32" />
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-12" /></TableCell>
+                      <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
+                    </TableRow>
+                  ))}
+                  {!isLoadingData && filteredClients.map((client) => (
+                    <TableRow key={client.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-4">
+                          <Avatar>
+                            <AvatarImage src={client.photoURL ?? ''} alt={client.name} />
+                            <AvatarFallback>{client.name ? client.name.charAt(0).toUpperCase() : 'C'}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">{client.name}</p>
+                            <p className="text-sm text-muted-foreground">{client.phoneNumber || client.email}</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={client.disabled ? 'outline' : 'secondary'}>{client.disabled ? 'Inativo' : 'Ativo'}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                          {Math.floor(client.loyaltyPoints || 0)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem onSelect={() => handleOpenRedeem(client.id, client.name, client.loyaltyPoints || 0)}>
+                              <Gift className="mr-2 h-4 w-4" />
+                              Resgatar Pontos
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => router.push(`/clients/${client.id}/edit`)}>
+                              Gerenciar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => handleOpenReset(client.id, client.name)} className="text-amber-600 dark:text-amber-400">
+                              <Key className="mr-2 h-4 w-4" />
+                              Redefinir Senha
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {!isLoadingData && filteredClients.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                        Nenhum cliente encontrado.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="radar">
+          <div className="flex justify-between items-center mb-4">
+            <p className="text-sm text-muted-foreground">O Radar inteligente processa o histórico de visitas e agrupa os clientes com base na sua própria média de retorno.</p>
+            <Button variant="outline" size="sm" onClick={handleRecalculateCRM} disabled={isRecalculating}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${isRecalculating ? 'animate-spin' : ''}`} />
+              Recalcular Histórico
+            </Button>
+          </div>
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card className="border-amber-200 bg-amber-50/30 dark:border-amber-900/50 dark:bg-amber-900/10">
+              <CardHeader className="pb-3">
+                <CardTitle className="font-headline text-amber-700 dark:text-amber-400 flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5" /> 
+                  Radar de Recuperação ({overdueClients.length})
+                </CardTitle>
+                <CardDescription>
+                  Clientes que já passaram da própria média de retorno. É hora de enviar uma mensagem!
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {isLoadingData && <Skeleton className="h-32 w-full" />}
+                {!isLoadingData && overdueClients.length === 0 && (
+                  <div className="text-center py-6 text-muted-foreground">
+                    Todos os seus clientes estão dentro do prazo de retorno. Excelente!
+                  </div>
+                )}
+                {!isLoadingData && overdueClients.map(client => (
+                  <div key={client.id} className="bg-background border rounded-lg p-4 flex items-center justify-between shadow-sm">
+                    <div className="flex flex-col gap-1">
+                      <p className="font-bold">{client.name}</p>
+                      <div className="flex flex-wrap gap-2 text-xs">
+                        <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50 dark:bg-transparent">
+                          Faz {client.daysSinceLastVisit} dias
+                        </Badge>
+                        {client.avgReturnDays && (
+                          <Badge variant="secondary" className="text-muted-foreground">
+                            Média: {client.avgReturnDays} dias
+                          </Badge>
+                        )}
+                        {client.crmStatus === 'RISCO_PERDA' && (
+                          <Badge variant="destructive">Risco de Perda</Badge>
+                        )}
+                      </div>
+                    </div>
+                    <Button size="sm" onClick={() => handleSendWhatsapp(client)} className="bg-green-600 hover:bg-green-700 text-white shadow-sm flex items-center gap-2">
+                      <MessageCircle className="w-4 h-4" />
+                      Lembrar
+                    </Button>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="font-headline text-primary flex items-center gap-2">
+                  <ContactRound className="w-5 h-5" /> 
+                  No Prazo ({onTrackClients.length})
+                </CardTitle>
+                <CardDescription>
+                  Clientes recentes que estão dentro do seu período médio de retorno.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4 max-h-[600px] overflow-y-auto">
+                {isLoadingData && <Skeleton className="h-32 w-full" />}
+                {!isLoadingData && onTrackClients.length === 0 && (
+                  <div className="text-center py-6 text-muted-foreground">
+                    Nenhum cliente ativo recente encontrado.
+                  </div>
+                )}
+                {!isLoadingData && onTrackClients.map(client => (
+                  <div key={client.id} className="bg-background border rounded-lg p-4 flex items-center justify-between">
+                    <div className="flex flex-col gap-1">
+                      <p className="font-medium text-sm">{client.name}</p>
+                      <div className="flex flex-wrap gap-2 text-[10px]">
+                        <span className="text-muted-foreground">
+                          Última vez: {client.daysSinceLastVisit} dias atrás
+                        </span>
+                        {client.avgReturnDays && (
+                          <span className="text-muted-foreground">
+                            (Retorna em média a cada {client.avgReturnDays} dias)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => handleSendWhatsapp(client)} title="Falar no WhatsApp">
+                      <MessageCircle className="w-4 h-4 text-green-600" />
+                    </Button>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
+    
     <PasswordResetDialog 
         isOpen={isResetOpen} 
         onOpenChange={setIsResetOpen}
