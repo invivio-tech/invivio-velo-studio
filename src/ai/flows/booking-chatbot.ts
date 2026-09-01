@@ -5,6 +5,7 @@ import { z } from 'genkit';
 import { getAdminFirestore, initAdmin } from '@/firebase/admin';
 import { Timestamp } from 'firebase-admin/firestore';
 import { format, addMinutes, parse, startOfDay, endOfDay } from 'date-fns';
+import { parseDuration } from '@/lib/utils';
 
 // --- Schemas ---
 
@@ -121,7 +122,7 @@ const confirmBooking = ai.defineTool(
     const profData = profDoc.data();
 
     const startTime = parse(`${input.date} ${input.time}`, 'yyyy-MM-dd HH:mm', new Date());
-    const duration = parseInt(serviceData.duration || '30', 10);
+    const duration = parseDuration(serviceData.duration || '30');
     const endTime = addMinutes(startTime, duration);
 
     const appointmentData = {
