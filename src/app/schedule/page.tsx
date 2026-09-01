@@ -374,7 +374,7 @@ export default function SchedulePage() {
         type: data.type
       };
 
-      const duration = parseInt(selectedSvc?.duration || '30', 10);
+      const duration = parseDuration(selectedSvc?.duration || '30');
       aptData.endTime = Timestamp.fromDate(addMinutes(new Date(), duration));
 
       const docRef = await addDoc(collection(firestore, 'appointments'), aptData);
@@ -459,7 +459,7 @@ export default function SchedulePage() {
         professionalName: selectedPro?.name || editingAppointment.professionalName,
       };
 
-      const duration = parseInt(selectedSvc?.duration || editingAppointment.serviceDuration || '30', 10);
+      const duration = parseDuration(selectedSvc?.duration || editingAppointment.serviceDuration || '30');
       const start = editingAppointment.startTime.toDate();
       const end = addMinutes(start, duration);
       updateData.endTime = Timestamp.fromDate(end);
