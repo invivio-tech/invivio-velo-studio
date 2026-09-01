@@ -54,12 +54,12 @@
     ],
     "firestore": [
         {
-            "database": "(default)",
+            "database": "salaodadudu7",
             "rules": "firestore.rules",
             "indexes": "firestore.indexes.json"
         },
         {
-            "database": "salaodadudu7",
+            "database": "studiobarber",
             "rules": "firestore.rules",
             "indexes": "firestore.indexes.json"
         }

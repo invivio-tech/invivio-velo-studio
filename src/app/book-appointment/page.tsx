@@ -21,6 +21,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar as CalendarIcon, Clock, Users, Scissors, User, Check, ArrowLeft, Loader2 } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { parseDuration } from '@/lib/utils';
 
 // Types for data used in this page
 interface Appointment {
@@ -159,8 +160,6 @@ export default function BookAppointmentPage() {
     fetchDailyData();
 
   }, [firestore, selectedDate, toast]);
-
-  const parseDuration = (durationStr: string): number => parseInt(durationStr, 10) || 30;
 
   // State for professional schedules
   const [professionalSchedules, setProfessionalSchedules] = useState<Record<string, ScheduleSettings>>({});

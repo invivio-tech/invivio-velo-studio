@@ -1,7 +1,18 @@
 import type { NextConfig } from 'next';
+import { execSync } from 'child_process';
+
+let gitSha = 'v1.00056';
+try {
+  gitSha = execSync('git rev-parse --short HEAD').toString().trim();
+} catch (e) {
+  console.log('Could not fetch git sha');
+}
 
 console.log('--- LOADING NEXT.CONFIG.TS ---');
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_GIT_SHA: gitSha,
+  },
   /* config options here */
   typescript: {
     ignoreBuildErrors: true,

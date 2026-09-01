@@ -4,6 +4,7 @@ import { collection, getDocs, getDoc, doc, query, where, addDoc, Timestamp } fro
 import { format, addDays, isSameDay, addMinutes, parse, isBefore, isEqual, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Check, Calendar, User, Scissors, Clock, ArrowRight, ArrowLeft, Loader2, Search, Star } from 'lucide-react';
+import { parseDuration } from '@/lib/utils';
 
 interface Service {
   id: string;
@@ -52,11 +53,6 @@ interface ScheduleSettings {
 function isAfter(date1: Date, date2: Date) {
   return date1.getTime() > date2.getTime();
 }
-
-const parseDuration = (duration: string | number): number => {
-  if (typeof duration === 'number') return duration;
-  return parseInt(duration, 10) || 30;
-};
 
 interface StepBookingProps {
   onComplete?: () => void;
