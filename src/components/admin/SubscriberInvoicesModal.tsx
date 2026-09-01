@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, PlusCircle, CheckCircle, Trash2, Paperclip, Download, UploadCloud } from 'lucide-react';
+import { Loader2, PlusCircle, CheckCircle, Trash2, Paperclip, Download, UploadCloud, Link as LinkIcon, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
@@ -32,6 +32,7 @@ export interface MembershipInvoice {
   paidAt?: Timestamp | null;
   attachmentUrl?: string | null;
   attachmentName?: string | null;
+  paymentLink?: string | null;
   createdAt: Timestamp;
 }
 
@@ -149,6 +150,28 @@ export default function SubscriberInvoicesModal({ isOpen, setIsOpen, membership 
       toast({
         variant: 'destructive',
         title: 'Erro ao excluir',
+        description: e.message || 'Tente novamente.',
+      });
+    }
+  };
+
+  const handleAddPaymentLink = async (invoiceId: string, currentLink?: string | null) => {
+    if (!firestore) return;
+    const newLink = window.prompt('Cole o link de pagamento (MercadoPago, Asaas, etc.):', currentLink || '');
+    if (newLink === null) return; // Cancelou
+    
+    try {
+      await updateDoc(doc(firestore, 'membershipInvoices', invoiceId), {
+        paymentLink: newLink.trim() || null,
+      });
+      toast({
+        title: 'Link salvo!',
+        description: 'O link de pagamento foi vinculado à fatura com sucesso.',
+      });
+    } catch (e: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao salvar',
         description: e.message || 'Tente novamente.',
       });
     }
@@ -277,7 +300,7 @@ export default function SubscriberInvoicesModal({ isOpen, setIsOpen, membership 
                 <TableHead>Vencimento</TableHead>
                 <TableHead>Valor</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Anexo</TableHead>
+                <TableHead>Anexo / Link</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -310,19 +333,28 @@ export default function SubscriberInvoicesModal({ isOpen, setIsOpen, membership 
                       )}
                     </TableCell>
                     <TableCell>
-                      {inv.attachmentUrl ? (
-                        <a href={inv.attachmentUrl} target="_blank" rel="noopener noreferrer" className="flex items-center text-xs text-blue-500 hover:underline">
-                          <Download className="h-3 w-3 mr-1" />
-                          {inv.attachmentName || 'Baixar Boleto'}
-                        </a>
-                      ) : (
-                        <div className="text-xs text-muted-foreground">Sem anexo</div>
-                      )}
+                      <div className="flex flex-col gap-1 items-start">
+                        {inv.attachmentUrl && (
+                          <a href={inv.attachmentUrl} target="_blank" rel="noopener noreferrer" className="flex items-center text-xs text-blue-500 hover:underline">
+                            <Download className="h-3 w-3 mr-1 shrink-0" />
+                            <span className="truncate max-w-[120px]">{inv.attachmentName || 'Boleto/Arquivo'}</span>
+                          </a>
+                        )}
+                        {inv.paymentLink && (
+                          <a href={inv.paymentLink} target="_blank" rel="noopener noreferrer" className="flex items-center text-xs text-blue-500 hover:underline">
+                            <ExternalLink className="h-3 w-3 mr-1 shrink-0" />
+                            Link de Pagamento
+                          </a>
+                        )}
+                        {!inv.attachmentUrl && !inv.paymentLink && (
+                          <div className="text-xs text-muted-foreground">Nenhum</div>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end items-center gap-2">
+                      <div className="flex justify-end items-center gap-1">
                         {/* Botão de Upload customizado disfarçado de Label */}
-                        <label className={`cursor-pointer inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-8 w-8 ${uploadingInvoiceId === inv.id ? 'opacity-50 pointer-events-none' : ''}`}>
+                        <label title="Anexar Arquivo/Boleto" className={`cursor-pointer inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-8 w-8 ${uploadingInvoiceId === inv.id ? 'opacity-50 pointer-events-none' : ''}`}>
                           <input 
                             type="file" 
                             className="hidden" 
@@ -331,6 +363,16 @@ export default function SubscriberInvoicesModal({ isOpen, setIsOpen, membership 
                           />
                           {uploadingInvoiceId === inv.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
                         </label>
+                        
+                        <Button 
+                          variant="outline" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          onClick={() => handleAddPaymentLink(inv.id, inv.paymentLink)}
+                          title="Adicionar Link de Pagamento"
+                        >
+                          <LinkIcon className="h-4 w-4" />
+                        </Button>
 
                         {inv.status !== 'paid' && (
                           <Button 

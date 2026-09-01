@@ -24,6 +24,7 @@ interface MembershipInvoice {
   paidAt?: Timestamp | null;
   attachmentUrl?: string | null;
   attachmentName?: string | null;
+  paymentLink?: string | null;
   createdAt: Timestamp;
 }
 
@@ -58,6 +59,10 @@ export default function ClubBillingPage() {
   };
 
   const handlePayNow = () => {
+    if (nextInvoice?.paymentLink) {
+      window.open(nextInvoice.paymentLink, '_blank');
+      return;
+    }
     toast({
       title: 'Pagamento Presencial',
       description: 'Por favor, realize o pagamento no balcão da barbearia para que possamos dar baixa no sistema.',
@@ -102,7 +107,9 @@ export default function ClubBillingPage() {
                       <Clock className="w-4 h-4" /> 
                       Vence em {format(nextInvoice.dueDate.toDate(), "dd 'de' MMMM", { locale: ptBR })}
                     </div>
-                    <Button onClick={handlePayNow} className="w-full mt-4">Como Pagar</Button>
+                    <Button onClick={handlePayNow} className="w-full mt-4">
+                      {nextInvoice.paymentLink ? 'Pagar Online' : 'Como Pagar'}
+                    </Button>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-4 text-center space-y-2 text-muted-foreground">
@@ -162,19 +169,32 @@ export default function ClubBillingPage() {
                               {invoice.status === 'cancelled' && <Badge variant="secondary">Cancelado</Badge>}
                             </TableCell>
                             <TableCell className="text-right">
-                              {invoice.attachmentUrl ? (
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  onClick={() => handleDownload(invoice.attachmentUrl!)}
-                                  className="text-primary hover:text-primary"
-                                >
-                                  <Download className="w-4 h-4 mr-1" />
-                                  Baixar
-                                </Button>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">-</span>
-                              )}
+                              <div className="flex justify-end gap-2">
+                                {invoice.paymentLink && (
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={() => handleDownload(invoice.paymentLink!)}
+                                    className="text-primary hover:text-primary border-primary"
+                                  >
+                                    Pagar Online
+                                  </Button>
+                                )}
+                                {invoice.attachmentUrl && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    onClick={() => handleDownload(invoice.attachmentUrl!)}
+                                    className="text-primary hover:text-primary"
+                                  >
+                                    <Download className="w-4 h-4 mr-1" />
+                                    Baixar Boleto
+                                  </Button>
+                                )}
+                                {!invoice.attachmentUrl && !invoice.paymentLink && (
+                                  <span className="text-xs text-muted-foreground">-</span>
+                                )}
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
