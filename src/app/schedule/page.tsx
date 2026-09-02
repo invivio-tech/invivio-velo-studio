@@ -66,6 +66,7 @@ interface Appointment {
   customerPhoneNumber?: string;
   serviceDuration: string;
   servicePrice: number;
+  priceOnRequest?: boolean;
   notes: string;
   status: 'scheduled' | 'completed' | 'cancelled' | 'no-show';
   completionNotes?: string;
@@ -363,6 +364,7 @@ export default function SchedulePage() {
         serviceId: data.serviceId,
         serviceName: selectedSvc?.name || '',
         servicePrice: selectedSvc?.price || 0,
+        priceOnRequest: (selectedSvc as any)?.priceOnRequest || false,
         serviceDuration: selectedSvc?.duration || '30',
         professionalId: data.professionalId,
         professionalName: selectedPro?.name || '',
@@ -374,7 +376,7 @@ export default function SchedulePage() {
         type: data.type
       };
 
-      const duration = parseInt(selectedSvc?.duration || '30', 10);
+      const duration = parseDuration(selectedSvc?.duration || '30');
       aptData.endTime = Timestamp.fromDate(addMinutes(new Date(), duration));
 
       const docRef = await addDoc(collection(firestore, 'appointments'), aptData);
@@ -455,11 +457,11 @@ export default function SchedulePage() {
         serviceId: editingAppointment.serviceId,
         startTime: editingAppointment.startTime,
         serviceName: selectedSvc?.name || editingAppointment.serviceName,
-        servicePrice: selectedSvc?.price || editingAppointment.servicePrice,
+        servicePrice: editingAppointment.servicePrice, // keep what the user inputted
         professionalName: selectedPro?.name || editingAppointment.professionalName,
       };
 
-      const duration = parseInt(selectedSvc?.duration || editingAppointment.serviceDuration || '30', 10);
+      const duration = parseDuration(selectedSvc?.duration || editingAppointment.serviceDuration || '30');
       const start = editingAppointment.startTime.toDate();
       const end = addMinutes(start, duration);
       updateData.endTime = Timestamp.fromDate(end);
@@ -553,6 +555,16 @@ export default function SchedulePage() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Preço do Serviço (R$)</Label>
+                <Input 
+                  type="number"
+                  step="0.01"
+                  value={editingAppointment.servicePrice}
+                  onChange={(e) => setEditingAppointment({...editingAppointment, servicePrice: Number(e.target.value)})}
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -933,7 +945,12 @@ function AdminDashboard({
                   )}
                 </div>
                 <div className="flex items-center gap-4">
-                  <div className="text-right"><p className="text-sm font-bold text-emerald-600">{formatCurrency(apt.servicePrice || 0)}</p><p className="text-[10px] text-muted-foreground">{format(apt.startTime.toDate(), "dd/MM HH:mm")}</p></div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-emerald-600">
+                      {(apt.priceOnRequest && apt.servicePrice === 0) ? 'Sob Consulta' : formatCurrency(apt.servicePrice || 0)}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">{format(apt.startTime.toDate(), "dd/MM HH:mm")}</p>
+                  </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100"><MoreHorizontal className="h-4 w-4" /></Button>

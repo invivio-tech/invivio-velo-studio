@@ -114,6 +114,7 @@ export default function LandingPage() {
   const establishmentLogo = settings?.logoUrl;
   const establishmentAboutImageUrl = settings?.aboutImageUrl;
   const establishmentCategory = settings?.businessCategory || defaultSettings.businessCategory;
+  const establishmentBackgroundImageUrl = settings?.backgroundImageUrl;
 
   const getStoreSubtitle = (category: string) => {
     switch (category) {
@@ -193,7 +194,13 @@ export default function LandingPage() {
       <main className="flex-1">
         {/* Hero Section */}
         <section className="relative h-[70vh] w-full flex items-center">
-          {heroImage && (
+          {establishmentBackgroundImageUrl ? (
+            <img
+              src={establishmentBackgroundImageUrl}
+              alt="Plano de Fundo"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          ) : heroImage ? (
             <Image
               src={heroImage.imageUrl}
               alt={heroImage.description}
@@ -202,7 +209,8 @@ export default function LandingPage() {
               data-ai-hint={heroImage.imageHint}
               priority
             />
-          )}
+          ) : null}
+          {establishmentBackgroundImageUrl && <div className="absolute inset-0 bg-black/40" />}
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-r from-background via-background/30 to-transparent" />
           <div className="relative z-10 container text-left">
@@ -293,7 +301,7 @@ export default function LandingPage() {
                   </div>
                   <CardFooter className="flex justify-between items-center bg-muted/50 p-6 pt-4">
                     <span className="text-xl font-bold font-headline text-primary">
-                      {`R$${(service.price ?? 0).toFixed(2).replace('.', ',')}`}
+                      {service.priceOnRequest ? 'Sob Consulta' : `R$${(service.price ?? 0).toFixed(2).replace('.', ',')}`}
                     </span>
                     <Badge variant="secondary">{service.duration || 'Consultar'}</Badge>
                   </CardFooter>

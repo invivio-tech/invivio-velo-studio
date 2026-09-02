@@ -5,6 +5,7 @@ import { z } from 'genkit';
 import { getAdminFirestore, initAdmin } from '@/firebase/admin';
 import { Timestamp } from 'firebase-admin/firestore';
 import { format, addMinutes, parse, startOfDay, endOfDay } from 'date-fns';
+import { parseDuration } from '@/lib/utils';
 
 // --- Schemas ---
 
@@ -121,7 +122,7 @@ const confirmBooking = ai.defineTool(
     const profData = profDoc.data();
 
     const startTime = parse(`${input.date} ${input.time}`, 'yyyy-MM-dd HH:mm', new Date());
-    const duration = parseInt(serviceData.duration || '30', 10);
+    const duration = parseDuration(serviceData.duration || '30');
     const endTime = addMinutes(startTime, duration);
 
     const appointmentData = {
@@ -183,6 +184,7 @@ export const bookingChatbotFlow = ai.defineFlow(
         6. Sempre confirme os detalhes (Serviço, Barbeiro, Data, Valor) antes de chamar a ferramenta 'confirm_booking'.
         7. Mantenha as respostas curtas, amigáveis e use emojis ocasionalmente ✂️.
         8. Se o cliente perguntar algo fora do contexto de barbearia, responda educadamente que você é focada em agendamentos.
+        9. Se o serviço consultado possuir 'priceOnRequest: true', NÃO DÊ PREÇO NUMÉRICO (0 ou gratuito). Informe que o valor é 'Sob Consulta' (ou a definir no local).
         
         Diretriz de Disponibilidade:
         - O horário de funcionamento é das 09:00 às 19:00.

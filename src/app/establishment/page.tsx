@@ -53,6 +53,7 @@ export interface EstablishmentSettings {
   birthdayMessage?: string;
   businessCategory: 'barbershop' | 'beauty_salon' | 'clinic' | 'petshop' | 'other';
   businessTone: 'formal' | 'casual' | 'luxury' | 'friendly';
+  backgroundImageUrl?: string;
   retargetingActive?: boolean;
   retargetingDays?: number;
   retargetingTitle?: string;
@@ -107,6 +108,7 @@ const formSchema = z.object({
   businessTone: z.enum(['formal', 'casual', 'luxury', 'friendly'], {
     required_error: 'O tom de voz é obrigatório.',
   }),
+  backgroundImageUrl: z.string().optional().or(z.literal('')),
   retargetingActive: z.boolean().optional(),
   retargetingDays: z.coerce.number().min(1, { message: 'O valor mínimo é 1 dia.' }).optional(),
   retargetingTitle: z.string().optional(),
@@ -160,7 +162,8 @@ export default function EstablishmentPage() {
     address: 'Rua da Barbearia, 123 - Centro, Sua Cidade',
     whatsapp: '',
     instagram: '',
-    context: '',
+    backgroundImageUrl: '',
+    context: 'Somos uma barbearia com pegada moderna e profissional.',
     aiTimeoutHours: 12,
     cancellationTimeLimitHours: 24,
     loyaltyPercentage: 10,
@@ -282,6 +285,32 @@ export default function EstablishmentPage() {
       toast({ variant: 'destructive', title: 'Erro no Upload', description: error?.message || 'Não foi possível enviar a imagem.' });
     } finally {
       setIsUploadingAboutImage(false);
+    }
+  };
+
+  const [isUploadingBackground, setIsUploadingBackground] = useState(false);
+
+  const handleBackgroundUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingBackground(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', 'uploads/establishment/background');
+      const response = await fetch('/api/upload', { method: 'POST', body: formData });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Falha no upload');
+      }
+      const { url } = await response.json();
+      form.setValue('backgroundImageUrl', url, { shouldValidate: true });
+      toast({ title: 'Upload concluído', description: 'A imagem de fundo foi salva com sucesso.' });
+    } catch (error: any) {
+      console.error('Error uploading background image:', error);
+      toast({ variant: 'destructive', title: 'Erro no Upload', description: error?.message || 'Não foi possível enviar a imagem.' });
+    } finally {
+      setIsUploadingBackground(false);
     }
   };
 
@@ -963,6 +992,67 @@ export default function EstablishmentPage() {
                       />
                     ))}
                   </div>
+
+                  {/* Background Image Upload */}
+                  <div className="pt-6 border-t mt-6">
+                    <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
+                      Plano de Fundo do Site (Opcional)
+                    </h4>
+                    <FormField control={form.control} name="backgroundImageUrl" render={({ field }) => (
+                      <FormItem>
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 p-4 border rounded-xl bg-slate-950/20">
+                          <div className="w-full sm:w-1/3 aspect-video bg-muted rounded-lg overflow-hidden border border-dashed flex items-center justify-center relative">
+                            {field.value ? (
+                              <img src={field.value} alt="Background" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="text-muted-foreground flex flex-col items-center">
+                                <Globe className="w-8 h-8 mb-2 opacity-50" />
+                                <span className="text-xs font-semibold">Sem Imagem</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 space-y-4">
+                            <div>
+                              <FormLabel className="text-base">Imagem de Fundo da Landing Page</FormLabel>
+                              <FormDescription>
+                                Esta imagem aparecerá no fundo da tela inicial do seu site.
+                              </FormDescription>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3">
+                              <div className="relative inline-block">
+                                <Input
+                                  type="file"
+                                  accept="image/*"
+                                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                  onChange={handleBackgroundUpload}
+                                  disabled={isUploadingBackground}
+                                />
+                                <Button type="button" variant="secondary" disabled={isUploadingBackground}>
+                                  {isUploadingBackground ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+                                  {field.value ? 'Trocar Imagem de Fundo' : 'Enviar Imagem de Fundo'}
+                                </Button>
+                              </div>
+                              {field.value && (
+                                <Button
+                                  type="button"
+                                  variant="destructive"
+                                  onClick={() => form.setValue('backgroundImageUrl', '', { shouldValidate: true })}
+                                  disabled={isUploadingBackground}
+                                >
+                                  Remover
+                                </Button>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Recomendação: Imagem horizontal (1920x1080px) em formato JPG ou WebP para melhor performance.
+                            </p>
+                          </div>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  </div>
+
                 </CardContent>
               </Card>
             </TabsContent>

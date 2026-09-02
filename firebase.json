@@ -52,10 +52,18 @@
             ]
         }
     ],
-    "firestore": {
-        "rules": "firestore.rules",
-        "indexes": "firestore.indexes.json"
-    },
+    "firestore": [
+        {
+            "database": "salaodadudu7",
+            "rules": "firestore.rules",
+            "indexes": "firestore.indexes.json"
+        },
+        {
+            "database": "studiobarber",
+            "rules": "firestore.rules",
+            "indexes": "firestore.indexes.json"
+        }
+    ],
     "storage": {
         "rules": "storage.rules"
     }

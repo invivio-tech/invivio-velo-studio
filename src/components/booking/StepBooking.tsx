@@ -4,6 +4,7 @@ import { collection, getDocs, getDoc, doc, query, where, addDoc, Timestamp } fro
 import { format, addDays, isSameDay, addMinutes, parse, isBefore, isEqual, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Check, Calendar, User, Scissors, Clock, ArrowRight, ArrowLeft, Loader2, Search, Star } from 'lucide-react';
+import { parseDuration } from '@/lib/utils';
 
 interface Service {
   id: string;
@@ -52,11 +53,6 @@ interface ScheduleSettings {
 function isAfter(date1: Date, date2: Date) {
   return date1.getTime() > date2.getTime();
 }
-
-const parseDuration = (duration: string | number): number => {
-  if (typeof duration === 'number') return duration;
-  return parseInt(duration, 10) || 30;
-};
 
 interface StepBookingProps {
   onComplete?: () => void;
@@ -265,6 +261,7 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
         type: user ? 'client' : 'guest',
         createdAt: Timestamp.now(),
         servicePrice: selectedService.price,
+        priceOnRequest: (selectedService as any).priceOnRequest || false,
         serviceDuration: String(selectedService.duration),
         reminderSent: false,
         notes: ''
@@ -419,7 +416,7 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
               >
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="font-bold text-lg group-hover:text-primary transition-colors">{service.name}</h3>
-                  <span className="font-mono text-primary font-bold">R$ {service.price}</span>
+                  <span className="font-mono text-primary font-bold">{(service as any).priceOnRequest ? 'Sob Consulta' : `R$ ${service.price}`}</span>
                 </div>
                 {service.description && <p className="text-sm text-muted-foreground line-clamp-2">{service.description}</p>}
                 <div className="mt-4 flex items-center text-xs text-muted-foreground">
