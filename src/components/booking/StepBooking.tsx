@@ -261,6 +261,7 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
         type: user ? 'client' : 'guest',
         createdAt: Timestamp.now(),
         servicePrice: selectedService.price,
+        priceOnRequest: (selectedService as any).priceOnRequest || false,
         serviceDuration: String(selectedService.duration),
         reminderSent: false,
         notes: ''
@@ -415,7 +416,7 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
               >
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="font-bold text-lg group-hover:text-primary transition-colors">{service.name}</h3>
-                  <span className="font-mono text-primary font-bold">R$ {service.price}</span>
+                  <span className="font-mono text-primary font-bold">{(service as any).priceOnRequest ? 'Sob Consulta' : `R$ ${service.price}`}</span>
                 </div>
                 {service.description && <p className="text-sm text-muted-foreground line-clamp-2">{service.description}</p>}
                 <div className="mt-4 flex items-center text-xs text-muted-foreground">

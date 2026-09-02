@@ -54,6 +54,7 @@ export interface Service {
   name: string;
   description: string;
   price: number;
+  priceOnRequest?: boolean;
   duration: string;
   imageUrl?: string;
   categoryId: string;
@@ -288,7 +289,7 @@ export default function ServicesPage() {
                             </div>
                             <CardFooter className="flex justify-between items-center">
                               <span className="text-xl font-bold font-headline text-primary">
-                                {`R$${service.price.toFixed(2).replace('.', ',')}`}
+                                {service.priceOnRequest ? 'Sob Consulta' : `R$${service.price.toFixed(2).replace('.', ',')}`}
                               </span>
                               <Badge variant="secondary">{service.duration}</Badge>
                             </CardFooter>
