@@ -184,6 +184,7 @@ export const bookingChatbotFlow = ai.defineFlow(
         6. Sempre confirme os detalhes (Serviço, Barbeiro, Data, Valor) antes de chamar a ferramenta 'confirm_booking'.
         7. Mantenha as respostas curtas, amigáveis e use emojis ocasionalmente ✂️.
         8. Se o cliente perguntar algo fora do contexto de barbearia, responda educadamente que você é focada em agendamentos.
+        9. Se o serviço consultado possuir 'priceOnRequest: true', NÃO DÊ PREÇO NUMÉRICO (0 ou gratuito). Informe que o valor é 'Sob Consulta' (ou a definir no local).
         
         Diretriz de Disponibilidade:
         - O horário de funcionamento é das 09:00 às 19:00.

@@ -50,6 +50,7 @@ const formSchema = z.object({
   imageUrl: z.string().optional().or(z.literal('')),
   categoryId: z.string().min(1, { message: 'A categoria é obrigatória.' }),
   featured: z.boolean().default(false),
+  priceOnRequest: z.boolean().default(false),
   imagePrompt: z.string().optional(),
 });
 
@@ -89,6 +90,7 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
       imageUrl: '',
       categoryId: '',
       featured: false,
+      priceOnRequest: false,
       imagePrompt: '',
     },
   });
@@ -99,6 +101,7 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
         ...service,
         imageUrl: service.imageUrl || '',
         featured: service.featured || false,
+        priceOnRequest: service.priceOnRequest || false,
         imagePrompt: service.imagePrompt || '',
       } : {
         name: '',
@@ -108,6 +111,7 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
         imageUrl: '',
         categoryId: '',
         featured: false,
+        priceOnRequest: false,
         imagePrompt: '',
       });
     }
@@ -116,7 +120,11 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSaving(true);
     try {
-      const serviceData = service ? { ...service, ...values } : values;
+      const finalValues = { ...values };
+      if (finalValues.priceOnRequest) {
+        finalValues.price = 0;
+      }
+      const serviceData = service ? { ...service, ...finalValues } : finalValues;
       await onSave(serviceData as Service | ServiceWithId);
       setIsOpen(false);
     } finally {
@@ -265,7 +273,13 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
                       <FormItem>
                         <FormLabel>Preço (R$)</FormLabel>
                         <FormControl>
-                          <Input type="number" step="0.01" placeholder="ex: 55.00" {...field} />
+                          <Input 
+                            type="number" 
+                            step="0.01" 
+                            placeholder="ex: 55.00" 
+                            disabled={form.watch('priceOnRequest')}
+                            {...field} 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -285,6 +299,31 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
                     )}
                   />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="priceOnRequest"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 p-2">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={(checked) => {
+                             field.onChange(checked);
+                             if (checked) {
+                               form.setValue('price', 0);
+                             }
+                          }}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>
+                          Preço Sob Consulta (Orçamento)
+                        </FormLabel>
+                      </div>
+                    </FormItem>
+                  )}
+                />
 
                 <FormField
                   control={form.control}

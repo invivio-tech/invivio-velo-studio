@@ -332,6 +332,7 @@ export default function BookAppointmentPage() {
       professionalName: finalProfessional.name,
       serviceDuration: selectedService.duration,
       servicePrice: finalPrice,
+      priceOnRequest: (selectedService as any).priceOnRequest || false,
       reminderSent: false,
     };
 
@@ -433,7 +434,7 @@ export default function BookAppointmentPage() {
                             <p className="text-sm text-muted-foreground">{service.description}</p>
                           </CardContent>
                           <CardFooter className="flex justify-between text-sm">
-                            <span className="font-bold text-primary">{`R$${service.price.toFixed(2).replace('.', ',')}`}</span>
+                            <span className="font-bold text-primary">{(service as any).priceOnRequest ? 'Sob Consulta' : `R$${service.price.toFixed(2).replace('.', ',')}`}</span>
                             <span className="text-muted-foreground">{service.duration}</span>
                           </CardFooter>
                         </Card>
@@ -541,7 +542,7 @@ export default function BookAppointmentPage() {
                   <div className="mt-4 p-4 bg-primary/10 border border-primary/20 rounded-md">
                     <p className="font-semibold text-primary mb-1">Benefício do Clube Aplicado 🎉</p>
                     <div className="flex justify-between items-center text-lg">
-                      <span className="line-through text-muted-foreground">R$ {selectedService.price.toFixed(2).replace('.', ',')}</span>
+                      <span className="line-through text-muted-foreground">{(selectedService as any).priceOnRequest ? 'Sob Consulta' : `R$ ${selectedService.price.toFixed(2).replace('.', ',')}`}</span>
                       <span className="font-bold text-primary">R$ 0,00</span>
                     </div>
                   </div>
@@ -554,7 +555,7 @@ export default function BookAppointmentPage() {
                     )}
                     <div className="flex justify-between items-center text-lg">
                       <span className="font-semibold">Valor Total:</span>
-                      <span className="font-bold">R$ {selectedService.price.toFixed(2).replace('.', ',')}</span>
+                      <span className="font-bold">{(selectedService as any).priceOnRequest ? 'A definir no local' : `R$ ${selectedService.price.toFixed(2).replace('.', ',')}`}</span>
                     </div>
                   </div>
                 )}
