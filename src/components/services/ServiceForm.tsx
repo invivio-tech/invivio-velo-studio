@@ -45,7 +45,7 @@ interface Category {
 const formSchema = z.object({
   name: z.string().min(2, { message: 'O nome do serviço deve ter pelo menos 2 caracteres.' }),
   description: z.string().min(10, { message: 'A descrição deve ter pelo menos 10 caracteres.' }),
-  price: z.coerce.number().positive({ message: 'O preço deve ser um número positivo.' }),
+  price: z.coerce.number().min(0, { message: 'O preço não pode ser negativo.' }),
   duration: z.string().min(2, { message: 'A duração é obrigatória.' }),
   imageUrl: z.string().optional().or(z.literal('')),
   categoryId: z.string().min(1, { message: 'A categoria é obrigatória.' }),
