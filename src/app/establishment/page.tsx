@@ -343,7 +343,10 @@ export default function EstablishmentPage() {
     }
     setIsSuggesting(true);
     try {
-      const result = await generateEstablishmentTexts({ name, context });
+      const result = await generateEstablishmentTexts({ 
+        name: typeof name === 'string' ? name : '', 
+        context: typeof context === 'string' ? context : '' 
+      });
       if (result) {
         form.setValue('heroTitle', result.heroTitle, { shouldValidate: true });
         form.setValue('heroSubtitle', result.heroSubtitle, { shouldValidate: true });
