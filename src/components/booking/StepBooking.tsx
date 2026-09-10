@@ -12,6 +12,8 @@ interface Service {
   price: number;
   duration: string | number;
   description?: string;
+  featured?: boolean;
+  priceOnRequest?: boolean;
 }
 
 interface Professional {
@@ -56,9 +58,10 @@ function isAfter(date1: Date, date2: Date) {
 
 interface StepBookingProps {
   onComplete?: () => void;
+  kioskMode?: boolean;
 }
 
-export default function StepBooking({ onComplete }: StepBookingProps) {
+export default function StepBooking({ onComplete, kioskMode = false }: StepBookingProps) {
   const [step, setStep] = useState(1);
   const [services, setServices] = useState<Service[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
@@ -104,7 +107,9 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
       try {
         // Fetch services
         const servSnapshot = await getDocs(collection(firestore, 'services'));
-        const servList = servSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service));
+        const rawList = servSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service));
+        // P1: Sort featured services first
+        const servList = [...rawList.filter(s => s.featured), ...rawList.filter(s => !s.featured)];
         setServices(servList);
 
         // Fetch professionals
@@ -258,7 +263,7 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
         startTime: Timestamp.fromDate(startTimeDate),
         endTime: Timestamp.fromDate(endTimeDate),
         status: 'scheduled',
-        type: user ? 'client' : 'guest',
+        type: (user && !kioskMode) ? 'client' : 'guest',
         createdAt: Timestamp.now(),
         servicePrice: selectedService.price,
         priceOnRequest: (selectedService as any).priceOnRequest || false,
@@ -268,7 +273,7 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
       };
 
       const isServiceIncluded = activeMembershipPlan?.includedServiceIds?.includes(selectedService.id);
-      if (user && activeMembershipPlan && useSubscription && isServiceIncluded) {
+      if (user && !kioskMode && activeMembershipPlan && useSubscription && isServiceIncluded) {
         appointmentData.isSubscriptionUsage = true;
         appointmentData.servicePrice = 0;
         const repassPct = (activeMembershipPlan as any).commissionRepassPercentage ?? 100;
@@ -276,7 +281,7 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
         appointmentData.subscriptionPlanId = activeMembershipPlan.id;
       }
 
-      if (user) {
+      if (user && !kioskMode) {
         appointmentData.customerId = user.uid;
         appointmentData.customerEmail = user.email || '';
         if (userProfile?.photoURL) {
@@ -384,18 +389,19 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
             />
           </div>
           
-          {searchTerm === '' && services.length > 4 && (
+          {searchTerm === '' && services.filter(s => s.featured).length > 0 && (
             <div className="space-y-4">
               <h3 className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2 px-1">
-                <Star className="w-3 h-3 fill-primary" /> Sugestões Populares
+                <Star className="w-3 h-3 fill-primary" /> Em Destaque
               </h3>
               <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
-                {services.slice(0, 3).map(service => (
+                {services.filter(s => s.featured).slice(0, 4).map(service => (
                   <button
-                    key={`popular-${service.id}`}
+                    key={`featured-${service.id}`}
                     onClick={() => { setSelectedService(service); nextStep(); }}
-                    className="flex-shrink-0 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm font-medium hover:border-primary transition-colors"
+                    className="flex-shrink-0 bg-primary/10 border border-primary/30 rounded-xl px-4 py-2 text-sm font-medium hover:border-primary transition-colors flex items-center gap-1.5"
                   >
+                    <Star className="w-3 h-3 fill-primary text-primary" />
                     {service.name}
                   </button>
                 ))}
@@ -410,15 +416,20 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
               <button
                 key={service.id}
                 onClick={() => { setSelectedService(service); nextStep(); }}
-                className={`p-6 rounded-2xl border-2 text-left transition-all hover:border-primary group ${
-                  selectedService?.id === service.id ? 'border-primary bg-primary/5 shadow-inner' : 'border-border'
+                className={`p-6 rounded-2xl border-2 text-left transition-all hover:border-primary group relative ${
+                  selectedService?.id === service.id ? 'border-primary bg-primary/5 shadow-inner' : service.featured ? 'border-primary/30 bg-primary/5' : 'border-border'
                 }`}
               >
-                <div className="flex justify-between items-start mb-2">
+                {service.featured && (
+                  <span className="absolute top-3 right-3 flex items-center gap-1 text-xs font-bold text-primary">
+                    <Star className="w-3 h-3 fill-primary" /> Destaque
+                  </span>
+                )}
+                <div className="flex justify-between items-start mb-2 pr-16">
                   <h3 className="font-bold text-lg group-hover:text-primary transition-colors">{service.name}</h3>
-                  <span className="font-mono text-primary font-bold">{(service as any).priceOnRequest ? 'Sob Consulta' : `R$ ${service.price}`}</span>
                 </div>
-                {service.description && <p className="text-sm text-muted-foreground line-clamp-2">{service.description}</p>}
+                <span className="font-mono text-primary font-bold text-sm">{service.priceOnRequest ? 'Sob Consulta' : `R$ ${service.price}`}</span>
+                {service.description && <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{service.description}</p>}
                 <div className="mt-4 flex items-center text-xs text-muted-foreground">
                   <Clock className="w-3 h-3 mr-1" /> {service.duration} min
                 </div>
