@@ -301,7 +301,7 @@ export default function LandingPage() {
                   </div>
                   <CardFooter className="flex justify-between items-center bg-muted/50 p-6 pt-4">
                     <span className="text-xl font-bold font-headline text-primary">
-                      {`R$${(service.price ?? 0).toFixed(2).replace('.', ',')}`}
+                      {service.priceOnRequest ? 'Sob Consulta' : `R$${(service.price ?? 0).toFixed(2).replace('.', ',')}`}
                     </span>
                     <Badge variant="secondary">{service.duration || 'Consultar'}</Badge>
                   </CardFooter>
