@@ -153,7 +153,40 @@ export default function MensagensPage() {
                 <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}>
                   {msg.role === 'user' ? (
                     <div className="bg-white dark:bg-slate-800 border rounded-2xl rounded-tl-sm p-3 max-w-[80%] shadow-sm">
-                      <p className="text-sm">{msg.content}</p>
+                      {/* Renderização de mídia */}
+                      {msg.mediaType === 'audio' && msg.mediaUrl ? (
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1.5">🎤 Mensagem de voz</p>
+                          <audio controls className="w-full max-w-xs h-10" src={msg.mediaUrl}>
+                            Seu navegador não suporta áudio.
+                          </audio>
+                        </div>
+                      ) : msg.mediaType === 'image' && msg.mediaUrl ? (
+                        <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer">
+                          <img
+                            src={msg.mediaUrl}
+                            alt="Imagem recebida"
+                            className="max-w-xs rounded-lg border hover:opacity-90 transition-opacity cursor-pointer"
+                          />
+                        </a>
+                      ) : msg.mediaType === 'video' && msg.mediaUrl ? (
+                        <video controls className="max-w-xs rounded-lg border" src={msg.mediaUrl}>
+                          Seu navegador não suporta vídeo.
+                        </video>
+                      ) : msg.mediaType === 'document' && msg.mediaUrl ? (
+                        <a
+                          href={msg.mediaUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
+                        >
+                          📄 {msg.fileName || 'Documento recebido'}
+                        </a>
+                      ) : msg.mediaType === 'sticker' && msg.mediaUrl ? (
+                        <img src={msg.mediaUrl} alt="Sticker" className="w-24 h-24 object-contain" />
+                      ) : (
+                        <p className="text-sm">{msg.content}</p>
+                      )}
                       <span className="text-[10px] text-muted-foreground mt-1 block">{formatTime(msg.timestamp)}</span>
                     </div>
                   ) : msg.role === 'ai' ? (
