@@ -26,6 +26,7 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { encryptClinicalData, decryptClinicalData } from '@/lib/encryption';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'O nome é obrigatório.' }),
@@ -34,6 +35,13 @@ const formSchema = z.object({
   address: z.string().optional(),
   notes: z.string().optional(),
   loyaltyPoints: z.coerce.number().min(0, { message: 'Os pontos não podem ser negativos.' }).optional(),
+  healthInsurance: z.string().optional(),
+  healthInsuranceCard: z.string().optional(),
+  isPet: z.boolean().optional(),
+  petSpecies: z.string().optional(),
+  petBreed: z.string().optional(),
+  tutorName: z.string().optional(),
+  tutorPhone: z.string().optional(),
 });
 
 type ClientFormValues = z.infer<typeof formSchema>;
@@ -54,6 +62,7 @@ interface Appointment {
   startTime: Timestamp;
   status: 'scheduled' | 'completed' | 'cancelled' | 'no-show';
   price: number;
+  completionNotes?: string;
 }
 
 
@@ -91,6 +100,13 @@ export default function EditClientPage() {
       address: '',
       notes: '',
       loyaltyPoints: 0,
+      healthInsurance: '',
+      healthInsuranceCard: '',
+      isPet: false,
+      petSpecies: '',
+      petBreed: '',
+      tutorName: '',
+      tutorPhone: '',
     },
   });
 
@@ -110,8 +126,15 @@ export default function EditClientPage() {
         phoneNumber: client.phoneNumber || '',
         birthDate: client.birthDate || '',
         address: client.address || '',
-        notes: client.notes || '',
+        notes: decryptClinicalData(client.notes) || '',
         loyaltyPoints: client.loyaltyPoints || 0,
+        healthInsurance: client.healthInsurance || '',
+        healthInsuranceCard: client.healthInsuranceCard || '',
+        isPet: client.isPet || false,
+        petSpecies: client.petSpecies || '',
+        petBreed: client.petBreed || '',
+        tutorName: client.tutorName || '',
+        tutorPhone: client.tutorPhone || '',
       });
     }
   }, [client, form]);
@@ -129,8 +152,15 @@ export default function EditClientPage() {
       phoneNumber: values.phoneNumber,
       birthDate: values.birthDate,
       address: values.address,
-      notes: values.notes,
+      notes: encryptClinicalData(values.notes) || '',
       loyaltyPoints: newPoints,
+      healthInsurance: values.healthInsurance || '',
+      healthInsuranceCard: values.healthInsuranceCard || '',
+      isPet: values.isPet || false,
+      petSpecies: values.petSpecies || '',
+      petBreed: values.petBreed || '',
+      tutorName: values.tutorName || '',
+      tutorPhone: values.tutorPhone || '',
     };
 
     try {
@@ -282,16 +312,7 @@ export default function EditClientPage() {
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="outline" size="icon" asChild>
-          <Link href="/clients">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <h1 className="text-3xl font-headline font-bold tracking-tight">
-          Gerenciar Cliente
-        </h1>
-      </div>
+      {/* Cabeçalho unificado está no layout.tsx */}
 
       <Card className="w-full max-w-2xl">
         <CardHeader>
@@ -359,14 +380,127 @@ export default function EditClientPage() {
                   </FormItem>
                 )}
               />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-lg bg-slate-50">
+                <h3 className="font-bold text-sm col-span-2 text-slate-800">Convênio Médico</h3>
+                <FormField
+                  control={form.control}
+                  name="healthInsurance"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Convênio / Plano de Saúde</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ex: Unimed, Bradesco, Amil..." {...field} className="bg-white" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="healthInsuranceCard"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Número da Carteirinha</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Número da carteirinha" {...field} className="bg-white" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="border p-4 rounded-lg bg-slate-50 space-y-4">
+                <div className="flex items-center space-x-2">
+                  <FormField
+                    control={form.control}
+                    name="isPet"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md">
+                        <FormControl>
+                          <input
+                            type="checkbox"
+                            checked={field.value}
+                            onChange={field.onChange}
+                            className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary mt-1"
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="font-bold text-sm text-slate-800 cursor-pointer">
+                            Este paciente é um Pet (Veterinária)
+                          </FormLabel>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {form.watch('isPet') && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 animate-in fade-in duration-200">
+                    <FormField
+                      control={form.control}
+                      name="petSpecies"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Espécie (Ex: Cão, Gato)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Espécie do animal" {...field} className="bg-white" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="petBreed"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Raça</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Raça do animal" {...field} className="bg-white" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="tutorName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nome do Responsável / Tutor</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Nome do tutor" {...field} className="bg-white" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="tutorPhone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>WhatsApp do Tutor</FormLabel>
+                          <FormControl>
+                            <Input placeholder="WhatsApp do tutor" {...field} className="bg-white" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+              </div>
+
               <FormField
                 control={form.control}
                 name="notes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Notas Internas</FormLabel>
+                    <FormLabel>Prontuário / Notas Clínicas (Criptografado em Banco)</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="Preferências, alergias, ou outras anotações sobre o cliente." {...field} />
+                      <Textarea placeholder="Preferências, alergias, histórico médico ou outras anotações sobre o cliente." {...field} className="h-32" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -541,14 +675,30 @@ export default function EditClientPage() {
               </TableHeader>
               <TableBody>
                 {appointments.map((appointment) => (
-                  <TableRow key={appointment.id}>
-                    <TableCell className="font-medium">
-                      {appointment.startTime?.toDate ? format(appointment.startTime.toDate(), "dd/MM/yyyy HH:mm", { locale: ptBR }) : 'Data Inválida'}
-                    </TableCell>
-                    <TableCell>{appointment.serviceName}</TableCell>
-                    <TableCell>{appointment.professionalName}</TableCell>
-                    <TableCell>{getStatusBadge(appointment.status)}</TableCell>
-                  </TableRow>
+                  <tr key={appointment.id} className="border-b">
+                    <td colSpan={4} className="p-0">
+                      <Table>
+                        <TableBody>
+                          <TableRow className="hover:bg-slate-50/50 border-0">
+                            <TableCell className="font-medium w-1/4">
+                              {appointment.startTime?.toDate ? format(appointment.startTime.toDate(), "dd/MM/yyyy HH:mm", { locale: ptBR }) : 'Data Inválida'}
+                            </TableCell>
+                            <TableCell className="w-1/4">{appointment.serviceName}</TableCell>
+                            <TableCell className="w-1/4">{appointment.professionalName}</TableCell>
+                            <TableCell className="w-1/4">{getStatusBadge(appointment.status)}</TableCell>
+                          </TableRow>
+                          {appointment.status === 'completed' && appointment.completionNotes && (
+                            <TableRow className="hover:bg-slate-50/50 border-0 bg-slate-50/30">
+                              <TableCell colSpan={4} className="py-2 pl-12 pr-4 text-xs text-slate-600">
+                                <span className="font-semibold text-slate-700">📋 Prontuário Clínico:</span>{" "}
+                                {decryptClinicalData(appointment.completionNotes)}
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </td>
+                  </tr>
                 ))}
               </TableBody>
             </Table>

@@ -10,7 +10,14 @@ import { Input } from '@/components/ui/input';
 interface CompleteServiceDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (notes: string, photos: string[], createProfile?: boolean, guestData?: { name: string, phone: string, email: string }) => Promise<void>;
+  onConfirm: (
+    notes: string, 
+    photos: string[], 
+    createProfile?: boolean, 
+    guestData?: { name: string, phone: string, email: string },
+    followUpNeeded?: boolean,
+    followUpDays?: number
+  ) => Promise<void>;
   customerName: string;
   customerPhone?: string;
   customerEmail?: string;
@@ -36,6 +43,8 @@ export function CompleteServiceDialog({
     phone: customerPhone, 
     email: customerEmail 
   });
+  const [followUpNeeded, setFollowUpNeeded] = useState(false);
+  const [followUpDays, setFollowUpDays] = useState(15);
 
   // Update guest data when props change (dialog opens)
   useEffect(() => {
@@ -85,10 +94,19 @@ export function CompleteServiceDialog({
     setIsSubmitting(true);
     try {
       // If isGuest and createProfile, we pass the (possibly edited) guestData
-      await onConfirm(notes, photos, isGuest ? createProfile : false, isGuest ? guestData : undefined);
+      await onConfirm(
+        notes, 
+        photos, 
+        isGuest ? createProfile : false, 
+        isGuest ? guestData : undefined,
+        followUpNeeded,
+        followUpDays
+      );
       onOpenChange(false);
       setNotes('');
       setPhotos([]);
+      setFollowUpNeeded(false);
+      setFollowUpDays(15);
     } finally {
       setIsSubmitting(false);
     }
@@ -158,14 +176,46 @@ export function CompleteServiceDialog({
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Observações do Serviço</Label>
+            <Label htmlFor="notes">Anotações do Prontuário</Label>
             <Textarea 
               id="notes"
-              placeholder="Ex: Utilizado shampoo X e finalizado com pomada matte."
+              placeholder="Descreva as observações clínicas, diagnósticos e tratamentos aplicados..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               className="resize-none h-20"
             />
+          </div>
+
+          <div className="space-y-3 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <input 
+                type="checkbox" 
+                id="followUpNeeded" 
+                checked={followUpNeeded}
+                onChange={(e) => setFollowUpNeeded(e.target.checked)}
+                className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary"
+              />
+              <Label htmlFor="followUpNeeded" className="text-sm font-bold text-slate-900 cursor-pointer">
+                Agendar Retorno / Acompanhamento
+              </Label>
+            </div>
+            
+            {followUpNeeded && (
+              <div className="space-y-2 pt-2 animate-in fade-in duration-200">
+                <Label htmlFor="followUpDays" className="text-xs font-semibold text-slate-700">Retorno sugerido em quantos dias?</Label>
+                <div className="flex items-center gap-2">
+                  <Input 
+                    id="followUpDays"
+                    type="number"
+                    min="1"
+                    value={followUpDays}
+                    onChange={(e) => setFollowUpDays(parseInt(e.target.value) || 15)}
+                    className="bg-white text-slate-900 border-slate-300 w-24"
+                  />
+                  <span className="text-xs font-semibold text-slate-500">Dias</span>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">

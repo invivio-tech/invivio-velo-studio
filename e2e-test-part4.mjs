@@ -26,7 +26,7 @@ import { chromium } from 'playwright';
     console.log('Page Text at Step 2:', pageText?.substring(0, 500));
     
     // Assert Thiago is visible
-    const isThiagoVisible = await page.isVisible('text=/Thiago Barbeiro/i');
+    const isThiagoVisible = await page.isVisible('text=/Thiago Veterinário/i');
     const isPedroVisible = await page.isVisible('text=/Pedro Especialista/i');
     
     if (isThiagoVisible && !isPedroVisible) {
@@ -52,7 +52,7 @@ import { chromium } from 'playwright';
     
     // Assert Pedro is visible, Thiago is not
     const isPedroVIPVisible = await page.isVisible('text=/Pedro Especialista/i');
-    const isThiagoVIPVisible = await page.isVisible('text=/Thiago Barbeiro/i');
+    const isThiagoVIPVisible = await page.isVisible('text=/Thiago Veterinário/i');
     
     if (isPedroVIPVisible && !isThiagoVIPVisible) {
       console.log('✅ Filtro para VIP está correto: Apenas Pedro apareceu.');

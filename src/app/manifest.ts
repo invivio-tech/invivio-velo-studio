@@ -4,8 +4,8 @@ import { getAdminFirestore } from '@/firebase/admin';
 export const dynamic = 'force-dynamic';
 
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
-  let name = 'Barbearia Inteligente';
-  let short_name = 'Barbearia';
+  let name = 'Invivio Care';
+  let short_name = 'Clínica';
   let description = 'Sistema de Agendamento Inteligente';
   let iconUrl = '/icons/icon-192x192.png';
   let iconUrl512 = '/icons/icon-512x512.png';

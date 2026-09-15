@@ -62,7 +62,7 @@ export default function ShowcasePage() {
         <div className="container mx-auto px-4 md:px-6 flex h-20 items-center justify-between">
           <div className="flex items-center gap-2">
             <BarberPoleIcon className="h-8 w-8 text-emerald-500" />
-            <span className="font-bold text-xl tracking-tight">Velo Studio</span>
+            <span className="font-bold text-xl tracking-tight">Invivio Care Admin</span>
           </div>
           <nav className="hidden md:flex gap-8 text-sm font-medium text-slate-300">
             <a href="#agenda" className="hover:text-emerald-400 transition-colors">Agenda</a>
@@ -91,7 +91,7 @@ export default function ShowcasePage() {
               seu negócio <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-600">merece.</span>
             </h1>
             <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-              O Velo Studio é a plataforma all-in-one para barbearias, salões e estúdios. 
+              O Invivio Care Admin é a plataforma all-in-one para clínicas, consultórios e estúdios. 
               Da agenda ao financeiro, do clube de assinaturas ao balcão de vendas.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -108,7 +108,7 @@ export default function ShowcasePage() {
             <div className="relative rounded-2xl md:rounded-[2.5rem] border border-white/10 bg-slate-900/50 p-2 md:p-4 backdrop-blur-sm shadow-2xl shadow-emerald-900/20 transform rotate-1 hover:rotate-0 transition-transform duration-700">
               <img 
                 src="/showcase/step-03-dashboard-admin.png" 
-                alt="Dashboard Velo Studio" 
+                alt="Dashboard Invivio Care Admin" 
                 className="rounded-xl md:rounded-[2rem] w-full object-cover border border-white/5"
               />
             </div>
@@ -168,7 +168,7 @@ export default function ShowcasePage() {
                     <div className="flex gap-4">
                       <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">🤖</div>
                       <div className="bg-emerald-600 text-white p-3 rounded-2xl rounded-tl-sm text-sm">
-                        Olá! Bem-vindo à Barbearia Inteligente. Gostaria de agendar um horário hoje?
+                        Olá! Bem-vindo à Invivio Care. Gostaria de agendar um horário hoje?
                       </div>
                     </div>
                     <div className="flex gap-4 flex-row-reverse">
@@ -270,7 +270,7 @@ export default function ShowcasePage() {
                     Muito mais que <br />serviços.
                   </h2>
                   <p className="text-slate-400 text-lg leading-relaxed">
-                    Venda pomadas, bebidas e produtos na sua loja. O Velo Studio traz um PDV (Venda Balcão) extremamente ágil. Em apenas dois passos, você seleciona o cliente e os produtos. O estoque é atualizado automaticamente.
+                    Venda pomadas, bebidas e produtos na sua loja. O Invivio Care Admin traz um PDV (Venda Balcão) extremamente ágil. Em apenas dois passos, você seleciona o cliente e os produtos. O estoque é atualizado automaticamente.
                   </p>
                   <ul className="space-y-4 pt-4">
                     <li className="flex items-start gap-3">
@@ -363,10 +363,10 @@ export default function ShowcasePage() {
         <section className="py-24 bg-emerald-600 relative overflow-hidden">
           <div className="container mx-auto px-4 md:px-6 relative z-10 text-center">
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-              Pronto para transformar sua barbearia?
+              Pronto para transformar sua clínica?
             </h2>
             <p className="text-emerald-100 text-xl max-w-2xl mx-auto mb-10">
-              Junte-se a milhares de estúdios e barbearias que já estão faturando mais com a ajuda do Velo Studio.
+              Junte-se a milhares de estúdios e clínicas que já estão faturando mais com a ajuda do Invivio Care Admin.
             </p>
             <Button size="lg" className="bg-slate-950 hover:bg-slate-900 text-white rounded-full px-10 h-16 text-lg shadow-2xl shadow-slate-950/20">
               Começar Teste Grátis
@@ -379,7 +379,7 @@ export default function ShowcasePage() {
         <div className="container mx-auto px-4 text-center text-slate-500 text-sm">
           <div className="flex items-center justify-center gap-2 mb-4">
             <BarberPoleIcon className="h-6 w-6 opacity-50" />
-            <span className="font-bold tracking-tight">Velo Studio</span>
+            <span className="font-bold tracking-tight">Invivio Care Admin</span>
           </div>
           <p>&copy; {new Date().getFullYear()} Invivio Tecnologia. Todos os direitos reservados.</p>
         </div>

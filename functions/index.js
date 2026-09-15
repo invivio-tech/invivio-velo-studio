@@ -127,7 +127,7 @@ exports.dailybirthdaycheck = onSchedule('0 8 * * *', async (event) => {
     const settings = settingsDoc.exists ? settingsDoc.data() : {};
     
     const customTitle = settings.birthdayTitle || 'Feliz Aniversário! 🎂';
-    const customMessage = settings.birthdayMessage || 'A equipe da Barbearia East Side te deseja um dia incrível e muito sucesso!';
+    const customMessage = settings.birthdayMessage || 'A equipe da Invivio Care te deseja um dia incrível e muito sucesso!';
 
     const usersSnapshot = await admin.firestore().collection('users')
         .where('role', '==', 'client')
@@ -352,7 +352,7 @@ async function sendNotificationToUser(userId, title, body) {
         notification: { title, body },
         webpush: {
             fcmOptions: {
-                link: 'https://barbeariaeastside.web.app/schedule'
+                link: 'https://inviviocare.web.app/schedule'
             }
         },
         tokens: tokens,

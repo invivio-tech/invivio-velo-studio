@@ -12,7 +12,7 @@ import { GlobalErrorBoundary } from '@/components/layout/GlobalErrorBoundary';
 import { DynamicTheme } from '@/components/layout/DynamicTheme';
 
 export const metadata: Metadata = {
-  title: 'Barbearia Inteligente',
+  title: 'Invivio Care',
   description: 'Sistema de gestão para o seu estabelecimento',
 };
 

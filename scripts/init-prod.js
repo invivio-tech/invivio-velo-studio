@@ -48,13 +48,15 @@ async function setupProduction() {
 
         // Initialize Establishment Settings
         await setDoc(doc(db, 'establishmentSettings', 'main'), {
-            name: 'Invivio Velo',
-            about: 'Bem-vindo ao Invivio Velo. Nossa barbearia oferece uma experiência única que combina tradição com as últimas tendências, proporcionando um ambiente excelente e profissionais dedicados.',
-            heroTitle: 'Estilo Premium e Precisão.',
-            heroSubtitle: 'Deixe nosso time de especialistas cuidar do seu visual com os melhores produtos do mercado.',
-            servicesTitle: 'Serviços de Qualidade',
-            servicesSubtitle: 'Do clássico ao contemporâneo, dominamos todos os estilos.',
+            name: 'Invivio Care',
+            about: 'Bem-vindo à Invivio Care. Nossa clínica oferece atendimento humanizado e de excelência, combinando profissionais altamente qualificados com tecnologia de ponta para proporcionar o melhor cuidado para você e para quem você ama.',
+            heroTitle: 'Saúde e Bem-Estar em Boas Mãos.',
+            heroSubtitle: 'Atendimento humanizado, profissionais especializados e agendamento online. Cuide-se com quem realmente entende do assunto.',
+            servicesTitle: 'Nossos Procedimentos e Consultas',
+            servicesSubtitle: 'Oferecemos uma ampla gama de serviços de saúde para cuidar de você e de quem você ama.',
             address: 'Seu Endereço Oficial, 123',
+            businessCategory: 'general_practice',
+            businessTone: 'friendly',
             cancellationTimeLimitHours: 24,
             loyaltyPercentage: 10,
             pointsPenaltyForNoShow: 5,

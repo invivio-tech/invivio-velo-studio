@@ -14,9 +14,7 @@ import {
 } from '@/components/ui/card';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Badge } from '@/components/ui/badge';
-import { BarberPoleIcon } from '@/components/icons/barber-pole-icon';
-
-import { collection, doc, query, where, limit, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, doc, query, where, limit, orderBy } from 'firebase/firestore';
 import {
   useFirestore,
   useCollection,
@@ -26,8 +24,19 @@ import {
 import type { Service } from '@/app/services/page';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { EstablishmentSettings } from '@/app/establishment/page';
-import type { Product } from '@/types/store';
-import { Instagram, Star, Scissors as ScissorsIcon, User as UserIcon, ShoppingBag, Package, ArrowRight, Sparkles, CheckCircle2 } from 'lucide-react';
+import { 
+  Instagram, 
+  Heart, 
+  User as UserIcon, 
+  ArrowRight, 
+  CheckCircle2, 
+  MapPin, 
+  Phone, 
+  Calendar, 
+  Clock, 
+  Shield, 
+  Stethoscope 
+} from 'lucide-react';
 
 export default function LandingPage() {
   const heroImage = PlaceHolderImages.find((p) => p.id === 'landing-hero');
@@ -51,55 +60,28 @@ export default function LandingPage() {
   );
   const { data: settings, isLoading: areSettingsLoading } = useDoc<EstablishmentSettings>(settingsRef);
 
-  // Fetch Featured Products (up to 4 active products)
-  const featuredProductsQuery = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'products'), where('active', '==', true), limit(4)) : null),
+  // Fetch Clinical Staff (Professionals)
+  const professionalsQuery = useMemoFirebase(
+    () => (firestore ? query(collection(firestore, 'users'), where('role', '==', 'professional'), limit(6)) : null),
     [firestore]
   );
-  const { data: featuredProducts, isLoading: areProductsLoading } = useCollection<Product>(featuredProductsQuery);
+  const { data: professionals, isLoading: areProfessionalsLoading } = useCollection<any>(professionalsQuery);
 
-  // Fetch Membership Plans (up to 3 active plans)
-  const membershipPlansQuery = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'membershipPlans'), where('isActive', '==', true), limit(3)) : null),
-    [firestore]
-  );
-  const { data: membershipPlans, isLoading: arePlansLoading } = useCollection<any>(membershipPlansQuery);
-
-  // Fetch Portfolio (Completed Appointments with Photos)
-  const portfolioQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(
-      collection(firestore, 'appointments'),
-      where('status', '==', 'completed'),
-      where('isPortfolioFeatured', '==', true),
-      orderBy('startTime', 'desc'),
-      limit(6)
-    );
-  }, [firestore]);
-  
-  const { data: allCompleted, isLoading: isPortfolioLoading } = useCollection<any>(portfolioQuery);
-
-  const portfolioItems = useMemo(() => {
-    if (!allCompleted) return [];
-    // Filter items that have photos
-    return allCompleted.filter(apt => apt.completionPhotos && apt.completionPhotos.length > 0);
-  }, [allCompleted]);
-
-  const isLoading = areServicesLoading || areSettingsLoading;
+  const isLoading = areServicesLoading || areSettingsLoading || areProfessionalsLoading;
 
   const defaultSettings: EstablishmentSettings = {
-    name: 'Barbearia Inteligente',
-    about: 'Fundada em 2024, nossa barbearia nasceu com o propósito de resgatar a essência das barbearias clássicas, incorporando tecnologia para oferecer uma experiência única e conveniente. Nossos profissionais são artistas apaixonados, dedicados a entregar o melhor resultado para cada cliente. Utilizamos produtos de alta qualidade e as técnicas mais apuradas para garantir que seu cabelo e barba estejam sempre impecáveis. Venha nos visitar e descubra por que somos a escolha inteligente para o homem moderno.',
-    heroTitle: 'Estilo e Precisão em Cada Corte.',
-    heroSubtitle: 'Experimente a combination perfeita de tradição e modernidade. Na Barbearia Inteligente, cuidamos do seu visual com a maestria que você merece.',
-    servicesTitle: 'Nossos Serviços Premium',
-    servicesSubtitle: 'Do clássico ao contemporâneo, temos o serviço perfeito para você.',
-    storeSubtitle: 'Produtos profissionais usados pelos nossos barbeiros, disponíveis para você.',
-    address: 'Rua da Barbearia, 123 - Centro, Sua Cidade',
+    name: 'Invivio Care',
+    about: 'Nossa clínica nasceu com o compromisso de oferecer um atendimento humanizado, seguro e de alta qualidade. Contamos com uma equipe multidisciplinar de especialistas dedicados a promover a sua saúde e bem-estar integral. Combinamos tecnologia de ponta com acolhimento e escuta ativa para diagnosticar e tratar nossos pacientes com a atenção que cada vida merece. Venha nos visitar e descubra um novo conceito de cuidado para você e sua família.',
+    heroTitle: 'Sua Saúde e Bem-Estar em Boas Mãos.',
+    heroSubtitle: 'Atendimento humanizado, equipe multidisciplinar e tecnologia médica ao seu alcance para um cuidado completo e preventivo.',
+    servicesTitle: 'Nossas Especialidades e Serviços',
+    servicesSubtitle: 'Oferecemos soluções completas em saúde preventiva, consultas e tratamentos.',
+    storeSubtitle: '',
+    address: 'Av. da Saúde, 456 - Centro Clínico, Bloco B',
     whatsapp: '5511999998888',
-    instagram: 'barbearia.inteligente',
-    businessCategory: 'barbershop',
-    businessTone: 'luxury',
+    instagram: 'invivio.care',
+    businessCategory: 'general_practice',
+    businessTone: 'professional',
   };
 
   const establishmentName = settings?.name || defaultSettings.name;
@@ -110,66 +92,61 @@ export default function LandingPage() {
   const establishmentServicesSubtitle = settings?.servicesSubtitle || defaultSettings.servicesSubtitle;
   const establishmentAddress = settings?.address || defaultSettings.address;
   const establishmentWhatsapp = settings?.whatsapp || defaultSettings.whatsapp;
-  const establishmentInstagram = settings?.instagram;
+  const establishmentInstagram = settings?.instagram || defaultSettings.instagram;
   const establishmentLogo = settings?.logoUrl;
   const establishmentAboutImageUrl = settings?.aboutImageUrl;
   const establishmentCategory = settings?.businessCategory || defaultSettings.businessCategory;
 
-  const getStoreSubtitle = (category: string) => {
+  const getClinicBadgeText = (category: string) => {
     switch (category) {
-      case 'barbershop':
-        return 'Produtos profissionais usados pelos nossos barbeiros, disponíveis para você.';
-      case 'beauty_salon':
-        return 'Produtos profissionais usados pelos nossos cabeleireiros e esteticistas, disponíveis para você.';
-      case 'clinic':
-        return 'Produtos profissionais recomendados pelos nossos especialistas, disponíveis para você.';
-      case 'petshop':
-        return 'Produtos de alta qualidade usados pelos nossos profissionais de pet care, disponíveis para você.';
-      default:
-        return 'Produtos profissionais usados pelos nossos profissionais, disponíveis para você.';
+      case 'psychology': return 'Clínica de Psicologia';
+      case 'dentistry': return 'Clínica Odontológica';
+      case 'veterinary': return 'Clínica Veterinária';
+      case 'physiotherapy': return 'Fisioterapia e Reabilitação';
+      case 'nutrition': return 'Nutrição Integrada';
+      default: return 'Centro de Saúde & Bem-Estar';
     }
   };
 
-  const establishmentStoreSubtitle = settings?.storeSubtitle || getStoreSubtitle(establishmentCategory);
-
+  // List of major health insurance plans
+  const healthInsurances = [
+    { name: 'Unimed', logo: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=200&auto=format&fit=crop' },
+    { name: 'Bradesco Saúde', logo: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=200&auto=format&fit=crop' },
+    { name: 'SulAmérica', logo: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=200&auto=format&fit=crop' },
+    { name: 'Amil', logo: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=200&auto=format&fit=crop' },
+    { name: 'Porto Seguro', logo: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=200&auto=format&fit=crop' }
+  ];
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-20 md:h-24 items-center">
+        <div className="container flex h-20 md:h-24 items-center justify-between">
           <Link href="/" className="mr-6 flex items-center space-x-2">
             {establishmentLogo ? (
               <img src={establishmentLogo} alt={establishmentName} className="h-14 md:h-20 max-w-[240px] object-contain" />
             ) : (
-              <BarberPoleIcon className="h-10 md:h-12 w-10 md:w-12 text-primary" />
+              <div className="bg-primary/10 p-2 rounded-xl text-primary">
+                <Heart className="h-8 md:h-10 w-8 md:w-10 fill-primary/20" />
+              </div>
             )}
             {isLoading ? (
               <Skeleton className="h-5 w-40" />
             ) : (
-              <span className="font-bold font-headline">
-                {establishmentName}
-              </span>
+              <div className="flex flex-col">
+                <span className="font-bold text-lg md:text-xl font-headline tracking-tight leading-none text-slate-800">
+                  {establishmentName}
+                </span>
+                <span className="text-[10px] text-muted-foreground font-semibold mt-1 uppercase tracking-wider">
+                  {getClinicBadgeText(establishmentCategory)}
+                </span>
+              </div>
             )}
           </Link>
-          <nav className="flex-1 items-center space-x-6 text-sm font-medium hidden md:flex">
-            <a
-              href="#services"
-              className="text-foreground/60 transition-colors hover:text-foreground/80"
-            >
-              Serviços
-            </a>
-            <Link
-              href="/store"
-              className="text-foreground/60 transition-colors hover:text-foreground/80"
-            >
-              Loja
-            </Link>
-            <a
-              href="#about"
-              className="text-foreground/60 transition-colors hover:text-foreground/80"
-            >
-              Sobre
-            </a>
+          <nav className="items-center space-x-6 text-sm font-medium hidden md:flex">
+            <a href="#services" className="text-foreground/60 transition-colors hover:text-foreground/80">Serviços</a>
+            <a href="#staff" className="text-foreground/60 transition-colors hover:text-foreground/80">Corpo Clínico</a>
+            <a href="#insurances" className="text-foreground/60 transition-colors hover:text-foreground/80">Convênios</a>
+            <a href="#about" className="text-foreground/60 transition-colors hover:text-foreground/80">Sobre nós</a>
             <a
               href={establishmentWhatsapp ? `https://wa.me/${establishmentWhatsapp.replace(/\D/g, '')}` : '#contact'}
               target={establishmentWhatsapp ? '_blank' : '_self'}
@@ -179,12 +156,12 @@ export default function LandingPage() {
               Contato
             </a>
           </nav>
-          <div className="flex flex-1 items-center justify-end space-x-2">
+          <div className="flex items-center space-x-2">
             <Button variant="ghost" asChild>
-              <Link href="/login">Login</Link>
+              <Link href="/login">Área Restrita</Link>
             </Button>
-            <Button asChild>
-              <Link href="/agendar">Agendar Agora</Link>
+            <Button asChild className="rounded-full shadow-md">
+              <Link href="/book-appointment">Agendar Consulta</Link>
             </Button>
           </div>
         </div>
@@ -192,410 +169,299 @@ export default function LandingPage() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative h-[70vh] w-full flex items-center">
-          {heroImage && (
+        <section className="relative h-[75vh] w-full flex items-center overflow-hidden">
+          {heroImage ? (
             <Image
               src={heroImage.imageUrl}
               alt={heroImage.description}
               fill
-              className="object-cover"
+              className="object-cover opacity-35"
               data-ai-hint={heroImage.imageHint}
               priority
             />
+          ) : (
+            <div className="absolute inset-0 bg-slate-100" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/30 to-transparent" />
-          <div className="relative z-10 container text-left">
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/45 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/25 to-transparent" />
+          <div className="relative z-10 container text-left max-w-4xl px-4 md:px-6">
             {isLoading ? (
-              <div className='space-y-4'>
+              <div className="space-y-4">
                 <Skeleton className="h-12 w-3/4 lg:h-16" />
                 <Skeleton className="h-4 w-1/2" />
                 <Skeleton className="h-4 w-2/3" />
               </div>
             ) : (
               <>
-                <h1 className="text-4xl font-extrabold tracking-tight font-headline lg:text-6xl max-w-2xl">
+                <Badge className="bg-primary/20 hover:bg-primary/30 text-primary border-none mb-4 text-xs tracking-wider uppercase font-semibold">
+                  🩺 Atendimento Confiável & Humanizado
+                </Badge>
+                <h1 className="text-4xl font-extrabold tracking-tight font-headline lg:text-6xl text-slate-900 leading-tight max-w-3xl">
                   {establishmentHeroTitle}
                 </h1>
-                <p className="mt-4 max-w-xl text-lg text-muted-foreground">
+                <p className="mt-4 max-w-xl text-lg text-slate-600 font-medium">
                   {establishmentHeroSubtitle}
                 </p>
               </>
             )}
-            <Button size="lg" className="mt-6" asChild>
-              <Link href="/agendar">Agendar Meu Horário</Link>
-            </Button>
+            <div className="mt-8 flex flex-wrap gap-4">
+              <Button size="lg" className="rounded-full shadow-lg h-12 px-8 font-bold" asChild>
+                <Link href="/book-appointment">Agendar Minha Consulta</Link>
+              </Button>
+              <Button size="lg" variant="outline" className="rounded-full h-12 px-8 font-bold" asChild>
+                <a href={establishmentWhatsapp ? `https://wa.me/${establishmentWhatsapp.replace(/\D/g, '')}` : '#contact'} target="_blank" rel="noreferrer">
+                  Falar no WhatsApp
+                </a>
+              </Button>
+            </div>
           </div>
         </section>
 
         {/* Services Section */}
-        <section id="services" className="container py-16 md:py-24">
-          <div className="text-center mb-12">
-            {isLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-8 w-1/2 mx-auto" />
-                <Skeleton className="h-4 w-3/4 mx-auto" />
-              </div>
-            ) : (
-              <>
-                <h2 className="text-3xl font-headline font-bold">
-                  {establishmentServicesTitle}
-                </h2>
-                <p className="text-muted-foreground mt-2">
-                  {establishmentServicesSubtitle}
-                </p>
-              </>
-            )}
+        <section id="services" className="container py-20 border-t bg-slate-50/50">
+          <div className="text-center mb-16 max-w-2xl mx-auto space-y-4">
+            <h2 className="text-3xl font-headline font-extrabold text-slate-800 tracking-tight">
+              {establishmentServicesTitle}
+            </h2>
+            <p className="text-slate-500 font-medium">
+              {establishmentServicesSubtitle}
+            </p>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto">
             {areServicesLoading &&
               [...Array(3)].map((_, i) => (
-                <Card key={i}>
+                <Card key={i} className="rounded-2xl border bg-card">
                   <CardHeader className="p-0">
                     <Skeleton className="aspect-[16/9] w-full" />
                   </CardHeader>
-                  <div className="p-6">
-                    <Skeleton className="h-6 w-1/2 mb-2" />
+                  <div className="p-6 space-y-3">
+                    <Skeleton className="h-6 w-1/2" />
                     <Skeleton className="h-10 w-full" />
                   </div>
-                  <CardFooter>
-                    <Skeleton className="h-6 w-1/4" />
-                  </CardFooter>
                 </Card>
               ))}
-            {services?.map((service) => {
-              return (
-                <Card
-                  key={service.id}
-                  className="flex flex-col overflow-hidden hover:shadow-lg transition-shadow duration-300"
-                >
-                  <CardHeader className="p-0">
-                    {service.imageUrl ? (
-                      <div className="relative aspect-[16/9] w-full overflow-hidden">
-                        <img
-                          src={service.imageUrl}
-                          alt={service.name}
-                          className="object-cover w-full h-full"
-                        />
-                      </div>
-                    ) : (
-                      <div className="aspect-[16/9] w-full bg-muted" />
-                    )}
-                  </CardHeader>
-                  <div className="flex flex-col flex-grow p-6">
-                    <CardTitle className="font-headline text-2xl mb-2">
-                      {service.name}
-                    </CardTitle>
-                    <CardDescription className="flex-grow">
-                      {service.description}
-                    </CardDescription>
-                  </div>
-                  <CardFooter className="flex justify-between items-center bg-muted/50 p-6 pt-4">
-                    <span className="text-xl font-bold font-headline text-primary">
-                      {`R$${(service.price ?? 0).toFixed(2).replace('.', ',')}`}
-                    </span>
-                    <Badge variant="secondary">{service.duration || 'Consultar'}</Badge>
-                  </CardFooter>
-                </Card>
-              );
-            })}
-          </div>
-          <div className="text-center mt-12">
-            <Button variant="outline" asChild>
-              <Link href="/services">Ver Todos os Serviços</Link>
-            </Button>
+            {services?.map((service) => (
+              <Card
+                key={service.id}
+                className="flex flex-col overflow-hidden hover:shadow-xl transition-all duration-300 border bg-background hover:-translate-y-1 rounded-2xl"
+              >
+                <CardHeader className="p-0">
+                  {service.imageUrl ? (
+                    <div className="relative aspect-[16/9] w-full overflow-hidden">
+                      <img
+                        src={service.imageUrl}
+                        alt={service.name}
+                        className="object-cover w-full h-full"
+                      />
+                    </div>
+                  ) : (
+                    <div className="aspect-[16/9] w-full bg-slate-100 flex items-center justify-center text-slate-400">
+                      <Stethoscope className="w-12 h-12" />
+                    </div>
+                  )}
+                </CardHeader>
+                <div className="flex flex-col flex-grow p-6 space-y-2">
+                  <CardTitle className="font-headline text-xl text-slate-800 font-bold">
+                    {service.name}
+                  </CardTitle>
+                  <CardDescription className="flex-grow text-slate-500 leading-relaxed text-sm">
+                    {service.description}
+                  </CardDescription>
+                </div>
+                <CardFooter className="flex justify-between items-center bg-slate-50/50 p-6 pt-4 border-t border-slate-100">
+                  <span className="text-lg font-bold font-headline text-primary">
+                    {`R$ ${(service.price ?? 0).toFixed(2).replace('.', ',')}`}
+                  </span>
+                  <Badge variant="secondary" className="bg-slate-100 text-slate-600 rounded-full">{service.duration || 'Consultar'} min</Badge>
+                </CardFooter>
+              </Card>
+            ))}
           </div>
         </section>
 
-        {/* Membership Plans Section */}
-        {(arePlansLoading || (membershipPlans && membershipPlans.length > 0)) && (
-          <section id="club" className="container py-16 md:py-24 bg-primary/5 rounded-3xl my-8 mx-auto max-w-[95%]">
-            <div className="flex flex-col items-center text-center mb-12">
-              <Sparkles className="h-12 w-12 text-primary mb-4" />
-              <h2 className="text-3xl md:text-4xl font-headline font-bold">Clube de Vantagens</h2>
-              <p className="text-muted-foreground mt-4 max-w-2xl text-lg">
-                Assine nossos planos mensais e garanta seu visual impecável com economia, prioridade na agenda e benefícios exclusivos.
-              </p>
-            </div>
+        {/* Corpo Clínico Section */}
+        <section id="staff" className="container py-20 border-t">
+          <div className="text-center mb-16 max-w-2xl mx-auto space-y-4">
+            <Badge className="bg-primary/10 text-primary border-none rounded-full px-3 py-1 font-semibold text-xs">
+              🩺 Especialistas Qualificados
+            </Badge>
+            <h2 className="text-3xl font-headline font-extrabold text-slate-800 tracking-tight">
+              Nosso Corpo Clínico
+            </h2>
+            <p className="text-slate-500 font-medium">
+              Conheça os profissionais altamente qualificados que cuidam de você todos os dias.
+            </p>
+          </div>
 
-            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto">
-              {arePlansLoading &&
-                [...Array(3)].map((_, i) => (
-                  <Card key={i} className="flex flex-col">
-                    <CardHeader className="text-center pt-8 pb-4">
-                      <Skeleton className="h-8 w-3/4 mx-auto mb-2" />
-                      <Skeleton className="h-4 w-full mx-auto" />
-                    </CardHeader>
-                    <CardContent className="flex-1">
-                      <Skeleton className="h-16 w-1/2 mx-auto mb-6" />
-                      <div className="space-y-3">
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-4 w-5/6" />
-                        <Skeleton className="h-4 w-4/5" />
-                      </div>
-                    </CardContent>
-                    <CardFooter className="pb-8">
-                      <Skeleton className="h-12 w-full" />
-                    </CardFooter>
-                  </Card>
-                ))}
-
-              {!arePlansLoading && membershipPlans?.map((plan) => (
-                <Card key={plan.id} className="flex flex-col bg-background relative overflow-hidden transition-all hover:shadow-xl border-2 hover:border-primary/50">
-                  {plan.imageUrl && (
-                    <div className="w-full h-40 relative overflow-hidden">
-                      <img src={plan.imageUrl} alt={plan.name} className="object-cover w-full h-full opacity-90 transition-transform duration-500 hover:scale-105" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto">
+            {areProfessionalsLoading &&
+              [...Array(3)].map((_, i) => (
+                <div key={i} className="flex flex-col items-center p-6 space-y-4 border rounded-2xl">
+                  <Skeleton className="w-24 h-24 rounded-full" />
+                  <Skeleton className="h-6 w-32" />
+                  <Skeleton className="h-4 w-48" />
+                </div>
+              ))}
+            {!areProfessionalsLoading && professionals?.map((pro: any) => (
+              <Card key={pro.id} className="flex flex-col items-center text-center p-6 rounded-2xl hover:shadow-lg transition-all border bg-background group">
+                <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-primary/20 mb-4 group-hover:scale-105 transition-transform duration-300">
+                  {pro.photoURL ? (
+                    <img src={pro.photoURL} alt={pro.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-400">
+                      <UserIcon className="w-10 h-10" />
                     </div>
                   )}
-                  <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-bl-lg z-10">
-                    Recomendado
-                  </div>
-                  <CardHeader className={`text-center pb-4 relative z-10 ${plan.imageUrl ? 'pt-0 -mt-10' : 'pt-8'}`}>
-                    <CardTitle className="font-headline text-2xl">{plan.name}</CardTitle>
-                    <CardDescription className="text-sm mt-2">{plan.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-1 text-center">
-                    <div className="flex justify-center items-baseline gap-1 mb-6">
-                      <span className="text-4xl font-bold font-headline text-primary">R${plan.price.toFixed(2).replace('.', ',')}</span>
-                      <span className="text-muted-foreground font-medium text-sm">/mês</span>
-                    </div>
-                    <ul className="space-y-3 text-sm text-left mx-auto max-w-[250px]">
-                      <li className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
-                        <span>{plan.maxUsesPerMonth === 999 ? 'Uso Ilimitado' : `Até ${plan.maxUsesPerMonth} atendimentos/mês`}</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
-                        <span>Desconto automático no site</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
-                        <span>Prioridade na agenda</span>
-                      </li>
-                    </ul>
-                  </CardContent>
-                  <CardFooter className="pt-4 pb-8">
-                    <Button className="w-full text-md h-12" asChild>
-                      <Link href="/club">Quero Assinar</Link>
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Portfolio Section */}
-        {portfolioItems.length > 0 && (
-          <section className="bg-slate-950 text-white py-16 md:py-24 overflow-hidden">
-            <div className="container px-4 md:px-6">
-              <div className="flex flex-col md:flex-row items-end justify-between gap-4 mb-12">
-                <div className="space-y-2">
-                  <Badge variant="outline" className="text-primary border-primary/30 uppercase tracking-widest text-[10px] py-1 px-3">Galeria de Resultados</Badge>
-                  <h2 className="text-3xl md:text-5xl font-headline font-bold text-slate-50">
-                    Serviços Executados
-                  </h2>
-                  <p className="text-slate-400 max-w-xl text-lg">
-                    Confira os resultados reais transformados por nossos especialistas.
-                  </p>
                 </div>
-                <div className="hidden md:flex gap-2">
-                   <div className="flex -space-x-3 overflow-hidden">
-                     {[1,2,3].map(i => (
-                       <div key={i} className="inline-block h-10 w-10 rounded-full ring-2 ring-slate-950 bg-slate-800 flex items-center justify-center">
-                         <Star className="h-4 w-4 text-emerald-500 fill-emerald-500" />
-                       </div>
-                     ))}
-                   </div>
-                   <div className="ml-4 text-sm">
-                      <p className="font-bold text-slate-200">Resultados Reais</p>
-                      <p className="text-slate-500 text-xs">Transformações confirmadas</p>
-                   </div>
-                </div>
-              </div>
-
-              <div className="relative">
-                <div className="flex gap-6 overflow-x-auto pb-8 scrollbar-hide snap-x snap-mandatory px-4 -mx-4">
-                  {portfolioItems.map((item) => (
-                    <div 
-                      key={item.id} 
-                      className="flex-shrink-0 w-[280px] md:w-[350px] snap-start group"
-                    >
-                      <div className="relative aspect-[4/5] rounded-3xl overflow-hidden mb-4 ring-1 ring-slate-800 transition-all duration-500 group-hover:ring-primary/50 group-hover:shadow-[0_0_30px_rgba(var(--primary),0.1)]">
-                        <img 
-                          src={item.completionPhotos[0]} 
-                          alt={item.serviceName}
-                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
-                        
-                        <div className="absolute bottom-4 left-4 right-4 translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
-                           <div className="flex items-center gap-2 mb-1">
-                              <Badge className="bg-primary/20 text-primary border-none hover:bg-primary/30 text-[10px] h-5">
-                                 {item.serviceName}
-                              </Badge>
-                           </div>
-                           <p className="text-slate-300 text-xs font-medium flex items-center gap-1">
-                             <UserIcon className="h-3 w-3" />
-                             Corte por {item.professionalName}
-                           </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                
-                {/* Visual hint for scrolling */}
-                <div className="absolute right-0 top-0 bottom-8 w-24 bg-gradient-to-l from-slate-950 to-transparent pointer-events-none" />
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* Featured Products Section */}
-        {(areProductsLoading || (featuredProducts && featuredProducts.length > 0)) && (
-          <section id="store" className="container py-16 md:py-24">
-            <div className="flex flex-col md:flex-row items-end justify-between gap-4 mb-12">
-              <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
-                  <ShoppingBag className="w-4 h-4" /> Nossa Loja
-                </div>
-                <h2 className="text-3xl md:text-4xl font-headline font-bold">Produtos em Destaque</h2>
-                <p className="text-muted-foreground max-w-md">
-                  {establishmentStoreSubtitle}
+                <h3 className="font-headline font-bold text-lg text-slate-800">{pro.name}</h3>
+                <span className="text-xs font-bold text-primary uppercase tracking-wide mt-1">
+                  {pro.specialty || (establishmentCategory === 'veterinary' ? 'Médico Veterinário' : 'Especialista')}
+                </span>
+                <p className="text-xs text-slate-400 mt-2 line-clamp-3">
+                  {pro.bio || 'Profissional dedicado ao acolhimento clínico e melhor tratamento dos pacientes.'}
                 </p>
-              </div>
-              <Button variant="outline" asChild className="shrink-0">
-                <Link href="/store">
-                  Ver Todos os Produtos <ArrowRight className="ml-2 w-4 h-4" />
-                </Link>
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {areProductsLoading &&
-                [...Array(4)].map((_, i) => (
-                  <div key={i} className="rounded-2xl border overflow-hidden">
-                    <Skeleton className="h-44 w-full" />
-                    <div className="p-4 space-y-2">
-                      <Skeleton className="h-5 w-3/4" />
-                      <Skeleton className="h-4 w-1/2" />
-                      <Skeleton className="h-8 w-full mt-2" />
-                    </div>
-                  </div>
-                ))
-              }
-              {!areProductsLoading && featuredProducts?.map((product) => (
-                <div key={product.id} className="group relative flex flex-col rounded-2xl border bg-card overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
-                  <div className="relative h-44 bg-muted overflow-hidden">
-                    {(product.imageURLs?.[0] || product.imageURL) ? (
-                      <img
-                        src={product.imageURLs?.[0] || product.imageURL}
-                        alt={product.name}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Package className="w-12 h-12 text-muted-foreground opacity-30" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex flex-col flex-1 p-4 space-y-3">
-                    <h3 className="font-headline font-semibold text-sm leading-tight line-clamp-2">{product.name}</h3>
-                    <div className="flex items-center justify-between gap-2 mt-auto">
-                      <span className="text-base font-bold text-primary">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price ?? 0)}
-                      </span>
-                      <Button size="sm" className="rounded-xl text-xs h-8" asChild>
-                        <Link href="/store">Comprar</Link>
-                      </Button>
-                    </div>
-                  </div>
+                <div className="mt-4 pt-4 border-t border-slate-100 w-full flex items-center justify-center gap-2 text-[10px] font-bold text-slate-400">
+                  <span>REGISTRO: {pro.licenseNumber || 'Disponível na recepção'}</span>
                 </div>
-              ))}
-            </div>
-          </section>
-        )}
+              </Card>
+            ))}
+          </div>
+        </section>
+
+        {/* Convênios Section */}
+        <section id="insurances" className="container py-20 border-t bg-slate-50/50">
+          <div className="text-center mb-12 max-w-2xl mx-auto space-y-4">
+            <h2 className="text-2xl font-headline font-extrabold text-slate-800 tracking-tight">
+              Convênios Aceitos
+            </h2>
+            <p className="text-slate-500 font-medium text-sm">
+              Facilitamos o seu acesso à saúde. Atendemos a diversos planos e convênios médicos.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-8 max-w-4xl mx-auto">
+            {healthInsurances.map((ins, idx) => (
+              <div key={idx} className="flex flex-col items-center bg-background border rounded-xl p-4 shadow-sm min-w-[140px] hover:shadow-md transition-all">
+                <span className="font-bold text-sm text-slate-700">{ins.name}</span>
+                <span className="text-[10px] text-emerald-600 font-bold mt-1">Atendimento Direto</span>
+              </div>
+            ))}
+          </div>
+        </section>
 
         {/* About Section */}
-        <section id="about" className="bg-card border-y">
-          <div className="container py-16 md:py-24 grid md:grid-cols-2 gap-12 items-center">
-            <div>
-              {isLoading ? (
-                <div className="space-y-4">
-                  <Skeleton className="h-8 w-64" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-5/6" />
+        <section id="about" className="bg-background border-t">
+          <div className="container py-20 grid md:grid-cols-2 gap-12 items-center max-w-6xl mx-auto">
+            <div className="space-y-6">
+              <Badge className="bg-emerald-50 text-emerald-600 border-none rounded-full px-3 py-1 font-semibold text-xs">
+                🏥 Conheça Nossa História
+              </Badge>
+              <h2 className="text-3xl font-headline font-extrabold text-slate-800 leading-tight">
+                {`Sobre a ${establishmentName}`}
+              </h2>
+              <p className="text-slate-600 leading-relaxed whitespace-pre-wrap text-sm">
+                {establishmentAbout}
+              </p>
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+                <div className="flex items-start gap-3">
+                  <Shield className="h-5 w-5 text-primary mt-0.5" />
+                  <div>
+                    <h4 className="font-bold text-slate-800 text-sm">Privacidade Total</h4>
+                    <p className="text-xs text-slate-500 mt-0.5">Seus prontuários são encriptados localmente de acordo com a LGPD.</p>
+                  </div>
                 </div>
-              ) : (
-                <>
-                  <h2 className="text-3xl font-headline font-bold">
-                    {`Sobre ${establishmentName}`}
-                  </h2>
-                  <p className="text-muted-foreground mt-4 leading-relaxed whitespace-pre-wrap">
-                    {establishmentAbout}
-                  </p>
-                </>
-              )}
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="h-5 w-5 text-primary mt-0.5" />
+                  <div>
+                    <h4 className="font-bold text-slate-800 text-sm">Acolhimento</h4>
+                    <p className="text-xs text-slate-500 mt-0.5">Empatia e cuidado em cada etapa do seu atendimento.</p>
+                  </div>
+                </div>
+              </div>
             </div>
             <div className="relative aspect-square w-full max-w-md mx-auto">
               {establishmentAboutImageUrl ? (
                 <img
                   src={establishmentAboutImageUrl}
                   alt="Sobre o estabelecimento"
-                  className="object-cover w-full h-full rounded-lg shadow-lg"
+                  className="object-cover w-full h-full rounded-3xl shadow-xl border"
                 />
               ) : aboutImage ? (
                 <Image
                   src={aboutImage.imageUrl}
                   alt={aboutImage.description}
                   fill
-                  className="object-cover rounded-lg shadow-lg"
+                  className="object-cover rounded-3xl shadow-xl border"
                   data-ai-hint={aboutImage.imageHint}
                 />
-              ) : null}
+              ) : (
+                <div className="w-full h-full bg-slate-100 rounded-3xl border flex items-center justify-center text-slate-300">
+                  <Heart className="w-20 h-20" />
+                </div>
+              )}
             </div>
           </div>
         </section>
       </main>
 
-      <footer id="contact" className="bg-card border-t">
-        <div className="container py-8 text-center text-sm text-muted-foreground">
-          {establishmentInstagram && (
-            <div className="flex justify-center gap-6 mb-4">
-              <a href={`https://instagram.com/${establishmentInstagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
-                <Instagram className="h-6 w-6" />
-                <span className="sr-only">Instagram</span>
-              </a>
-            </div>
-          )}
-          {isLoading ? (
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-1/2 mx-auto" />
-              <Skeleton className="h-4 w-3/4 mx-auto" />
-            </div>
-          ) : (
-            <>
-              <p>
-                &copy; {new Date().getFullYear()} {establishmentName}. Todos os direitos reservados.
-              </p>
-              <p className="mt-2">
-                {establishmentAddress}
-              </p>
-              <div className="pb-4 pt-2 flex flex-col items-center justify-center gap-1 opacity-50 hover:opacity-100 transition-all duration-300">
-                <p className="text-[10px]">Invivio Velo v1.00056</p>
-                <p className="text-[10px] font-medium leading-tight">
-                  Powered by <a href="http://www.invivio.com.br" target="_blank" rel="noopener noreferrer" className="font-bold text-primary hover:underline">Invivio Tecnologia</a>
-                </p>
+      <footer id="contact" className="bg-slate-900 text-slate-200 border-t">
+        <div className="container py-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          <div className="space-y-4">
+            <h3 className="font-bold text-lg text-white font-headline">{establishmentName}</h3>
+            <p className="text-slate-400 text-xs leading-relaxed max-w-xs">
+              Promovendo saúde, qualidade de vida e acolhimento clínico integral para você e quem você ama.
+            </p>
+            {establishmentInstagram && (
+              <div className="flex gap-4 pt-2">
+                <a href={`https://instagram.com/${establishmentInstagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-white transition-colors">
+                  <Instagram className="h-5 w-5" />
+                  <span className="sr-only">Instagram</span>
+                </a>
               </div>
-            </>
-          )}
+            )}
+          </div>
+          <div className="space-y-4">
+            <h3 className="font-bold text-sm text-white uppercase tracking-wider">Como nos encontrar</h3>
+            <div className="space-y-3 text-xs text-slate-400">
+              <p className="flex items-start gap-2">
+                <MapPin className="h-4 w-4 text-primary shrink-0" />
+                <span>{establishmentAddress}</span>
+              </p>
+              {establishmentWhatsapp && (
+                <p className="flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-primary shrink-0" />
+                  <span>WhatsApp: {establishmentWhatsapp}</span>
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="space-y-4">
+            <h3 className="font-bold text-sm text-white uppercase tracking-wider">Horário de Funcionamento</h3>
+            <div className="space-y-2 text-xs text-slate-400">
+              <p className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-primary shrink-0" />
+                <span>Segunda a Sexta: 08:00h às 18:00h</span>
+              </p>
+              <p className="flex items-center gap-2 pl-6">
+                <span>Sábado: 08:00h às 12:00h</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t border-slate-800 py-6 text-center text-xs text-slate-500">
+          <div className="container flex flex-col md:flex-row items-center justify-between gap-4 max-w-6xl mx-auto">
+            <p>&copy; {new Date().getFullYear()} {establishmentName}. Todos os direitos reservados.</p>
+            <div className="flex flex-col items-center md:items-end justify-center gap-1 opacity-60 hover:opacity-100 transition-all duration-300">
+              <p className="text-[10px]">Invivio Care v1.0.0</p>
+              <p className="text-[10px] font-medium leading-tight">
+                Powered by <a href="http://www.invivio.com.br" target="_blank" rel="noopener noreferrer" className="font-bold text-primary hover:underline">Invivio Tecnologia</a>
+              </p>
+            </div>
+          </div>
         </div>
       </footer>
     </div>
   );
 }
-

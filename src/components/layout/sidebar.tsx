@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import {
   Sidebar,
   SidebarHeader,
@@ -11,7 +12,6 @@ import {
   SidebarFooter,
   SidebarSeparator,
 } from '@/components/ui/sidebar';
-import { BarberPoleIcon } from '@/components/icons/barber-pole-icon';
 import {
   Calendar,
   Users,
@@ -40,9 +40,14 @@ import {
   Receipt,
   Activity,
   MessageCircle,
+  PawPrint,
+  Clock,
+  Stethoscope,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { isVetCategory } from '@/lib/care-terms';
+import { hasCapability, PlanLimits } from '@/lib/plan-limits';
 import { Button } from '@/components/ui/button';
 import { useUser, useUserProfile, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { logout } from '@/firebase/auth/client';
@@ -53,20 +58,20 @@ import { doc } from 'firebase/firestore';
 import type { EstablishmentSettings } from '@/app/establishment/page';
 
 const adminOperationsItems = [
-  { href: '/dashboard', label: 'Dashboard Serviços', icon: BarChart3 },
+  { href: '/dashboard', label: 'Dashboard Clínico', icon: BarChart3 },
   { href: '/schedule', label: 'Gestão de Atendimentos', icon: Calendar },
   { href: '/agenda-view', label: 'Visão Agenda', icon: Monitor },
+  { href: '/followups', label: 'Gestão de Retornos', icon: Clock },
+  { href: '/pdv', label: 'Frente de Caixa (PDV)', icon: ShoppingCart },
   { href: '/team', label: 'Equipe', icon: Users },
-  { href: '/clients', label: 'Clientes', icon: ContactRound },
+  { href: '/clients', label: 'Pacientes', icon: ContactRound },
   { href: '/admin/mensagens', label: 'Mensagens', icon: MessageCircle },
 ];
 
 const adminServicesItems = [
-  { href: '/services', label: 'Serviços', icon: BookOpen },
+  { href: '/services', label: 'Procedimentos', icon: BookOpen },
   { href: '/categories', label: 'Categorias', icon: LayoutGrid },
-  { href: '/admin/memberships', label: 'Planos de Assinatura', icon: Sparkles },
-  { href: '/admin/memberships/dashboard', label: 'Saúde do Clube', icon: Activity },
-  { href: '/admin/subscribers', label: 'Assinantes', icon: Users },
+  { href: '/products', label: 'Estoque / Petshop', icon: ShoppingBag },
 ];
 
 const adminFinanceMarketingItems = [
@@ -76,21 +81,16 @@ const adminFinanceMarketingItems = [
 ];
 
 const adminSettingsItems = [
-  { href: '/establishment', label: 'Estabelecimento', icon: Building },
-  { href: '/schedule/settings', label: 'Horário do Estabelecimento', icon: Settings },
+  { href: '/establishment', label: 'Dados da Clínica', icon: Building },
+  { href: '/schedule/settings', label: 'Horários de Atendimento', icon: Settings },
   { href: '/schedule/block', label: 'Bloquear Agenda (Geral)', icon: Lock },
 ];
 
-const storeMenuItems = [
-  { href: '/sales-dashboard', label: 'Dashboard Vendas', icon: BarChart3 },
-  { href: '/orders', label: 'Pedidos', icon: ShoppingCart },
-  { href: '/products', label: 'Produtos', icon: ShoppingBag },
-  { href: '/product-categories', label: 'Categorias (Loja)', icon: Tags },
-];
+
 
 const professionalMenuItems = [
   { href: '/schedule', label: 'Gestão de Atendimentos', icon: Calendar },
-  { href: '/services', label: 'Serviços', icon: BookOpen },
+  { href: '/services', label: 'Procedimentos', icon: BookOpen },
   { href: '/invoices', label: 'Financeiro', icon: FileText },
   { href: '/agenda-view', label: 'Visão Agenda', icon: Monitor },
 ];
@@ -98,11 +98,7 @@ const professionalMenuItems = [
 const clientMenuItems = [
   { href: '/schedule', label: 'Meus Agendamentos', icon: Calendar },
   { href: '/book-appointment', label: 'Agendar', icon: PlusCircle },
-  { href: '/services', label: 'Serviços', icon: BookOpen },
-  { href: '/club', label: 'Clube de Vantagens', icon: Sparkles },
-  { href: '/club/billing', label: 'Meus Pagamentos', icon: Receipt },
-  { href: '/store', label: 'Loja', icon: ShoppingBag },
-  { href: '/rewards', label: 'Meus Pontos', icon: Gift },
+  { href: '/services', label: 'Procedimentos', icon: BookOpen },
 ];
 
 const unauthenticatedMenuItems = [
@@ -129,34 +125,74 @@ export default function AppSidebar() {
     [firestore]
   );
   const { data: settings, isLoading: areSettingsLoading } = useDoc<EstablishmentSettings>(settingsRef);
-  const establishmentName = settings?.name || 'Barbearia Inteligente';
+  const planLimits = settings?.planLimits as PlanLimits | undefined;
+  
+  const marketingEnabled = hasCapability(planLimits, 'marketing');
+  const financialEnabled = hasCapability(planLimits, 'financial');
+  const schedulingEnabled = hasCapability(planLimits, 'scheduling');
+  const followupsEnabled = hasCapability(planLimits, 'followups');
+
+  const establishmentName = settings?.name || 'Clínica Médica';
   const establishmentLogo = settings?.logoUrl;
+  const isVet = isVetCategory(settings?.businessCategory);
 
-  const storeEnabled = settings?.planLimits?.store?.enabled ?? true;
-  const clubEnabled = settings?.planLimits?.club?.enabled ?? true;
-  const rewardsEnabled = settings?.planLimits?.rewards?.enabled ?? true;
-  const marketingEnabled = settings?.planLimits?.marketing?.enabled ?? true;
-  const financialEnabled = settings?.planLimits?.financial?.enabled ?? true;
-  const whatsappBotEnabled = settings?.planLimits?.whatsappBot?.enabled ?? false;
+  const filteredAdminOperationsItems = useMemo(() => {
+    let items = [...adminOperationsItems];
+    
+    // Filter by capabilities
+    if (!schedulingEnabled) {
+      items = items.filter(item => item.href !== '/schedule' && item.href !== '/agenda-view');
+    }
+    if (!followupsEnabled) {
+      items = items.filter(item => item.href !== '/followups');
+    }
+    const whatsappEnabled = hasCapability(planLimits, 'whatsapp');
+    if (!whatsappEnabled) {
+      items = items.filter(item => item.href !== '/admin/mensagens');
+    }
 
-  const filteredAdminServicesItems = adminServicesItems.filter(item => {
-    if (!clubEnabled && (item.href === '/admin/memberships' || item.href === '/admin/memberships/dashboard' || item.href === '/admin/subscribers')) return false;
-    return true;
-  });
+    if (isVet) {
+      const msgIndex = items.findIndex(item => item.href === '/admin/mensagens');
+      if (msgIndex !== -1) {
+        items.splice(msgIndex, 0, { href: '/pets', label: 'Pacientes (Pets)', icon: PawPrint });
+      } else {
+        items.push({ href: '/pets', label: 'Pacientes (Pets)', icon: PawPrint });
+      }
+    }
+    return items;
+  }, [isVet, schedulingEnabled, followupsEnabled]);
+
+  const filteredAdminServicesItems = adminServicesItems;
 
   const filteredAdminFinanceMarketingItems = adminFinanceMarketingItems.filter(item => {
-    if (!financialEnabled && item.href === '/financial-report') return false;
+    if (!financialEnabled && (item.href === '/financial-report' || item.href === '/invoices')) return false;
     if (!marketingEnabled && item.href === '/promotions') return false;
-    if (!whatsappBotEnabled && item.href === '/admin/mensagens') return false;
     return true;
   });
 
-  const filteredClientMenuItems = clientMenuItems.filter(item => {
-    if (!storeEnabled && item.href === '/store') return false;
-    if (!clubEnabled && (item.href === '/club' || item.href === '/club/billing')) return false;
-    if (!rewardsEnabled && item.href === '/rewards') return false;
-    return true;
-  });
+  const filteredClientMenuItems = useMemo(() => {
+    const items = [...clientMenuItems];
+    if (isVet) {
+      items.push({ href: '/pets', label: 'Meus Pets', icon: PawPrint });
+    }
+    return items;
+  }, [isVet]);
+
+  const filteredProfessionalMenuItems = useMemo(() => {
+    let items = [...professionalMenuItems];
+    
+    if (!schedulingEnabled) {
+      items = items.filter(item => item.href !== '/schedule' && item.href !== '/agenda-view');
+    }
+    if (!financialEnabled) {
+      items = items.filter(item => item.href !== '/invoices');
+    }
+
+    if (isVet) {
+      items.push({ href: '/pets', label: 'Pacientes (Pets)', icon: PawPrint });
+    }
+    return items;
+  }, [isVet, schedulingEnabled, financialEnabled]);
 
   const handleLogout = async () => {
     await logout();
@@ -167,11 +203,11 @@ export default function AppSidebar() {
     return null;
   }
 
-  let menuItems = clientMenuItems;
+  let menuItems = filteredClientMenuItems;
   if (userProfile?.role === 'admin') {
     menuItems = [];
   } else if (userProfile?.role === 'professional') {
-    menuItems = professionalMenuItems;
+    menuItems = filteredProfessionalMenuItems;
   }
 
 
@@ -184,7 +220,7 @@ export default function AppSidebar() {
               {establishmentLogo ? (
                 <img src={establishmentLogo} alt={establishmentName} className="w-10 h-10 object-contain shrink-0" />
               ) : (
-                <BarberPoleIcon className="w-8 h-8 text-primary shrink-0" />
+                <Stethoscope className="w-8 h-8 text-primary shrink-0" />
               )}
               {areSettingsLoading ? (
                 <Skeleton className="h-6 w-36" />
@@ -211,7 +247,7 @@ export default function AppSidebar() {
                     <span>Agenda e Equipe</span>
                   </div>
                   <SidebarMenu>
-                    {adminOperationsItems.map((item) => (
+                    {filteredAdminOperationsItems.map((item) => (
                       <SidebarMenuItem key={item.href}>
                         <SidebarMenuButton
                           asChild
@@ -275,31 +311,7 @@ export default function AppSidebar() {
 
                   <SidebarSeparator className="my-2 opacity-10" />
 
-                  {storeEnabled && (
-                    <>
-                      {/* Loja e Produtos */}
-                      <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2 group-data-[collapsible=icon]:hidden">
-                        <span>Loja e Produtos</span>
-                      </div>
-                      <SidebarMenu>
-                        {storeMenuItems.map((item) => (
-                          <SidebarMenuItem key={item.href}>
-                            <SidebarMenuButton
-                              asChild
-                              isActive={pathname.startsWith(item.href)}
-                              tooltip={item.label}
-                            >
-                              <Link href={item.href}>
-                                <item.icon className="h-5 w-5" />
-                                <span className="truncate">{item.label}</span>
-                              </Link>
-                            </SidebarMenuButton>
-                          </SidebarMenuItem>
-                        ))}
-                      </SidebarMenu>
-                      <SidebarSeparator className="my-2 opacity-10" />
-                    </>
-                  )}
+
 
                   {/* Configurações */}
                   <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold opacity-50 flex items-center gap-2 group-data-[collapsible=icon]:hidden">
@@ -422,7 +434,7 @@ export default function AppSidebar() {
           <div className="pb-4 pt-2 flex flex-col items-center justify-center gap-1 opacity-50 hover:opacity-100 transition-opacity">
              <span className="text-[10px] text-muted-foreground">v1.00056</span>
              <p className="text-[10px] font-medium leading-tight text-primary font-bold">
-               Invivio Velo
+               Invivio Care
              </p>
              <p className="text-[10px] font-medium leading-tight">
                Powered by <a href="http://www.invivio.com.br" target="_blank" rel="noopener noreferrer" className="font-bold text-primary hover:underline">Invivio Tecnologia</a>

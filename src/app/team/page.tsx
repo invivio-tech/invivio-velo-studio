@@ -58,6 +58,15 @@ export default function UsersPage() {
     setIsResetOpen(true);
   };
 
+  const { doc } = require('firebase/firestore');
+  const settingsRef = useMemoFirebase(
+    () => (firestore ? doc(firestore, 'establishmentSettings', 'main') : null),
+    [firestore]
+  );
+  const { data: settings } = useDoc<any>(settingsRef);
+  const planLimits = settings?.planLimits;
+  const maxProfessionals = planLimits?.team?.maxProfessionals || 1;
+
   const usersQuery = useMemoFirebase(
     () => (firestore && userProfile?.role === 'admin' ? query(collection(firestore, 'users'), where('role', 'in', ['admin', 'professional'])) : null),
     [firestore, userProfile]
@@ -140,12 +149,17 @@ export default function UsersPage() {
           </h1>
         </div>
         {userProfile?.role === 'admin' && (
-          <Button asChild>
-            <Link href="/team/new">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Novo Membro
-            </Link>
-          </Button>
+          <div className="flex flex-col items-end gap-1">
+            <Button asChild disabled={users && users.length >= maxProfessionals}>
+              <Link href={users && users.length >= maxProfessionals ? "#" : "/team/new"}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Novo Membro
+              </Link>
+            </Button>
+            {users && users.length >= maxProfessionals && (
+              <span className="text-[10px] text-amber-600 font-medium">Limite do plano atingido ({users.length}/{maxProfessionals})</span>
+            )}
+          </div>
         )}
       </div>
       <Card>

@@ -215,7 +215,7 @@ export default function ServicesPage() {
         )}
       </div>
       <p className="text-muted-foreground">
-        Explore nossa gama de serviços de barbearia profissional.
+        Explore nossa gama de serviços de clínica profissional.
       </p>
 
       {isLoading && (

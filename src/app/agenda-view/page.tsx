@@ -39,7 +39,7 @@ import {
   CheckCircle2, 
   Timer, 
   User,
-  Scissors,
+  Stethoscope,
   ChevronLeft,
   ChevronRight,
   Maximize,
@@ -65,6 +65,7 @@ import { cn } from '@/lib/utils';
 import type { EstablishmentSettings } from '@/app/establishment/page';
 import { CompleteServiceDialog } from '@/components/admin/CompleteServiceDialog';
 import { useToast } from '@/hooks/use-toast';
+import { encryptClinicalData } from '@/lib/encryption';
 
 interface Appointment {
   id: string;
@@ -138,7 +139,7 @@ export default function AgendaViewPage() {
   const handleUpdateStatus = async (
     appointment: Appointment, 
     newStatus: 'completed' | 'no-show' | 'cancelled',
-    completionData?: { notes?: string; photos?: string[] }
+    completionData?: { notes?: string; photos?: string[]; followUpNeeded?: boolean; followUpDays?: number }
   ) => {
     if (!firestore || !userProfile) return;
     setIsUpdating(appointment.id);
@@ -164,8 +165,10 @@ export default function AgendaViewPage() {
           status: newStatus,
           updatedAt: Timestamp.now(),
           updatedBy: userProfile.id,
-          completionNotes: completionData?.notes || '',
-          completionPhotos: completionData?.photos || []
+          completionNotes: encryptClinicalData(completionData?.notes) || '',
+          completionPhotos: completionData?.photos || [],
+          followUpNeeded: completionData?.followUpNeeded || false,
+          followUpDays: completionData?.followUpDays || 0
         };
 
         if (newStatus === 'completed') {
@@ -197,9 +200,21 @@ export default function AgendaViewPage() {
     setIsCompletionDialogOpen(true);
   };
 
-  const handleConfirmCompletion = async (notes: string, photos: string[]) => {
+  const handleConfirmCompletion = async (
+    notes: string, 
+    photos: string[], 
+    createProfile?: boolean, 
+    guestData?: { name: string, phone: string, email: string },
+    followUpNeeded?: boolean,
+    followUpDays?: number
+  ) => {
     if (!appointmentToComplete) return;
-    await handleUpdateStatus(appointmentToComplete, 'completed', { notes, photos });
+    await handleUpdateStatus(appointmentToComplete, 'completed', { 
+      notes, 
+      photos,
+      followUpNeeded,
+      followUpDays
+    });
     setAppointmentToComplete(null);
   };
 
@@ -213,11 +228,11 @@ export default function AgendaViewPage() {
 
   return (
     <div className={cn(
-      "flex-1 flex flex-col min-h-screen bg-slate-950 text-slate-50 transition-all duration-500",
+      "flex-1 flex flex-col min-h-screen bg-background text-foreground transition-all duration-500",
       isFullscreen && "fixed inset-0 z-[100] p-6 lg:p-12 overflow-y-auto"
     )}>
       {/* Header Panel */}
-      <header className="flex flex-col md:flex-row items-center justify-between gap-6 mb-8 border-b border-slate-800 pb-8 px-4">
+      <header className="flex flex-col md:flex-row items-center justify-between gap-6 mb-8 border-b border-border pb-8 px-4">
         <div className="flex items-center gap-4">
           <div className="bg-primary/20 p-3 rounded-2xl">
             <Calendar className="h-8 w-8 text-primary" />
@@ -229,13 +244,13 @@ export default function AgendaViewPage() {
                 variant="ghost" 
                 size="icon" 
                 onClick={handlePrevDay}
-                className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-full"
               >
                 <ChevronLeft className="h-5 w-5" />
               </Button>
               
               <div className="flex flex-col items-center min-w-[180px]">
-                <p className="text-slate-50 font-bold capitalize text-lg">
+                <p className="font-bold capitalize text-lg">
                   {format(selectedDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
                 </p>
                 {!isToday && (
@@ -247,34 +262,34 @@ export default function AgendaViewPage() {
                   </button>
                 )}
               </div>
-
+ 
               <Button 
                 variant="ghost" 
                 size="icon" 
                 onClick={handleNextDay}
-                className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-full"
               >
                 <ChevronRight className="h-5 w-5" />
               </Button>
             </div>
           </div>
         </div>
-
-        <div className="flex flex-row items-center gap-8 bg-slate-900/50 p-6 rounded-3xl border border-slate-800 shadow-2xl">
+ 
+        <div className="flex flex-row items-center gap-8 bg-card p-6 rounded-3xl border border-border shadow-2xl">
           <div className="flex flex-col items-center">
-            <span className="text-xs uppercase tracking-[0.2em] text-slate-500 font-bold mb-1">
+            <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-bold mb-1">
               {isToday ? 'Hora Atual' : 'Horário'}
             </span>
             <div className="flex items-center gap-3">
-              <Clock className={cn("h-5 w-5", isToday ? "text-primary animate-pulse" : "text-slate-600")} />
+              <Clock className={cn("h-5 w-5", isToday ? "text-primary animate-pulse" : "text-muted-foreground")} />
               <span className="text-4xl font-headline font-black tabular-nums">
                 {format(currentTime, 'HH:mm')}
               </span>
             </div>
           </div>
-          <div className="h-10 w-px bg-slate-800 hidden md:block" />
+          <div className="h-10 w-px bg-border hidden md:block" />
           <div className="flex flex-col items-center">
-            <span className="text-xs uppercase tracking-[0.2em] text-slate-500 font-bold mb-1">Pendente</span>
+            <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-bold mb-1">Pendente</span>
             <span className="text-4xl font-headline font-black text-primary">
               {appointments?.length || 0}
             </span>
@@ -314,20 +329,20 @@ export default function AgendaViewPage() {
                     "relative overflow-hidden border-0 transition-all duration-300 group",
                     isHappeningNow 
                       ? "bg-primary/10 ring-2 ring-primary shadow-[0_0_30px_rgba(var(--primary),0.2)]" 
-                      : "bg-slate-900/40 hover:bg-slate-900/60 shadow-xl",
-                    isNext && "ring-1 ring-slate-700"
+                      : "bg-card/40 hover:bg-card/60 shadow-xl border border-border",
+                    isNext && "ring-1 ring-border"
                   )}
                 >
                   <div className={cn(
                     "absolute left-0 top-0 bottom-0 w-1.5",
-                    isHappeningNow ? "bg-primary" : "bg-slate-800 group-hover:bg-slate-700"
+                    isHappeningNow ? "bg-primary" : "bg-muted group-hover:bg-border"
                   )} />
 
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <div className="bg-slate-950/80 px-3 py-1.5 rounded-full border border-slate-800 flex items-center gap-2">
-                          <Clock className={cn("h-4 w-4", isHappeningNow ? "text-primary animate-spin-slow" : "text-slate-500")} />
+                        <div className="bg-background/80 px-3 py-1.5 rounded-full border border-border flex items-center gap-2">
+                          <Clock className={cn("h-4 w-4", isHappeningNow ? "text-primary animate-spin-slow" : "text-muted-foreground")} />
                           <span className="text-lg font-bold tabular-nums">
                             {format(start, 'HH:mm')}
                           </span>
@@ -387,7 +402,7 @@ export default function AgendaViewPage() {
                           {apt.customerName}
                         </h3>
                         <div className="flex items-center gap-2 text-slate-400">
-                          <Scissors className="h-3 w-3" />
+                          <Stethoscope className="h-3 w-3" />
                           <span className="text-sm font-medium truncate">{apt.serviceName}</span>
                         </div>
                       </div>
@@ -406,7 +421,7 @@ export default function AgendaViewPage() {
                   </CardContent>
 
                   <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                    <Scissors className="h-24 w-24 rotate-12" />
+                    <Stethoscope className="h-24 w-24 rotate-12" />
                   </div>
                 </Card>
               );
@@ -434,7 +449,7 @@ export default function AgendaViewPage() {
           <p className="text-xs font-medium">
             Powered by <span className="font-bold text-primary">Invivio Tecnologia</span>
           </p>
-          <p className="text-[10px] font-bold text-primary">Invivio Velo v1.00056 • Modo Painel Ativo</p>
+          <p className="text-[10px] font-bold text-primary">Invivio Care v1.00056 • Modo Painel Ativo</p>
         </div>
       </footer>
 

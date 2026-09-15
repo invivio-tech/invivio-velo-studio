@@ -74,7 +74,7 @@ export default function LoginPage() {
         title: 'Falha no login com Google',
         description: `Erro: ${error.code || 'desconhecido'} — ${error.message || 'Tente novamente.'}`,
       });
-      console.error('Google Sign-In Error:', error);
+      console.warn('Google Sign-In Error:', JSON.stringify(error));
     } else {
        router.push('/schedule');
     }

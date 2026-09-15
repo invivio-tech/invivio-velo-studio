@@ -25,7 +25,7 @@ const prompt = ai.definePrompt({
   name: 'membershipDescriptionPrompt',
   input: { schema: MembershipDescriptionInputSchema },
   output: { schema: MembershipDescriptionOutputSchema },
-  prompt: `Você é um copywriter especialista em clubes de assinatura para barbearias e salões e um excelente direcionador de IA para imagens.
+  prompt: `Você é um copywriter especialista em clubes de assinatura para clínicas e consultórios e um excelente direcionador de IA para imagens.
   Escreva uma descrição altamente persuasiva (benefícios) para um pacote do Clube de Vantagens e um prompt de imagem em inglês.
   
   Dados do Plano:
@@ -40,7 +40,7 @@ const prompt = ai.definePrompt({
   - Destaque a previsibilidade (sempre no estilo) ou a economia.
   - Tom moderno, direto e engajador na descrição.
   - Não coloque o preço no texto da descrição.
-  - O 'imagePrompt' deve ser uma descrição altamente detalhada, em inglês, focada na estética, iluminação e composição visual de uma foto profissional/premium para gerar uma imagem representativa desse pacote de assinatura (ex: cliente elegante saindo da barbearia, texturas ricas de produtos, ambiente de luxo).
+  - O 'imagePrompt' deve ser uma descrição altamente detalhada, em inglês, focada na estética, iluminação e composição visual de uma foto profissional/premium para gerar uma imagem representativa desse pacote de assinatura (ex: cliente elegante saindo da clínica, texturas ricas de produtos, ambiente de luxo).
   
   Gere a descrição ('description') e o prompt de imagem em inglês ('imagePrompt').
   `,

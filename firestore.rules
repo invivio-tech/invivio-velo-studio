@@ -17,6 +17,18 @@ service cloud.firestore {
       match /blockedTimes/{blockedTimeId} {
         allow read, write: if isSignedIn();
       }
+      match /records/{recordId} {
+        allow read, write: if isSignedIn();
+      }
+      match /vaccines/{vaccineId} {
+        allow read, write: if isSignedIn();
+      }
+      match /prescriptions/{prescriptionId} {
+        allow read, write: if isSignedIn();
+      }
+      match /exams/{examId} {
+        allow read, write: if isSignedIn();
+      }
     }
 
     match /appointments/{appointmentId} {

@@ -301,7 +301,7 @@ export default function AdminMembershipsPage() {
                 <Sparkles className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-medium">Nenhum plano criado</h3>
                 <p className="text-muted-foreground mt-2 max-w-md mx-auto">
-                  Crie o primeiro plano de assinaturas para a sua barbearia (ex: "Cabelo e Barba Ilimitados").
+                  Crie o primeiro plano de assinaturas para a sua clínica (ex: "Cabelo e Barba Ilimitados").
                 </p>
                 <Button className="mt-4" onClick={() => openPlanForm()}>
                   <PlusCircle className="mr-2 h-4 w-4" />

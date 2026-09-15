@@ -44,7 +44,7 @@ export default function AgendarPage() {
   }, [user, firestore]);
 
   const displayName = settings?.name || 'Agendamento Online';
-  const displayContext = settings?.context || 'Sua Barbearia Premium';
+  const displayContext = settings?.context || 'Sua Clínica Premium';
 
   return (
     <div className="min-h-screen bg-[#050505] text-white flex flex-col items-center justify-start p-4 md:p-8 relative overflow-hidden">

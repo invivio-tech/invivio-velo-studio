@@ -51,7 +51,7 @@ export interface EstablishmentSettings {
   allowProfessionalToCompleteAppointment?: boolean;
   birthdayTitle?: string;
   birthdayMessage?: string;
-  businessCategory: 'barbershop' | 'beauty_salon' | 'clinic' | 'petshop' | 'other';
+  businessCategory: 'general_practice' | 'psychology' | 'psychiatry' | 'dentistry' | 'physiotherapy' | 'nutrition' | 'dermatology' | 'pediatrics' | 'orthopedics' | 'speech_therapy' | 'occupational_therapy' | 'veterinary' | 'veterinary_exotic' | 'veterinary_large' | 'veterinary_dental' | 'other_health';
   businessTone: 'formal' | 'casual' | 'luxury' | 'friendly';
   retargetingActive?: boolean;
   retargetingDays?: number;
@@ -66,6 +66,7 @@ export interface EstablishmentSettings {
   cardColor?: string;
   accentColor?: string;
   borderColor?: string;
+  onboardingCompleted?: boolean;
   planLimits?: {
     team: { maxProfessionals: number };
     store: { enabled: boolean; maxProducts: number };
@@ -101,7 +102,12 @@ const formSchema = z.object({
   allowProfessionalToCompleteAppointment: z.boolean().optional(),
   birthdayTitle: z.string().optional(),
   birthdayMessage: z.string().optional(),
-  businessCategory: z.enum(['barbershop', 'beauty_salon', 'clinic', 'petshop', 'other'], {
+  businessCategory: z.enum([
+    'general_practice', 'psychology', 'psychiatry', 'dentistry', 'physiotherapy',
+    'nutrition', 'dermatology', 'pediatrics', 'orthopedics', 'speech_therapy',
+    'occupational_therapy', 'veterinary', 'veterinary_exotic', 'veterinary_large',
+    'veterinary_dental', 'other_health'
+  ], {
     required_error: 'A categoria do negócio é obrigatória.',
   }),
   businessTone: z.enum(['formal', 'casual', 'luxury', 'friendly'], {
@@ -147,17 +153,17 @@ export default function EstablishmentPage() {
   const { data: settings, isLoading: areSettingsLoading } = useDoc<EstablishmentSettings>(settingsRef);
 
   const defaultValues: SettingsFormValues = {
-    name: 'Barbearia Inteligente',
+    name: 'Invivio Care',
     logoUrl: '',
-    about: 'Fundada em 2024, nossa barbearia nasceu com o propósito de resgatar a essência das barbearias clássicas, incorporando tecnologia para oferecer uma experiência única e conveniente. Nossos profissionais são artistas apaixonados, dedicados a entregar o melhor resultado para cada cliente. Utilizamos produtos de alta qualidade e as técnicas mais apuradas para garantir que seu cabelo e barba estejam sempre impecáveis. Venha nos visitar e descubra por que somos a escolha inteligente para o homem moderno.',
+    about: 'Nossa clínica foi fundada com o propósito de oferecer atendimento humanizado e de excelência. Contamos com uma equipe de profissionais altamente qualificados, prontos para cuidar da sua saúde com dedicação, tecnologia de ponta e um ambiente acolhedor. Venha nos visitar e descubra o que é cuidado de verdade.',
     aboutImageUrl: '',
     aboutImagePrompt: '',
-    heroTitle: 'Estilo e Precisão em Cada Corte.',
-    heroSubtitle: 'Experimente a combinação perfeita de tradição e modernidade. Na Barbearia Inteligente, cuidamos do seu visual com a maestria que você merece.',
-    servicesTitle: 'Nossos Serviços Premium',
-    servicesSubtitle: 'Do clássico ao contemporâneo, temos o serviço perfeito para você.',
-    storeSubtitle: 'Produtos profissionais usados pelos nossos barbeiros, disponíveis para você. Reserve online e retire no balcão.',
-    address: 'Rua da Barbearia, 123 - Centro, Sua Cidade',
+    heroTitle: 'Saúde e Bem-Estar em Boas Mãos.',
+    heroSubtitle: 'Atendimento humanizado, profissionais especializados e agendamento online. Cuide-se com quem realmente entende do assunto.',
+    servicesTitle: 'Nossos Procedimentos e Consultas',
+    servicesSubtitle: 'Oferecemos uma ampla gama de serviços de saúde para cuidar de você e de quem você ama.',
+    storeSubtitle: 'Produtos e suplementos recomendados pelos nossos especialistas, disponíveis para você. Reserve online e retire no balcão.',
+    address: 'Rua da Clínica, 123 - Centro, Sua Cidade',
     whatsapp: '',
     instagram: '',
     context: '',
@@ -166,16 +172,16 @@ export default function EstablishmentPage() {
     loyaltyPercentage: 10,
     pointsPenaltyForNoShow: 5,
     professionalCommissionPercentage: 25,
-    productImageDescription: 'Homem moderno, produtos de cuidado pessoal, alta resolução, estética minimalista e premium.',
+    productImageDescription: 'Ambiente clínico moderno e acolhedor, iluminação suave, produtos de saúde de alta qualidade, fotografia profissional, estética minimalista e premium.',
     allowProfessionalToCompleteAppointment: true,
     birthdayTitle: 'Feliz Aniversário! 🎂',
-    birthdayMessage: 'A equipe da Barbearia East Side te deseja um dia incrível e muito sucesso!',
-    businessCategory: 'barbershop',
+    birthdayMessage: 'Toda a equipe deseja um dia incrível cheio de saúde e alegria!',
+    businessCategory: 'general_practice',
     businessTone: 'friendly',
     retargetingActive: false,
     retargetingDays: 30,
     retargetingTitle: 'Saudades de você! 👋',
-    retargetingBody: 'Já faz [DIAS] dias desde a sua última visita. Acreditamos que já está na hora de dar aquele trato no visual! Toque aqui para agendar.',
+    retargetingBody: 'Já faz [DIAS] dias desde a sua última visita. Que tal agendar uma consulta de acompanhamento? Cuide-se! Toque aqui para agendar.',
     primaryColor: '',
     primaryForegroundColor: '',
     secondaryColor: '',
@@ -213,8 +219,8 @@ export default function EstablishmentPage() {
         storeSubtitle: settings.storeSubtitle || '',
         allowProfessionalToCompleteAppointment: settings.allowProfessionalToCompleteAppointment === undefined ? true : settings.allowProfessionalToCompleteAppointment,
         birthdayTitle: settings.birthdayTitle || 'Feliz Aniversário! 🎂',
-        birthdayMessage: settings.birthdayMessage || 'A equipe da Barbearia East Side te deseja um dia incrível e muito sucesso!',
-        businessCategory: settings.businessCategory || 'barbershop',
+        birthdayMessage: settings.birthdayMessage || 'A equipe da Clínica East Side te deseja um dia incrível e muito sucesso!',
+        businessCategory: settings.businessCategory || 'general_practice',
         businessTone: settings.businessTone || 'friendly',
         retargetingActive: settings.retargetingActive === undefined ? false : settings.retargetingActive,
         retargetingDays: settings.retargetingDays === undefined ? 30 : settings.retargetingDays,
@@ -486,11 +492,26 @@ export default function EstablishmentPage() {
                             {...field}
                             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                           >
-                            <option value="barbershop">Barbearia</option>
-                            <option value="beauty_salon">Salão de Beleza / Estética</option>
-                            <option value="clinic">Clínica / Saúde</option>
-                            <option value="petshop">Pet Shop</option>
-                            <option value="other">Outros Serviços</option>
+                            <optgroup label="Saúde Humana">
+                              <option value="general_practice">Clínica Geral / Medicina Interna</option>
+                              <option value="psychology">Psicologia</option>
+                              <option value="psychiatry">Psiquiatria</option>
+                              <option value="dentistry">Odontologia</option>
+                              <option value="physiotherapy">Fisioterapia</option>
+                              <option value="nutrition">Nutrição</option>
+                              <option value="dermatology">Dermatologia</option>
+                              <option value="pediatrics">Pediatria</option>
+                              <option value="orthopedics">Ortopedia</option>
+                              <option value="speech_therapy">Fonoaudiologia</option>
+                              <option value="occupational_therapy">Terapia Ocupacional</option>
+                              <option value="other_health">Outra Especialidade de Saúde</option>
+                            </optgroup>
+                            <optgroup label="Saúde Animal">
+                              <option value="veterinary">Veterinária (Cães e Gatos)</option>
+                              <option value="veterinary_exotic">Veterinária de Animais Exóticos</option>
+                              <option value="veterinary_large">Veterinária de Grandes Animais</option>
+                              <option value="veterinary_dental">Odontologia Veterinária</option>
+                            </optgroup>
                           </select>
                         </FormControl>
                         <FormDescription>Define o nicho para que a IA e a interface se adaptem.</FormDescription>
@@ -589,7 +610,7 @@ export default function EstablishmentPage() {
                     <FormItem>
                       <FormLabel>Comentários para a IA</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="Ex: Somos uma barbearia de luxo para o público jovem, com um ambiente descolado e música ao vivo nos finais de semana." {...field} />
+                        <Textarea placeholder="Ex: Somos uma clínica de luxo para o público jovem, com um ambiente descolado e música ao vivo nos finais de semana." {...field} />
                       </FormControl>
                       <FormDescription>
                         Forneça contexto extra para a IA, como público-alvo, diferenciais ou o tom desejado.
@@ -706,7 +727,7 @@ export default function EstablishmentPage() {
                         <FormLabel>Descrição para Imagens IA de Produtos (Prompt)</FormLabel>
                         <FormControl><Textarea placeholder="Descreva como devem ser as imagens dos produtos e ambiente" className="min-h-24" {...field} /></FormControl>
                         <FormDescription>
-                          Servirá como diretriz para IA ao gerar banners ou imagens. Ex: &quot;Fotografia realista de barbearia luxuosa iluminada...&quot;
+                          Servirá como diretriz para IA ao gerar banners ou imagens. Ex: &quot;Fotografia realista de clínica luxuosa iluminada...&quot;
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -744,7 +765,7 @@ export default function EstablishmentPage() {
                         <FormLabel>Subtítulo / Descrição da Loja</FormLabel>
                         <FormControl>
                           <Textarea 
-                            placeholder="Ex: Produtos profissionais usados pelos nossos barbeiros, disponíveis para você. Reserve online e retire no balcão." 
+                            placeholder="Ex: Produtos profissionais usados pelos nossos especialistas, disponíveis para você. Reserve online e retire no balcão." 
                             className="min-h-24" 
                             {...field} 
                           />
@@ -842,24 +863,24 @@ export default function EstablishmentPage() {
                   )}
 
                   {/* Live Preview */}
-                  <div className="border rounded-xl p-4 bg-slate-950/40 space-y-4">
+                  <div className="border rounded-xl p-4 bg-muted/40 space-y-4">
                     <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Visualização em Tempo Real (Preview)
                     </h4>
                     <div
                       className="border rounded-lg p-4 md:p-6 space-y-4 max-w-md mx-auto transition-colors duration-300"
                       style={{
-                        backgroundColor: `hsl(${form.watch('backgroundColor') || '220 15% 6%'})`,
-                        borderColor: `hsl(${form.watch('borderColor') || '210 15% 25%'})`,
-                        color: `hsl(${form.watch('foregroundColor') || '210 20% 95%'})`,
+                        backgroundColor: `hsl(${form.watch('backgroundColor') || '210 40% 98%'})`,
+                        borderColor: `hsl(${form.watch('borderColor') || '214.3 31.8% 91.4%'})`,
+                        color: `hsl(${form.watch('foregroundColor') || '222 47% 11%'})`,
                       }}
                     >
-                      <div className="flex justify-between items-center pb-2 border-b" style={{ borderColor: `hsl(${form.watch('borderColor') || '210 15% 25%'})` }}>
+                      <div className="flex justify-between items-center pb-2 border-b" style={{ borderColor: `hsl(${form.watch('borderColor') || '214.3 31.8% 91.4%'})` }}>
                         <div className="flex items-center gap-1.5">
                           {form.watch('logoUrl') ? (
                             <img src={form.watch('logoUrl')} alt="Logo" className="h-5 w-auto object-contain" />
                           ) : (
-                            <div className="h-4 w-4 rounded-full" style={{ backgroundColor: `hsl(${form.watch('primaryColor') || '217 91% 60%'})` }} />
+                            <div className="h-4 w-4 rounded-full" style={{ backgroundColor: `hsl(${form.watch('primaryColor') || '174 65% 41%'})` }} />
                           )}
                           <span className="font-bold text-xs">{form.watch('name') || 'Estabelecimento'}</span>
                         </div>
@@ -869,21 +890,21 @@ export default function EstablishmentPage() {
                       <div
                         className="rounded-lg p-3 space-y-2 border"
                         style={{
-                          backgroundColor: `hsl(${form.watch('cardColor') || '222 47% 11%'})`,
-                          borderColor: `hsl(${form.watch('borderColor') || '210 15% 25%'})`,
+                          backgroundColor: `hsl(${form.watch('cardColor') || '0 0% 100%'})`,
+                          borderColor: `hsl(${form.watch('borderColor') || '214.3 31.8% 91.4%'})`,
                         }}
                       >
                         <div className="flex justify-between items-start">
-                          <span className="text-xs font-semibold">Corte Masculino Premium</span>
-                          <span className="text-xs font-bold" style={{ color: `hsl(${form.watch('primaryColor') || '217 91% 60%'})` }}>
-                            R$ 55,00
+                          <span className="text-xs font-semibold">Consulta Clínica Geral</span>
+                          <span className="text-xs font-bold" style={{ color: `hsl(${form.watch('primaryColor') || '174 65% 41%'})` }}>
+                            R$ 150,00
                           </span>
                         </div>
-                        <p className="text-[10px] opacity-70">Um corte sofisticado que alinha tradição, estilo e acabamento perfeito.</p>
+                        <p className="text-[10px] opacity-70">Atendimento completo e humanizado focado na sua saúde.</p>
                         <div
                           className="w-full text-center py-1.5 rounded text-[10px] font-bold mt-2 select-none"
                           style={{
-                            backgroundColor: `hsl(${form.watch('primaryColor') || '217 91% 60%'})`,
+                            backgroundColor: `hsl(${form.watch('primaryColor') || '174 65% 41%'})`,
                             color: `hsl(${form.watch('primaryForegroundColor') || '0 0% 100%'})`,
                           }}
                         >
@@ -892,9 +913,9 @@ export default function EstablishmentPage() {
                         <div
                           className="w-full text-center py-1.5 rounded text-[10px] font-bold border select-none"
                           style={{
-                            borderColor: `hsl(${form.watch('borderColor') || '210 15% 25%'})`,
-                            backgroundColor: `hsl(${form.watch('secondaryColor') || '210 10% 65%'})`,
-                            color: `hsl(${form.watch('secondaryForegroundColor') || '220 15% 6%'})`,
+                            borderColor: `hsl(${form.watch('borderColor') || '214.3 31.8% 91.4%'})`,
+                            backgroundColor: `hsl(${form.watch('secondaryColor') || '210 40% 96.1%'})`,
+                            color: `hsl(${form.watch('secondaryForegroundColor') || '222 47% 11%'})`,
                           }}
                         >
                           Ver Detalhes do Profissional
@@ -905,12 +926,12 @@ export default function EstablishmentPage() {
                         <span
                           className="text-[10px] px-2 py-0.5 rounded-full border"
                           style={{
-                            backgroundColor: `hsl(${form.watch('accentColor') || '215 60% 20%'})`,
-                            borderColor: `hsl(${form.watch('borderColor') || '210 15% 25%'})`,
-                            color: `hsl(${form.watch('foregroundColor') || '210 20% 95%'})`,
+                            backgroundColor: `hsl(${form.watch('accentColor') || '210 40% 96.1%'})`,
+                            borderColor: `hsl(${form.watch('borderColor') || '214.3 31.8% 91.4%'})`,
+                            color: `hsl(${form.watch('foregroundColor') || '222 47% 11%'})`,
                           }}
                         >
-                          Fidelidade: +5 pts
+                          Retorno: Recomendado
                         </span>
                       </div>
                     </div>
@@ -1003,7 +1024,7 @@ export default function EstablishmentPage() {
                         <div className="space-y-0.5">
                           <FormLabel className="text-base">Profissional Conclui Serviço</FormLabel>
                           <FormDescription>
-                            Permite que os próprios barbeiros finalizem seus serviços e contabilizem o comissionamento. Se desativado, apenas o Administrador poderá dar baixa.
+                            Permite que os próprios profissionais finalizem seus serviços e contabilizem o comissionamento. Se desativado, apenas o Administrador poderá dar baixa.
                           </FormDescription>
                         </div>
                         <FormControl>
@@ -1145,7 +1166,7 @@ export default function EstablishmentPage() {
                           <Textarea placeholder="A equipe te deseja um dia incrível..." className="min-h-20" {...field} />
                         </FormControl>
                         <FormDescription>
-                          Mencione o nome da barbearia para reforçar o carinho com o cliente.
+                          Mencione o nome da clínica para reforçar o carinho com o cliente.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

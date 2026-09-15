@@ -35,7 +35,7 @@ export default function LPLandingPage() {
             <div className="w-8 h-8 rounded bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <span className="font-extrabold text-xl tracking-tight">VELO</span>
+            <span className="font-extrabold text-xl tracking-tight">INVIVIO</span>
           </div>
           <div className="flex items-center gap-6">
             <Link href="/spec" className="text-sm font-medium text-emerald-400 hover:text-emerald-300 transition-colors hidden sm:block">
@@ -55,13 +55,13 @@ export default function LPLandingPage() {
         <div className="container mx-auto px-6 relative z-10 text-center max-w-4xl">
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
             <span className="inline-block py-1 px-3 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-medium mb-6">
-              Feito para Donos de Barbearia
+              Feito para Donos de Clínica
             </span>
             <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-tight">
               A evolução da gestão do seu <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500">Negócio</span>
             </h1>
             <p className="text-lg md:text-2xl text-zinc-400 mb-10 max-w-3xl mx-auto leading-relaxed">
-              O Invivio Velo foi criado para resolver as dores reais do seu dia a dia. Chega de planilhas confusas, furos na agenda e cálculos intermináveis de comissão. Automatize sua operação e foque no que importa: crescer.
+              O Invivio Care foi criado para resolver as dores reais do seu dia a dia. Chega de planilhas confusas, furos na agenda e cálculos intermináveis de comissão. Automatize sua operação e foque no que importa: crescer.
             </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -93,12 +93,12 @@ export default function LPLandingPage() {
                 </div>
                 <h3 className="text-3xl font-bold text-zinc-100">Agenda que trabalha por você</h3>
                 <p className="text-lg text-zinc-400 leading-relaxed">
-                  Esqueça as mensagens perdidas no WhatsApp. O Velo oferece um portal de autoatendimento onde seu cliente agenda sozinho, 24 horas por dia. Nossa agenda bloqueia conflitos de horário automaticamente e avisa a equipe em tempo real.
+                  Esqueça as mensagens perdidas no WhatsApp. O Invivio Care oferece um portal de autoatendimento onde seu cliente agenda sozinho, 24 horas por dia. Nossa agenda bloqueia conflitos de horário automaticamente e avisa a equipe em tempo real.
                 </p>
                 <ul className="space-y-3 pt-4">
-                  <li className="flex items-start gap-3"><CheckCircle2 className="w-5 h-5 text-blue-500 shrink-0" /><span className="text-zinc-300">Painel de TV para a barbearia acompanhar os status do dia.</span></li>
+                  <li className="flex items-start gap-3"><CheckCircle2 className="w-5 h-5 text-blue-500 shrink-0" /><span className="text-zinc-300">Painel de TV para a clínica acompanhar os status do dia.</span></li>
                   <li className="flex items-start gap-3"><CheckCircle2 className="w-5 h-5 text-blue-500 shrink-0" /><span className="text-zinc-300">Os clientes que possuem assinatura não precisam pagar na hora de agendar.</span></li>
-                  <li className="flex items-start gap-3"><CheckCircle2 className="w-5 h-5 text-blue-500 shrink-0" /><span className="text-zinc-300">Cada barbeiro só enxerga a própria agenda (se você desejar).</span></li>
+                  <li className="flex items-start gap-3"><CheckCircle2 className="w-5 h-5 text-blue-500 shrink-0" /><span className="text-zinc-300">Cada profissional só enxerga a própria agenda (se você desejar).</span></li>
                 </ul>
               </div>
               <div className="w-full md:w-1/2 bg-zinc-900/50 rounded-3xl p-8 border border-white/5 shadow-2xl">
@@ -116,10 +116,10 @@ export default function LPLandingPage() {
                 </div>
                 <h3 className="text-3xl font-bold text-zinc-100">Fim da matemática de fim de mês</h3>
                 <p className="text-lg text-zinc-400 leading-relaxed">
-                  Chega de fechar o caixa na caneta ou correr o risco de pagar errado. No Velo, assim que um corte é finalizado, a comissão do barbeiro é congelada e guardada no extrato virtual dele, de forma totalmente segura.
+                  Chega de fechar o caixa na caneta ou correr o risco de pagar errado. No Invivio Care, assim que um atendimento é finalizado, a comissão do profissional é congelada e guardada no extrato virtual dele, de forma totalmente segura.
                 </p>
                 <ul className="space-y-3 pt-4">
-                  <li className="flex items-start gap-3"><CheckCircle2 className="w-5 h-5 text-amber-500 shrink-0" /><span className="text-zinc-300">Rateio automático e conta virtual individual para cada barbeiro.</span></li>
+                  <li className="flex items-start gap-3"><CheckCircle2 className="w-5 h-5 text-amber-500 shrink-0" /><span className="text-zinc-300">Rateio automático e conta virtual individual para cada profissional.</span></li>
                   <li className="flex items-start gap-3"><CheckCircle2 className="w-5 h-5 text-amber-500 shrink-0" /><span className="text-zinc-300">Relatório financeiro claro: Saiba seu lucro líquido, tirando os custos.</span></li>
                   <li className="flex items-start gap-3"><CheckCircle2 className="w-5 h-5 text-amber-500 shrink-0" /><span className="text-zinc-300">Você pode ajustar a porcentagem de comissão de cada pessoa da equipe.</span></li>
                 </ul>
@@ -162,10 +162,10 @@ export default function LPLandingPage() {
                 </div>
                 <h3 className="text-3xl font-bold text-zinc-100">Fidelize e pare de perder clientes (Cashback)</h3>
                 <p className="text-lg text-zinc-400 leading-relaxed">
-                  Sabe aquele cliente que marca horário e não aparece, deixando sua cadeira vazia? O Velo possui um programa de fidelidade onde clientes ganham pontos por comparecer e perdem pontos se derem "furo".
+                  Sabe aquele cliente que marca horário e não aparece, deixando sua sala vazia? O Invivio Care possui um programa de fidelidade onde clientes ganham pontos por comparecer e perdem pontos se derem "furo".
                 </p>
                 <ul className="space-y-3 pt-4">
-                  <li className="flex items-start gap-3"><CheckCircle2 className="w-5 h-5 text-pink-500 shrink-0" /><span className="text-zinc-300">Pontos injetados na conta do cliente automaticamente a cada corte pago.</span></li>
+                  <li className="flex items-start gap-3"><CheckCircle2 className="w-5 h-5 text-pink-500 shrink-0" /><span className="text-zinc-300">Pontos injetados na conta do cliente automaticamente a cada atendimento pago.</span></li>
                   <li className="flex items-start gap-3"><CheckCircle2 className="w-5 h-5 text-pink-500 shrink-0" /><span className="text-zinc-300">Penalidade automática por faltas (No-Show), educando seu público.</span></li>
                   <li className="flex items-start gap-3"><CheckCircle2 className="w-5 h-5 text-pink-500 shrink-0" /><span className="text-zinc-300">Estratégias de Marketing para enviar ofertas exclusivas para sua base.</span></li>
                 </ul>

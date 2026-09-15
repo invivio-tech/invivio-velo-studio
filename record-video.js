@@ -26,7 +26,7 @@ const fs = require('fs');
     await page.goto('http://localhost:9002/login');
     await page.waitForSelector('input[name="email"]');
     
-    await page.type('input[name="email"]', 'alberto@barbearia.com', { delay: 10 });
+    await page.type('input[name="email"]', 'alberto@clinica.com', { delay: 10 });
     await page.type('input[name="password"]', '123456', { delay: 10 });
     
     const submitBtn = await page.$('button[type="submit"]');

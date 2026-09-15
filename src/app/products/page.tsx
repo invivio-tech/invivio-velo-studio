@@ -1,371 +1,288 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { collection, deleteDoc, doc } from 'firebase/firestore';
+import { useState, useMemo } from 'react';
 import { useFirestore, useCollection, useMemoFirebase, useUserProfile } from '@/firebase';
-import { useEffect } from 'react';
-
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-
-import { 
-  PlusCircle, 
-  Pencil, 
-  Trash2, 
-  ShoppingBag, 
-  Image as ImageIcon,
-  Tag,
-  ChevronRight
-} from 'lucide-react';
+import { collection, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from "@/components/ui/button";
 import { useToast } from '@/hooks/use-toast';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
-import type { Product, ProductCategory } from '@/types/store';
+import { PlusCircle, Pencil, Trash2, Package, Search } from "lucide-react";
+import { Skeleton } from '@/components/ui/skeleton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+export interface Product {
+  id: string;
+  name: string;
+  price: number;
+  stock: number;
+  category: string;
+  description: string;
+}
 
 export default function ProductsPage() {
-  const router = useRouter();
   const firestore = useFirestore();
   const { userProfile, isLoading: isProfileLoading } = useUserProfile();
   const { toast } = useToast();
 
-  const productsCollection = useMemoFirebase(
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Dialog state
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  
+  // Form state
+  const [name, setName] = useState('');
+  const [price, setPrice] = useState('');
+  const [stock, setStock] = useState('');
+  const [category, setCategory] = useState('Produto');
+  const [description, setDescription] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const productsRef = useMemoFirebase(
     () => (firestore ? collection(firestore, 'products') : null),
     [firestore]
   );
   
-  const categoriesCollection = useMemoFirebase(
-    () => (firestore ? collection(firestore, 'productCategories') : null),
-    [firestore]
-  );
-  
-  const { data: products, isLoading: areProductsLoading, error } = useCollection<Product>(productsCollection);
-  const { data: categories } = useCollection<ProductCategory>(categoriesCollection);
+  const { data: products, isLoading } = useCollection<Product>(productsRef);
 
-  const [isAlertOpen, setIsAlertOpen] = useState(false);
-  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
-  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
-  const [hasInitializedExpanded, setHasInitializedExpanded] = useState(false);
+  const filteredProducts = useMemo(() => {
+    if (!products) return [];
+    return products.filter(p => 
+      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.category.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [products, searchTerm]);
 
-  const getCategoryName = (categoryId: string) => {
-    if (!categories) return 'Carregando...';
-    const cat = categories.find((c) => c.id === categoryId);
-    return cat ? cat.name : 'Categoria Removida';
+  const handleOpenNew = () => {
+    setEditingId(null);
+    setName('');
+    setPrice('');
+    setStock('0');
+    setCategory('Produto');
+    setDescription('');
+    setIsDialogOpen(true);
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(price);
+  const handleOpenEdit = (p: Product) => {
+    setEditingId(p.id);
+    setName(p.name);
+    setPrice(p.price.toString());
+    setStock(p.stock.toString());
+    setCategory(p.category);
+    setDescription(p.description || '');
+    setIsDialogOpen(true);
   };
 
-  const handleDeleteProduct = () => {
-    if (!productToDelete || !firestore) return;
-
-    const productRef = doc(firestore, 'products', productToDelete.id);
-    const productName = productToDelete.name;
-
-    deleteDoc(productRef)
-      .then(() => {
-        toast({
-          title: 'Produto excluído!',
-          description: `O produto "${productName}" foi removido do catálogo.`,
-        });
-      })
-      .catch((serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: productRef.path,
-          operation: 'delete',
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        toast({
-          variant: 'destructive',
-          title: 'Erro ao Excluir',
-          description: 'Não foi possível excluir o produto. Verifique suas permissões.',
-        });
+  const handleDelete = async (id: string, productName: string) => {
+    if (!firestore) return;
+    if (!window.confirm(`Tem certeza que deseja excluir o produto "${productName}"?`)) return;
+    
+    try {
+      await deleteDoc(doc(firestore, 'products', id));
+      toast({
+        title: 'Produto removido',
+        description: 'O produto foi excluído do sistema.',
       });
-
-    setIsAlertOpen(false);
-    setProductToDelete(null);
-  };
-
-  const openDeleteAlert = (product: Product) => {
-    setProductToDelete(product);
-    setIsAlertOpen(true);
-  };
-
-  const isAdmin = userProfile?.role === 'admin';
-  const isLoading = isProfileLoading || areProductsLoading;
-
-  // Group products by category
-  const groupedProducts = (products || []).reduce((acc, product) => {
-    const categoryId = product.categoryId || 'uncategorized';
-    if (!acc[categoryId]) acc[categoryId] = [];
-    acc[categoryId].push(product);
-    return acc;
-  }, {} as Record<string, Product[]>);
-
-  // Sort categories by name
-  const sortedCategoryIds = Object.keys(groupedProducts).sort((a, b) => {
-    if (a === 'uncategorized') return 1;
-    if (b === 'uncategorized') return -1;
-    const nameA = getCategoryName(a);
-    const nameB = getCategoryName(b);
-    return nameA.localeCompare(nameB);
-  });
-
-  // Auto-expand on first load
-  useEffect(() => {
-    if (products && products.length > 0 && !hasInitializedExpanded) {
-      setExpandedCategories(sortedCategoryIds);
-      setHasInitializedExpanded(true);
+    } catch (e) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro',
+        description: 'Não foi possível excluir o produto.',
+      });
     }
-  }, [products, sortedCategoryIds, hasInitializedExpanded]);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!firestore) return;
+    setIsSubmitting(true);
+    
+    try {
+      const data = {
+        name,
+        price: parseFloat(price),
+        stock: parseInt(stock, 10),
+        category,
+        description
+      };
+
+      if (editingId) {
+        await updateDoc(doc(firestore, 'products', editingId), data);
+        toast({ title: 'Produto atualizado' });
+      } else {
+        await addDoc(collection(firestore, 'products'), data);
+        toast({ title: 'Produto criado' });
+      }
+      setIsDialogOpen(false);
+    } catch (e) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao salvar',
+        description: 'Tente novamente.',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (isProfileLoading || isLoading) {
+    return (
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        <Skeleton className="h-10 w-48" />
+        <Skeleton className="h-[400px] w-full" />
+      </div>
+    );
+  }
+
+  // Only Admin or Reception should fully manage products, but let's say all users can view it.
+  const isAdmin = userProfile?.role === 'admin';
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <ShoppingBag className="h-8 w-8 text-secondary" />
-          <h1 className="text-3xl font-headline font-bold tracking-tight">
-            Catálogo de Produtos
-          </h1>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight font-headline">Produtos / Estoque</h2>
+          <p className="text-muted-foreground mt-1">
+            Gerencie os produtos vendidos na clínica e controle o estoque.
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          {products && products.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                if (expandedCategories.length === sortedCategoryIds.length) {
-                  setExpandedCategories([]);
-                } else {
-                  setExpandedCategories(sortedCategoryIds);
-                }
-              }}
-            >
-              {expandedCategories.length === sortedCategoryIds.length ? 'Recolher Todos' : 'Expandir Todos'}
-            </Button>
-          )}
-          {isAdmin && (
-            <Button asChild>
-               <Link href="/products/new">
-                 <PlusCircle className="mr-2 h-4 w-4" />
-                 Novo Produto
-               </Link>
-            </Button>
-          )}
-        </div>
+        {isAdmin && (
+          <Button onClick={handleOpenNew}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Adicionar Produto
+          </Button>
+        )}
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="font-headline">Seu Estoque e Prateleira</CardTitle>
+          <CardTitle>Catálogo de Produtos</CardTitle>
           <CardDescription>
-            Gerencie os produtos físicos que os clientes podem comprar na loja.
+            Itens disponíveis para venda na frente de caixa.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading && (
-            <Table>
-              <TableHeader>
+          <div className="flex items-center mb-4 relative max-w-sm">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar produtos..."
+              className="pl-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Produto</TableHead>
+                <TableHead>Categoria</TableHead>
+                <TableHead>Preço</TableHead>
+                <TableHead>Estoque</TableHead>
+                {isAdmin && <TableHead className="text-right">Ações</TableHead>}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredProducts.length === 0 ? (
                 <TableRow>
-                  <TableHead className="w-[80px]">Foto</TableHead>
-                  <TableHead>Nome e Categoria</TableHead>
-                  <TableHead>Preço</TableHead>
-                  <TableHead>Estoque</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+                  <TableCell colSpan={isAdmin ? 5 : 4} className="h-24 text-center">
+                    Nenhum produto encontrado.
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {[...Array(4)].map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell><Skeleton className="h-10 w-10 rounded-md" /></TableCell>
+              ) : (
+                filteredProducts.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <Package className="h-4 w-4 text-muted-foreground" />
+                        {p.name}
+                      </div>
+                    </TableCell>
+                    <TableCell>{p.category}</TableCell>
                     <TableCell>
-                       <Skeleton className="h-5 w-40 mb-2" />
-                       <Skeleton className="h-4 w-24" />
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p.price)}
                     </TableCell>
-                    <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-10" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
-                    <TableCell className="text-right space-x-2">
-                       <Skeleton className="h-8 w-8 inline-block" />
-                       <Skeleton className="h-8 w-8 inline-block" />
+                    <TableCell>
+                      <span className={p.stock <= 5 ? "text-destructive font-semibold" : ""}>
+                        {p.stock} un
+                      </span>
                     </TableCell>
+                    {isAdmin && (
+                      <TableCell className="text-right">
+                        <Button size="icon" variant="ghost" onClick={() => handleOpenEdit(p)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={() => handleDelete(p.id, p.name)} className="text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    )}
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-
-          {!isLoading && error && (
-            <p className="text-destructive text-center py-6">
-              Ocorreu um erro ao carregar o catálogo de produtos.
-            </p>
-          )}
-
-          {!isLoading && !error && products && products.length > 0 ? (
-            <Accordion 
-              type="multiple" 
-              value={expandedCategories} 
-              onValueChange={setExpandedCategories}
-              className="w-full space-y-4"
-            >
-              {sortedCategoryIds.map((catId) => (
-                <AccordionItem key={catId} value={catId} className="border rounded-xl px-4 bg-muted/20">
-                  <AccordionTrigger className="hover:no-underline py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-lg bg-secondary/10 flex items-center justify-center">
-                        <Tag className="h-4 w-4 text-secondary" />
-                      </div>
-                      <div className="flex flex-col items-start text-left">
-                        <span className="font-headline font-bold text-lg">
-                          {catId === 'uncategorized' ? 'Sem Categoria' : getCategoryName(catId)}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {groupedProducts[catId].length} {groupedProducts[catId].length === 1 ? 'produto' : 'produtos'}
-                        </span>
-                      </div>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="pt-2 pb-6">
-                    <div className="rounded-xl border bg-card overflow-hidden">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-muted/50 hover:bg-muted/50">
-                            <TableHead className="w-[80px]">Foto</TableHead>
-                            <TableHead>Produto</TableHead>
-                            <TableHead>Preço</TableHead>
-                            <TableHead>Estoque</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="text-right">Ações</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {groupedProducts[catId].map((product) => (
-                            <TableRow key={product.id} className="hover:bg-muted/30 transition-colors">
-                              <TableCell>
-                                {(product.imageURLs?.[0] || product.imageURL) ? (
-                                  <img 
-                                    src={product.imageURLs?.[0] || product.imageURL} 
-                                    alt={product.name} 
-                                    className="w-10 h-10 object-cover rounded-md border shadow-sm" 
-                                  />
-                                ) : (
-                                  <div className="w-10 h-10 bg-muted rounded-md border flex items-center justify-center">
-                                    <ImageIcon className="w-4 h-4 text-muted-foreground opacity-50" />
-                                  </div>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                <div className="font-semibold text-sm">{product.name}</div>
-                              </TableCell>
-                              <TableCell className="font-medium text-sm">
-                                {formatPrice(product.price)}
-                              </TableCell>
-                              <TableCell className="text-sm">
-                                {product.stock > 0 ? (
-                                  <span className="flex items-center gap-1.5">
-                                    <span className={`h-1.5 w-1.5 rounded-full ${product.stock < 5 ? 'bg-orange-500' : 'bg-green-500'}`} />
-                                    {product.stock} un.
-                                  </span>
-                                ) : (
-                                  <span className="text-destructive font-bold flex items-center gap-1.5">
-                                    <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
-                                    Esgotado
-                                  </span>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                {product.active ? (
-                                  <Badge variant="outline" className="bg-green-500/5 text-green-600 border-green-500/20 text-[10px] uppercase font-bold tracking-wider">Na Vitrine</Badge>
-                                ) : (
-                                  <Badge variant="outline" className="bg-muted/50 text-muted-foreground border-muted text-[10px] uppercase font-bold tracking-wider">Oculto</Badge>
-                                )}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex justify-end gap-1">
-                                  <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-secondary/10 hover:text-secondary" onClick={() => router.push(`/products/${product.id}/edit`)}>
-                                    <Pencil className="h-4 w-4" />
-                                  </Button>
-                                  <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => openDeleteAlert(product)}>
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          ) : (
-            !isLoading && !error && (
-              <div className="text-center py-16 border-2 border-dashed rounded-2xl bg-muted/30">
-                <ShoppingBag className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
-                <h3 className="text-xl font-headline font-semibold text-muted-foreground">O catálogo está vazio</h3>
-                <p className="text-muted-foreground text-sm mt-2 mb-6 max-w-sm mx-auto">
-                  Adicione seus primeiros produtos para que eles apareçam organizados por categoria aqui.
-                </p>
-                {isAdmin && (
-                  <Button asChild variant="secondary">
-                    <Link href="/products/new">
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Novo Produto
-                    </Link>
-                  </Button>
-                )}
-              </div>
-            )
-          )}
+                ))
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 
-      <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir produto?</AlertDialogTitle>
-            <AlertDialogDescription>
-              A exclusão do produto "{productToDelete?.name}" é definitiva. 
-              Ao confirmar, ele desaparecerá totalmente do catálogo e não poderá ser recuperado.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteProduct} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-               Confirmar Exclusão
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>{editingId ? 'Editar Produto' : 'Novo Produto'}</DialogTitle>
+            <DialogDescription>
+              Preencha as informações do produto para venda.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSave} className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nome do Produto</Label>
+              <Input id="name" required value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Ração Premium 1kg" />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="price">Preço (R$)</Label>
+                <Input id="price" type="number" step="0.01" required value={price} onChange={e => setPrice(e.target.value)} placeholder="0.00" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="stock">Estoque Atual</Label>
+                <Input id="stock" type="number" step="1" required value={stock} onChange={e => setStock(e.target.value)} placeholder="0" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="category">Categoria</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Produto">Produto Geral</SelectItem>
+                  <SelectItem value="Medicamento">Medicamento</SelectItem>
+                  <SelectItem value="Alimentação">Alimentação</SelectItem>
+                  <SelectItem value="Acessório">Acessório</SelectItem>
+                  <SelectItem value="Higiene">Higiene</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="desc">Descrição (Opcional)</Label>
+              <Input id="desc" value={description} onChange={e => setDescription(e.target.value)} placeholder="Detalhes do produto..." />
+            </div>
+
+            <DialogFooter className="mt-6">
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Salvando...' : 'Salvar'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -13,6 +13,9 @@ import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { hasCapability } from '@/lib/plan-limits';
+import { useDoc } from '@/firebase';
+import { doc } from 'firebase/firestore';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -119,6 +122,13 @@ export default function PromotionsPage() {
       limit(5)
     ) : null
   , [firestore]);
+
+  const settingsRef = useMemoFirebase(
+    () => (firestore ? doc(firestore, 'establishmentSettings', 'main') : null),
+    [firestore]
+  );
+  const { data: settings, isLoading: isSettingsLoading } = useDoc<any>(settingsRef);
+  const marketingEnabled = hasCapability(settings?.planLimits, 'marketing');
 
   const { data: campaignHistory, isLoading: isCampaignsHistoryLoading } = useCollection<CampaignLog>(campaignsQuery);
   const { data: pushHistory, isLoading: isPushHistoryLoading } = useCollection<PushLog>(pushLogsQuery);
@@ -260,6 +270,22 @@ export default function PromotionsPage() {
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
       {/* Header */}
+      {!isSettingsLoading && !marketingEnabled ? (
+        <div className="flex flex-col items-center justify-center h-[60vh] text-center max-w-md mx-auto space-y-6">
+          <div className="p-4 bg-primary/10 rounded-full text-primary">
+            <Sparkles className="h-12 w-12" />
+          </div>
+          <h2 className="text-2xl font-bold font-headline">Módulo de Marketing</h2>
+          <p className="text-muted-foreground">
+            Sua clínica não possui o módulo de Inteligência Artificial para Marketing ativo no plano atual.
+            Faça um upgrade para ter acesso a campanhas automáticas, envio de Push Notifications e insights estratégicos para suas vendas.
+          </p>
+          <Button onClick={() => window.location.href = '/establishment'}>
+            Fazer Upgrade do Plano
+          </Button>
+        </div>
+      ) : (
+      <>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-xl bg-secondary/10">
@@ -712,6 +738,8 @@ export default function PromotionsPage() {
           </Card>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

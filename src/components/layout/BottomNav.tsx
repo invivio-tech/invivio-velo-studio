@@ -38,8 +38,6 @@ const professionalNavItems = [
 const clientNavItems = [
   { href: '/schedule', label: 'Agenda', icon: Calendar },
   { href: '/book-appointment', label: 'Agendar', icon: PlusCircle },
-  { href: '/store', label: 'Loja', icon: ShoppingBag },
-  { href: '/club', label: 'Clube', icon: Sparkles },
   { href: '#menu', label: 'Menu', icon: Menu, isTrigger: true },
 ];
 
@@ -71,15 +69,8 @@ export default function BottomNav() {
   } else if (userProfile.role === 'professional') {
     navItems = professionalNavItems;
   } else {
-    // Client - Apply filters based on settings
-    const storeEnabled = settings?.planLimits?.store?.enabled ?? true;
-    const clubEnabled = settings?.planLimits?.club?.enabled ?? true;
-    
-    navItems = clientNavItems.filter(item => {
-      if (!storeEnabled && item.href === '/store') return false;
-      if (!clubEnabled && item.href === '/club') return false;
-      return true;
-    });
+    // Client
+    navItems = clientNavItems;
   }
 
   return (

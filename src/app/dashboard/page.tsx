@@ -18,12 +18,10 @@ import {
   PieChart, 
   Pie, 
   Cell,
-  LineChart,
-  Line,
   Legend
 } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
-import { DollarSign, Users, CalendarCheck, TrendingUp, Scissors, UserCheck, Plus, Calendar, FileText, LayoutDashboard, ChevronDown, ShoppingBag } from 'lucide-react';
+import { DollarSign, Users, CalendarCheck, Stethoscope, UserCheck, Calendar, ChevronDown, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import {
@@ -45,13 +43,6 @@ interface Appointment {
   status: 'completed' | 'cancelled' | 'no-show' | 'scheduled';
   professionalName: string;
   professionalId: string;
-}
-
-interface Order {
-  id: string;
-  totalValue: number;
-  status: 'pending' | 'paid' | 'completed' | 'cancelled';
-  createdAt: string;
 }
 
 const COLORS = ['#0f172a', '#334155', '#64748b', '#94a3b8', '#cbd5e1', '#e2e8f0'];
@@ -105,17 +96,6 @@ export default function DashboardPage() {
 
   const { data: recentAppointments, isLoading: isHistoryLoading } = useCollection<Appointment>(historyQuery);
 
-  const ordersQuery = useMemoFirebase(() => 
-    firestore ? query(
-      collection(firestore, 'orders'),
-      where('createdAt', '>=', start.toISOString()),
-      where('createdAt', '<=', end.toISOString()),
-      orderBy('createdAt', 'desc')
-    ) : null
-  , [firestore, start, end]);
-
-  const { data: recentOrders, isLoading: isOrdersLoading } = useCollection<Order>(ordersQuery);
-
   const servicesQuery = useMemoFirebase(() => 
     firestore ? collection(firestore, 'services') : null
   , [firestore]);
@@ -126,18 +106,14 @@ export default function DashboardPage() {
   , [firestore]);
   const { data: categories } = useCollection<CategoryWithId>(categoriesQuery);
   
-  const settingsRef = useMemoFirebase(() => firestore ? doc(firestore, 'establishmentSettings', 'main') : null, [firestore]);
+  const settingsRef = useMemoFirebase(() => firestore ? doc(firestore, 'establishmentSettings', 'main') : null, [firestore, user]);
   const { data: settings } = useDoc<EstablishmentSettings>(settingsRef);
 
   const stats = useMemo(() => {
     if (!recentAppointments) return null;
 
     const completed = recentAppointments.filter(a => a.status === 'completed');
-    const completedOrders = recentOrders?.filter(o => o.status === 'completed' || o.status === 'paid') || [];
-    
-    const serviceRevenue = completed.reduce((sum, a) => sum + (a.servicePrice || 0), 0);
-    const productRevenue = completedOrders.reduce((sum, o) => sum + (o.totalValue || 0), 0);
-    const totalRevenue = serviceRevenue + productRevenue;
+    const totalRevenue = completed.reduce((sum, a) => sum + (a.servicePrice || 0), 0);
     
     // Dynamic chart data based on time range
     const intervalDays = eachDayOfInterval({
@@ -147,15 +123,12 @@ export default function DashboardPage() {
 
     const revenueData = intervalDays.map(day => {
       const dayCompletedServices = completed.filter(a => isSameDay((a.startTime as any).toDate ? (a.startTime as any).toDate() : new Date(a.startTime as any), day));
-      const dayCompletedOrders = completedOrders.filter(o => isSameDay(new Date(o.createdAt), day));
-      
       const dayServiceRev = dayCompletedServices.reduce((sum, a) => sum + (a.servicePrice || 0), 0);
-      const dayProductRev = dayCompletedOrders.reduce((sum, o) => sum + (o.totalValue || 0), 0);
 
       return {
         name: format(day, intervalDays.length > 7 ? 'dd/MM' : 'EEE', { locale: ptBR }),
-        revenue: dayServiceRev + dayProductRev,
-        count: dayCompletedServices.length + dayCompletedOrders.length
+        revenue: dayServiceRev,
+        count: dayCompletedServices.length
       };
     });
 
@@ -196,8 +169,6 @@ export default function DashboardPage() {
 
     return {
       totalRevenue,
-      serviceRevenue,
-      productRevenue,
       totalCompleted: completed.length,
       avgTicket: completed.length > 0 ? totalRevenue / completed.length : 0,
       revenueData,
@@ -207,16 +178,15 @@ export default function DashboardPage() {
       cancelledCount: recentAppointments.filter(a => a.status === 'cancelled').length,
       noShowCount: recentAppointments.filter(a => a.status === 'no-show').length
     };
-  }, [recentAppointments]);
+  }, [recentAppointments, services, categories]);
 
-  if (isUserLoading || isProfileLoading || isHistoryLoading || isOrdersLoading) {
+  if (isUserLoading || isProfileLoading || isHistoryLoading) {
     return (
       <div className="flex-1 space-y-4 p-8 pt-6">
         <div className="flex items-center justify-between space-y-2">
           <Skeleton className="h-8 w-48" />
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Skeleton className="h-32" />
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
@@ -236,9 +206,9 @@ export default function DashboardPage() {
     <div className="flex-1 space-y-6 p-8 pt-6 bg-background min-h-screen">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-headline font-bold tracking-tight text-foreground">Dashboard Serviços</h1>
+          <h1 className="text-3xl font-headline font-bold tracking-tight text-foreground">Dashboard Clínico</h1>
           <p className="text-muted-foreground">
-            Bem-vindo de volta! Aqui está como o <span className="text-primary font-bold">{settings?.name || 'seu estabelecimento'}</span> está indo em <span className="text-primary font-bold">{label}</span>.
+            Bem-vindo de volta! Aqui está o desempenho da clínica <span className="text-primary font-bold">{settings?.name || 'seu estabelecimento'}</span> em <span className="text-primary font-bold">{label}</span>.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -278,51 +248,41 @@ export default function DashboardPage() {
           <Button asChild variant="outline" className="gap-2 bg-card/50 border-border/10">
             <Link href="/clients">
               <Users className="h-4 w-4" />
-              Clientes
+              Pacientes
             </Link>
           </Button>
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="border border-border/10 bg-card/50 shadow-none backdrop-blur-sm overflow-hidden">
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="border border-border/10 bg-card/50 shadow-none backdrop-blur-sm overflow-hidden border-l-primary/30">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Faturamento Total</CardTitle>
+            <CardTitle className="text-sm font-medium">Faturamento Consultas</CardTitle>
             <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg"><DollarSign className="h-4 w-4" /></div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{formatCurrency(stats?.totalRevenue || 0)}</div>
-            <p className="text-[10px] text-muted-foreground mt-1">Soma de Serviços e Vendas</p>
-          </CardContent>
-        </Card>
-        <Card className="border border-border/10 bg-card/50 shadow-none backdrop-blur-sm overflow-hidden border-l-primary/30">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Faturamento Loja</CardTitle>
-            <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg"><ShoppingBag className="h-4 w-4" /></div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{formatCurrency((stats as any)?.productRevenue || 0)}</div>
-            <p className="text-[10px] text-muted-foreground mt-1">Vendas de produtos retirados</p>
-          </CardContent>
-        </Card>
-        <Card className="border border-border/10 bg-card/50 shadow-none backdrop-blur-sm overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Faturamento Serviços</CardTitle>
-            <div className="p-2 bg-purple-500/10 text-purple-500 rounded-lg"><Scissors className="h-4 w-4" /></div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{formatCurrency((stats as any)?.serviceRevenue || 0)}</div>
             <p className="text-[10px] text-muted-foreground mt-1">Receita de atendimentos concluídos</p>
           </CardContent>
         </Card>
         <Card className="border border-border/10 bg-card/50 shadow-none backdrop-blur-sm overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Serviços Concluídos</CardTitle>
-            <div className="p-2 bg-primary/10 text-primary rounded-lg"><CalendarCheck className="h-4 w-4" /></div>
+            <CardTitle className="text-sm font-medium">Atendimentos Realizados</CardTitle>
+            <div className="p-2 bg-purple-500/10 text-purple-500 rounded-lg"><Stethoscope className="h-4 w-4" /></div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{stats?.totalCompleted}</div>
-            <p className="text-[10px] text-muted-foreground mt-1">Agendamentos finalizados</p>
+            <p className="text-[10px] text-muted-foreground mt-1">Consultas finalizadas</p>
+          </CardContent>
+        </Card>
+        <Card className="border border-border/10 bg-card/50 shadow-none backdrop-blur-sm overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Abstenções (No-Show)</CardTitle>
+            <div className="p-2 bg-red-500/10 text-red-500 rounded-lg"><Activity className="h-4 w-4" /></div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-foreground">{stats?.noShowCount}</div>
+            <p className="text-[10px] text-muted-foreground mt-1">Pacientes que não compareceram</p>
           </CardContent>
         </Card>
       </div>
@@ -353,8 +313,8 @@ export default function DashboardPage() {
 
         <Card className="col-span-3 border border-border/10 bg-card/50 shadow-none">
           <CardHeader>
-            <CardTitle className="text-foreground">Tipos de Serviço</CardTitle>
-            <CardDescription className="text-slate-400">Distribuição por categorias.</CardDescription>
+            <CardTitle className="text-foreground">Tipos de Atendimento</CardTitle>
+            <CardDescription className="text-slate-400">Distribuição por categorias clínicas.</CardDescription>
           </CardHeader>
           <CardContent className="pt-4">
             <ResponsiveContainer width="100%" height={250}>
@@ -385,8 +345,8 @@ export default function DashboardPage() {
 
         <Card className="col-span-4 border border-border/10 bg-card/50 shadow-none">
           <CardHeader>
-            <CardTitle className="text-foreground">Serviços mais Procurados</CardTitle>
-            <CardDescription className="text-slate-400">Top 5 serviços realizados.</CardDescription>
+            <CardTitle className="text-foreground">Procedimentos mais Procurados</CardTitle>
+            <CardDescription className="text-slate-400">Top 5 atendimentos realizados.</CardDescription>
           </CardHeader>
           <CardContent className="pt-4">
             <ResponsiveContainer width="100%" height={250}>
@@ -414,8 +374,8 @@ export default function DashboardPage() {
 
         <Card className="col-span-3 border border-border/10 bg-card/50 shadow-none">
           <CardHeader>
-            <CardTitle className="text-foreground">Faturamento por Profissional</CardTitle>
-            <CardDescription className="text-slate-400">Receita total por integrante.</CardDescription>
+            <CardTitle className="text-foreground">Faturamento por Especialista</CardTitle>
+            <CardDescription className="text-slate-400">Repasse e receita gerados.</CardDescription>
           </CardHeader>
           <CardContent className="pt-4">
             <ResponsiveContainer width="100%" height={250}>
@@ -447,7 +407,7 @@ export default function DashboardPage() {
 
         <Card className="col-span-7 border border-border/10 bg-card/50 shadow-none">
           <CardHeader>
-            <CardTitle className="text-foreground">Desempenho da Equipe</CardTitle>
+            <CardTitle className="text-foreground">Produtividade do Corpo Clínico</CardTitle>
             <CardDescription className="text-slate-400">Faturamento gerado por cada profissional em {label}.</CardDescription>
           </CardHeader>
           <CardContent className="pt-4">
@@ -459,7 +419,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-bold truncate text-foreground">{pro.name}</p>
-                    <p className="text-sm text-emerald-500 font-medium">{formatCurrency(pro.revenue)} acumulados</p>
+                    <p className="text-sm text-emerald-500 font-medium">{formatCurrency(pro.revenue)} gerados</p>
                   </div>
                   <div className="text-right">
                     <Badge variant="outline" className="font-normal border-border/50 text-slate-400">
@@ -470,7 +430,7 @@ export default function DashboardPage() {
               ))}
               {(!stats?.proData || stats?.proData.length === 0) && (
                 <div className="col-span-3 py-10 text-center text-muted-foreground border-2 border-dashed border-border/20 rounded-xl">
-                  Nenhum dado de profissional encontrado.
+                  Nenhum profissional com atendimentos neste período.
                 </div>
               )}
             </div>
@@ -480,7 +440,7 @@ export default function DashboardPage() {
 
       <footer className="py-8 text-center text-slate-600 mt-auto opacity-40">
         <div className="flex flex-col items-center gap-1">
-          <p className="text-xs font-medium">Invivio Velo Dashboard v1.00056</p>
+          <p className="text-xs font-medium">Invivio Care Dashboard v1.0.0</p>
           <p className="text-[10px]">Powered by Invivio Tecnologia</p>
         </div>
       </footer>

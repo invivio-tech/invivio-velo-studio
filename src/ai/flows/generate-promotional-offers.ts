@@ -14,9 +14,9 @@ import { getAdminFirestore, initAdmin } from '@/firebase/admin';
 import { Timestamp } from 'firebase-admin/firestore';
 
 const PromotionalOfferInputSchema = z.object({
-  serviceCatalog: z.string().describe('Uma descrição dos serviços oferecidos pela barbearia, incluindo preços.'),
+  serviceCatalog: z.string().describe('Uma descrição dos serviços oferecidos pela clínica, incluindo preços.'),
   customerHistory: z.string().describe('Um resumo do comportamento e preferências de clientes anteriores.'),
-  currentPromotions: z.string().optional().describe('Quaisquer promoções atuais em vigor na barbearia.'),
+  currentPromotions: z.string().optional().describe('Quaisquer promoções atuais em vigor na clínica.'),
 });
 export type PromotionalOfferInput = z.infer<typeof PromotionalOfferInputSchema>;
 
@@ -193,7 +193,7 @@ const prompt = ai.definePrompt({
   name: 'promotionalOfferPrompt',
   input: { schema: PromotionalOfferInputSchema },
   output: { schema: PromotionalOfferOutputSchema },
-  prompt: `Você é um estrategista de marketing digital para uma barbearia de alto padrão, a "Barbearia Inteligente".
+  prompt: `Você é um estrategista de marketing digital para uma clínica de alto padrão, a "Invivio Care".
   Seu objetivo é criar uma campanha promocional exclusiva e altamente eficaz para aumentar o faturamento e a fidelização.
 
   Analise os dados abaixo:

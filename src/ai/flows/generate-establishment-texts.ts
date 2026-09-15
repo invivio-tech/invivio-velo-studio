@@ -51,7 +51,7 @@ const prompt = ai.definePrompt({
   5.  Um subtítulo para a seção de serviços (servicesSubtitle).
   6.  Um "Prompt de Imagem" (aboutImagePrompt) em inglês, detalhado, para uma ferramenta de IA gerar a imagem que ilustra a seção "Sobre" deste estabelecimento (ex. "wide shot of a classic luxury barbershop interior, warm lighting, cinematic, 8k --ar 16:9").
 
-  Se o nome for genérico como "Barbearia" e não houver contexto adicional, assuma que é um estabelecimento moderno e de alta qualidade.
+  Se o nome for genérico como "Clínica" e não houver contexto adicional, assuma que é um estabelecimento moderno e de alta qualidade.
   Seja criativo e profissional.
   `,
 });

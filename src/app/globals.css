@@ -4,87 +4,81 @@
 
 @layer base {
   :root {
-    /* Preto Profundo (Deep Black) */
-    --background: 220 15% 6%;
-    /* Branco Off-White/Cinza Muito Claro */
-    --foreground: 210 20% 95%;
+    /* Clean Clinical Light Theme */
+    --background: 210 40% 98%; /* Light blue-gray background */
+    --foreground: 222 47% 11%; /* Deep navy text */
     
-    /* Azul Marinho Muito Escuro (Very Dark Navy Blue) */
-    --card: 222 47% 11%;
-    --card-foreground: 210 20% 95%;
+    --card: 0 0% 100%; /* Pure white card */
+    --card-foreground: 222 47% 11%;
     
-    --popover: 222 47% 11%;
-    --popover-foreground: 210 20% 95%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
     
-    /* Azul Safira Vibrante (Vibrant Sapphire Blue) */
-    --primary: 217 91% 60%;
+    /* Vibrant Health Teal */
+    --primary: 174 65% 41%; 
     --primary-foreground: 0 0% 100%;
     
-    /* Prata Cromado/Cinza Metálico (Chrome Silver) */
-    --secondary: 210 10% 65%;
-    --secondary-foreground: 220 15% 6%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222 47% 11%;
     
-    /* Subtle Navy/Gray */
-    --muted: 220 30% 15%;
-    --muted-foreground: 210 15% 65%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
     
-    /* Sapphire variation for accents */
-    --accent: 215 60% 20%;
-    --accent-foreground: 210 20% 95%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222 47% 11%;
     
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
 
-    /* Metallic Gray for borders */
-    --border: 210 15% 25%;
-    --input: 210 15% 25%;
-    --ring: 217 91% 60%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 174 65% 41%;
     
-    --radius: 0.5rem;
+    --radius: 0.75rem;
     
     /* Charts */
-    --chart-1: 217 91% 60%;
-    --chart-2: 210 10% 65%;
-    --chart-3: 222 47% 20%;
-    --chart-4: 220 15% 40%;
-    --chart-5: 215 60% 50%;
+    --chart-1: 174 65% 41%;
+    --chart-2: 210 40% 60%;
+    --chart-3: 199 89% 48%;
+    --chart-4: 215 60% 50%;
+    --chart-5: 220 15% 40%;
   }
 
   .dark {
-    /* Duplicate the same dark theme for consistency if forced dark */
-    --background: 220 15% 6%;
-    --foreground: 210 20% 95%;
+    /* Premium Clinical Dark Navy Theme */
+    --background: 222.2 84% 4.9%; /* Deepest navy */
+    --foreground: 210 40% 98%;
     
-    --card: 222 47% 11%;
-    --card-foreground: 210 20% 95%;
+    --card: 222.2 84% 6.9%;
+    --card-foreground: 210 40% 98%;
     
-    --popover: 222 47% 11%;
-    --popover-foreground: 210 20% 95%;
+    --popover: 222.2 84% 6.9%;
+    --popover-foreground: 210 40% 98%;
     
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 174 65% 41%;
+    --primary-foreground: 222.2 47.4% 11.2%;
     
-    --secondary: 210 10% 65%;
-    --secondary-foreground: 220 15% 6%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
     
-    --muted: 220 30% 15%;
-    --muted-foreground: 210 15% 65%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
     
-    --accent: 215 60% 20%;
-    --accent-foreground: 210 20% 95%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
     
-    --destructive: 0 62% 30%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
     
-    --border: 210 15% 25%;
-    --input: 210 15% 25%;
-    --ring: 217 91% 60%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 174 65% 41%;
     
-    --chart-1: 217 91% 60%;
-    --chart-2: 210 10% 65%;
-    --chart-3: 222 47% 20%;
-    --chart-4: 220 15% 40%;
-    --chart-5: 215 60% 50%;
+    --chart-1: 174 65% 41%;
+    --chart-2: 210 40% 60%;
+    --chart-3: 199 89% 48%;
+    --chart-4: 215 60% 50%;
+    --chart-5: 220 15% 40%;
   }
 }
 

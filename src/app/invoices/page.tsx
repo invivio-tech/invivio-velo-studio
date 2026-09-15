@@ -391,7 +391,7 @@ export default function InvoicesPage() {
     const receiptWindow = window.open('', '_blank');
     if (!receiptWindow) return;
 
-    const estabName = settings?.name || 'Barbearia';
+    const estabName = settings?.name || 'Clínica';
 
     const html = `
       <html>
@@ -706,6 +706,7 @@ export default function InvoicesPage() {
                     <TableHead>Profissional</TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead className="text-right">Valor</TableHead>
+                    <TableHead className="text-right">Ação</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -725,6 +726,48 @@ export default function InvoicesPage() {
                         <TableCell>{item.professional}</TableCell>
                         <TableCell>{item.client}</TableCell>
                         <TableCell className="text-right text-emerald-600 font-semibold dark:text-emerald-400">{formatCurrency(item.value)}</TableCell>
+                        <TableCell className="text-right">
+                          <Button size="icon" variant="ghost" onClick={() => {
+                            const html = `
+                              <html>
+                                <head>
+                                  <title>Recibo</title>
+                                  <style>
+                                    body { font-family: monospace; padding: 20px; color: #000; max-width: 400px; margin: 0 auto; }
+                                    .header { text-align: center; margin-bottom: 20px; }
+                                    .title { font-size: 20px; font-weight: bold; margin-bottom: 5px; }
+                                    .subtitle { font-size: 14px; }
+                                    .divider { border-top: 1px dashed #000; margin: 10px 0; }
+                                    .total { font-size: 18px; font-weight: bold; text-align: right; margin-top: 15px; }
+                                  </style>
+                                </head>
+                                <body onload="window.print();">
+                                  <div class="header">
+                                    <div class="title">${settings?.name || 'Clínica'}</div>
+                                    <div class="subtitle">Recibo de ${item.type === 'service' ? 'Serviço' : item.type === 'order' ? 'Venda (PDV)' : 'Assinatura'}</div>
+                                    <div class="subtitle">${new Date(item.date).toLocaleString('pt-BR')}</div>
+                                  </div>
+                                  <div class="divider"></div>
+                                  <div>Cliente: ${item.client}</div>
+                                  <div>Profissional: ${item.professional}</div>
+                                  <div class="divider"></div>
+                                  <div>Item: ${item.description}</div>
+                                  <div class="divider"></div>
+                                  <div class="total">
+                                    TOTAL: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.value)}
+                                  </div>
+                                </body>
+                              </html>
+                            `;
+                            const w = window.open('', '_blank');
+                            if (w) {
+                              w.document.write(html);
+                              w.document.close();
+                            }
+                          }}>
+                            <Printer className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))
                   )}
@@ -942,7 +985,7 @@ export default function InvoicesPage() {
             </CardHeader>
             <CardContent>
               <div className="text-4xl font-black">{formatCurrency(balance)}</div>
-              <p className="text-xs opacity-75 mt-1">Este é o valor acumulado que a barbearia lhe deve atualmente.</p>
+              <p className="text-xs opacity-75 mt-1">Este é o valor acumulado que a clínica lhe deve atualmente.</p>
             </CardContent>
           </Card>
           <Card>
@@ -994,7 +1037,7 @@ export default function InvoicesPage() {
           <Card>
             <CardHeader>
               <CardTitle>Extrato de Pagamentos</CardTitle>
-              <CardDescription>Saques transferidos para você pela barbearia.</CardDescription>
+              <CardDescription>Saques transferidos para você pela clínica.</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>

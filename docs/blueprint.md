@@ -1,4 +1,4 @@
-# **App Name**: Barbearia Inteligente
+# **App Name**: Invivio Care
 
 ## Core Features:
 
@@ -10,10 +10,10 @@
 
 ## Style Guidelines:
 
-- Primary color: Rich brown (#A67B5B) to evoke a classic barber shop feel.
+- Primary color: Rich brown (#A67B5B) to evoke a welcoming clinic feel.
 - Background color: Soft beige (#F5F5DC), slightly desaturated, to provide a neutral backdrop.
 - Accent color: Dark crimson (#8B0000) for call-to-action buttons and important notifications; a strong contrast against the brown.
 - Body font: 'PT Sans', a humanist sans-serif that's easy to read on screens.
 - Headline font: 'Playfair', a modern serif similar to Didot with a fashionable feel.
-- Use vintage-style icons representing barber tools and services.
+- Use icons representing veterinary tools and services.
 - Subtle animations for appointment confirmations and navigation transitions.

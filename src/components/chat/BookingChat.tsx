@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, User, Bot, Sparkles, Scissors, Calendar, Info } from 'lucide-react';
+import { Send, User, Bot, Sparkles, BookOpen, Calendar, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -19,7 +19,7 @@ export default function BookingChat() {
   const [messages, setMessages] = useState<Message[]>([
     { 
       role: 'model', 
-      content: 'Olá! Sou a sua assistente virtual ✂️. Como posso te ajudar hoje? Se quiser agendar um horário, basta me dizer o que precisa!' 
+      content: 'Olá! Sou a sua assistente virtual 🩺. Como posso te ajudar hoje? Se quiser agendar um horário, basta me dizer o que precisa!' 
     }
   ]);
   const [input, setInput] = useState('');
@@ -130,15 +130,15 @@ export default function BookingChat() {
             className="rounded-full bg-white/5 border-white/10 text-[11px] gap-2 whitespace-nowrap"
             onClick={() => handleSendMessage(undefined, 'Quais são os serviços e preços?')}
            >
-             <Scissors className="h-3 w-3" /> Ver Preços
+             <BookOpen className="h-3 w-3" /> Ver Preços
            </Button>
            <Button 
             variant="outline" 
             size="sm" 
             className="rounded-full bg-white/5 border-white/10 text-[11px] gap-2 whitespace-nowrap"
-            onClick={() => handleSendMessage(undefined, 'Quem são os barbeiros?')}
+            onClick={() => handleSendMessage(undefined, 'Quem são os profissionais?')}
            >
-             <User className="h-3 w-3" /> Ver Barbeiros
+             <User className="h-3 w-3" /> Ver Profissionais
            </Button>
            <Button 
             variant="outline" 

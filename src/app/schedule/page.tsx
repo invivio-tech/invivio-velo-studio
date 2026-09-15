@@ -37,7 +37,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Zap, PlusCircle, ShoppingBag } from 'lucide-react';
 import { QuickServiceDialog } from '@/components/admin/QuickServiceDialog';
-import { QuickSaleDialog } from '@/components/admin/QuickSaleDialog';
+
 import type { Product } from '@/types/store';
 import {
   Dialog,
@@ -49,6 +49,7 @@ import {
 } from '@/components/ui/dialog';
 import type { Service } from '@/app/services/page';
 import { CompleteServiceDialog } from '@/components/admin/CompleteServiceDialog';
+import { encryptClinicalData } from '@/lib/encryption';
 
 
 interface Appointment {
@@ -96,7 +97,7 @@ export default function SchedulePage() {
   const [isCompletionDialogOpen, setIsCompletionDialogOpen] = useState(false);
   const [appointmentToComplete, setAppointmentToComplete] = useState<Appointment | null>(null);
   const [isQuickServiceOpen, setIsQuickServiceOpen] = useState(false);
-  const [isQuickSaleOpen, setIsQuickSaleOpen] = useState(false);
+
 
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -138,7 +139,9 @@ export default function SchedulePage() {
       registration?: {
         create: boolean;
         data: { name: string; phone: string; email: string };
-      }
+      };
+      followUpNeeded?: boolean;
+      followUpDays?: number;
     }
   ) => {
     if (!firestore || !settings || !user) return false;
@@ -246,8 +249,10 @@ export default function SchedulePage() {
           status: newStatus,
           updatedAt: Timestamp.now(),
           updatedBy: user.uid,
-          completionNotes: completionData?.notes || '',
-          completionPhotos: completionData?.photos || []
+          completionNotes: encryptClinicalData(completionData?.notes) || '',
+          completionPhotos: completionData?.photos || [],
+          followUpNeeded: completionData?.followUpNeeded || false,
+          followUpDays: completionData?.followUpDays || 0
         };
 
         if (newStatus === 'completed') {
@@ -316,14 +321,23 @@ export default function SchedulePage() {
     setIsCompletionDialogOpen(true);
   };
 
-  const handleConfirmCompletion = async (notes: string, photos: string[], createProfile?: boolean, guestData?: { name: string, phone: string, email: string }) => {
+  const handleConfirmCompletion = async (
+    notes: string, 
+    photos: string[], 
+    createProfile?: boolean, 
+    guestData?: { name: string, phone: string, email: string },
+    followUpNeeded?: boolean,
+    followUpDays?: number
+  ) => {
     if (!appointmentToComplete || !firestore) return;
 
     try {
       await handleUpdateStatus(appointmentToComplete, 'completed', { 
         notes, 
         photos,
-        registration: createProfile && guestData ? { create: true, data: guestData } : undefined
+        registration: createProfile && guestData ? { create: true, data: guestData } : undefined,
+        followUpNeeded,
+        followUpDays
       });
     } catch (error) {
       console.error("Error in handleConfirmCompletion:", error);
@@ -391,53 +405,7 @@ export default function SchedulePage() {
     }
   };
 
-  const handleQuickSaleConfirm = async (data: any) => {
-    if (!firestore || !user) return;
-    
-    try {
-      let totalValue = 0;
-      const mappedItems = data.items.map((item: any) => {
-        const product = products?.find(p => p.id === item.productId);
-        const itemTotal = (product?.price || 0) * item.quantity;
-        totalValue += itemTotal;
-        
-        return {
-          productId: item.productId,
-          productName: product?.name || 'Produto Removido',
-          quantity: item.quantity,
-          priceAtPurchase: product?.price || 0,
-        };
-      });
-      
-      const orderData: any = {
-        clientId: data.customerId || '',
-        clientName: data.type === 'client' ? (clients?.find(c => c.id === data.customerId)?.name || 'Cliente') : data.guestData?.name,
-        clientPhone: data.type === 'client' ? (clients?.find(c => c.id === data.customerId)?.phoneNumber || '') : data.guestData?.phone,
-        items: mappedItems,
-        totalValue: totalValue,
-        status: 'completed',
-        paymentMethod: 'Pagamento no Balcão',
-        createdAt: new Date().toISOString(),
-        createdBy: user.uid,
-      };
 
-      await addDoc(collection(firestore, 'orders'), orderData);
-      
-      // Update stock for each item
-      for (const item of data.items) {
-        const product = products?.find(p => p.id === item.productId);
-        if (product && product.stock !== undefined) {
-          const newStock = Math.max(0, product.stock - item.quantity);
-          await updateDoc(doc(firestore, 'products', item.productId), { stock: newStock });
-        }
-      }
-
-      toast({ title: 'Venda Realizada', description: 'Os produtos foram vendidos e o estoque atualizado.' });
-    } catch (error) {
-      console.error("Error in handleQuickSaleConfirm:", error);
-      toast({ title: 'Erro', description: 'Não foi possível registrar a venda.', variant: 'destructive' });
-    }
-  };
 
   const handleUpdateAppointmentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -496,7 +464,6 @@ export default function SchedulePage() {
     onUpdateStatus: handleUpdateStatus,
     onTogglePortfolioFeatured: handleTogglePortfolioFeatured,
     onQuickServiceOpen: () => setIsQuickServiceOpen(true),
-    onQuickSaleOpen: () => setIsQuickSaleOpen(true),
   };
 
   const dashComponent = () => {
@@ -649,13 +616,7 @@ export default function SchedulePage() {
         onConfirm={handleQuickServiceConfirm}
       />
 
-      <QuickSaleDialog 
-        isOpen={isQuickSaleOpen}
-        onOpenChange={setIsQuickSaleOpen}
-        clients={clients || []}
-        products={products || []}
-        onConfirm={handleQuickSaleConfirm}
-      />
+
     </>
   );
 }
@@ -667,7 +628,6 @@ function AdminDashboard({
   onUpdateStatus,
   onTogglePortfolioFeatured,
   onQuickServiceOpen,
-  onQuickSaleOpen,
   professionals,
   services,
   settings 
@@ -678,7 +638,6 @@ function AdminDashboard({
   onUpdateStatus: (apt: Appointment, status: 'completed' | 'no-show' | 'cancelled') => Promise<boolean>;
   onTogglePortfolioFeatured: (apt: Appointment) => void;
   onQuickServiceOpen: () => void;
-  onQuickSaleOpen: () => void;
   professionals: UserProfile[] | undefined;
   services: Service[] | undefined;
   settings: EstablishmentSettings | undefined;
@@ -799,9 +758,6 @@ function AdminDashboard({
           <p className="text-muted-foreground">Gerencie agendamentos, vendas balcão e histórico.</p>
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-          <Button onClick={onQuickSaleOpen} variant="outline" className="gap-2">
-            <ShoppingBag className="h-4 w-4" /> Venda Balcão
-          </Button>
           <Button onClick={onQuickServiceOpen} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
             <Zap className="h-4 w-4" /> Novo Atendimento
           </Button>
@@ -955,7 +911,7 @@ function AdminDashboard({
       <footer className="p-8 text-center text-slate-600 mt-auto opacity-40">
         <div className="flex flex-col items-center gap-1">
           <p className="text-xs font-medium">Powered by <span className="font-bold text-primary">Invivio Tecnologia</span></p>
-          <p className="text-[10px] font-bold text-primary">Invivio Velo v1.00056</p>
+          <p className="text-[10px] font-bold text-primary">Invivio Care v1.00056</p>
         </div>
       </footer>
     </div>
@@ -969,8 +925,7 @@ function ProfessionalDashboard({
   onCompleteClick,
   onUpdateStatus,
   onTogglePortfolioFeatured,
-  onQuickServiceOpen,
-  onQuickSaleOpen
+  onQuickServiceOpen
 }: { 
   userProfile: UserProfile, 
   onEditAppointment: (apt: Appointment) => void, 
@@ -978,8 +933,7 @@ function ProfessionalDashboard({
   onCompleteClick: (apt: Appointment) => void,
   onUpdateStatus: (apt: Appointment, status: 'completed' | 'no-show' | 'cancelled') => Promise<boolean>,
   onTogglePortfolioFeatured: (apt: Appointment) => void,
-  onQuickServiceOpen: () => void,
-  onQuickSaleOpen: () => void
+  onQuickServiceOpen: () => void
 }) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
@@ -1044,9 +998,6 @@ function ProfessionalDashboard({
        <div className="flex justify-between items-center">
          <h1 className="text-3xl font-headline font-bold">Olá, {userProfile.name}!</h1>
          <div className="flex items-center gap-2">
-           <Button onClick={onQuickSaleOpen} variant="outline" className="gap-2">
-             <ShoppingBag className="h-4 w-4" /> Venda Balcão
-           </Button>
            <Button onClick={onQuickServiceOpen} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
              <Zap className="h-4 w-4" /> Novo Atendimento
            </Button>
@@ -1113,7 +1064,7 @@ function ProfessionalDashboard({
        <footer className="p-8 text-center text-slate-600 mt-auto opacity-40">
         <div className="flex flex-col items-center gap-1">
           <p className="text-xs font-medium">Powered by <span className="font-bold text-primary">Invivio Tecnologia</span></p>
-          <p className="text-[10px] font-bold text-primary">Invivio Velo v1.00056</p>
+          <p className="text-[10px] font-bold text-primary">Invivio Care v1.00056</p>
         </div>
       </footer>
     </div>
@@ -1180,7 +1131,7 @@ function ClientDashboard({
       <footer className="text-center text-slate-600 mt-auto opacity-40 py-8">
         <div className="flex flex-col items-center gap-1">
           <p className="text-xs font-medium">Powered by <span className="font-bold text-primary">Invivio Tecnologia</span></p>
-          <p className="text-[10px] font-bold text-primary">Invivio Velo v1.00056</p>
+          <p className="text-[10px] font-bold text-primary">Invivio Care v1.00056</p>
         </div>
       </footer>
     </div>

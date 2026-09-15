@@ -6,8 +6,8 @@ export function setupAdmin() {
 
     // Tentar inicialização manual se os containers/applicationDefault falharem no ambiente local
     const config = {
-        projectId: 'invivio-velo',
-        storageBucket: 'invivio-velo.firebasestorage.app',
+        projectId: 'invivio-care-demo-01',
+        storageBucket: 'invivio-care-demo-01.firebasestorage.app',
     };
 
     try {
@@ -65,4 +65,4 @@ async function createAdminUser(email: string, name: string) {
   }
 }
 
-createAdminUser('araujodacostalucas14@gmail.com', 'Lucas Costa');
+createAdminUser('invivio.tech@gmail.com', 'Invivio Tech');

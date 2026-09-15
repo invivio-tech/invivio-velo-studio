@@ -1,6 +1,6 @@
-# Barbearia Inteligente
+# Invivio Care
 
-Sistema de gestão para barbearias com agendamento inteligente e programa de fidelidade.
+Sistema de gestão para clínicas veterinárias com agendamento inteligente e programa de fidelidade.
 
 ## Como subir para o Git (GitHub/GitLab)
 

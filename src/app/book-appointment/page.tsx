@@ -473,7 +473,7 @@ export default function BookAppointmentPage() {
                 <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center">
                   <User className="w-6 h-6 text-muted-foreground" />
                 </div>
-                <p className="text-muted-foreground">Não há profissionais disponíveis para realizar este serviço. Tente escolher outro serviço ou entre em contato com a barbearia.</p>
+                <p className="text-muted-foreground">Não há profissionais disponíveis para realizar este serviço. Tente escolher outro serviço ou entre em contato com a clínica.</p>
               </div>
             )}
             <div className="mt-6 flex justify-start">

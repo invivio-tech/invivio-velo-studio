@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useFirestore, useUser, useUserProfile } from '@/firebase';
+import { isVetCategory } from '@/lib/care-terms';
 import { collection, getDocs, getDoc, doc, query, where, addDoc, Timestamp } from 'firebase/firestore';
 import { format, addDays, isSameDay, addMinutes, parse, isBefore, isEqual, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -80,6 +81,20 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [appointmentType, setAppointmentType] = useState<'presencial' | 'teleconsulta'>('presencial');
+  const [paymentType, setPaymentType] = useState<'particular' | 'insurance'>('particular');
+  const [healthInsurance, setHealthInsurance] = useState('');
+  const [healthInsuranceCard, setHealthInsuranceCard] = useState('');
+  
+  // Veterinary booking states
+  const [estCategory, setEstCategory] = useState<string>('general_practice');
+  const [selectedPet, setSelectedPet] = useState<any>(null);
+  const [newPetName, setNewPetName] = useState('');
+  const [newPetSpecies, setNewPetSpecies] = useState('dog');
+  const [newPetBreed, setNewPetBreed] = useState('');
+  const [isCreatingNewPet, setIsCreatingNewPet] = useState(false);
+  const [myPets, setMyPets] = useState<any[]>([]);
+  const [loadingPets, setLoadingPets] = useState(false);
   
   // Subscription State
   const [activeMembershipPlan, setActiveMembershipPlan] = useState<any>(null);
@@ -92,6 +107,9 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
   const [professionalSchedules, setProfessionalSchedules] = useState<Record<string, ScheduleSettings>>({});
   const [isFetchingSlots, setIsFetchingSlots] = useState(false);
 
+  const isVet = isVetCategory(estCategory);
+  const totalSteps = isVet ? 4 : 3;
+
   // Pre-fill user info if logged in
   useEffect(() => {
     if (userProfile) {
@@ -101,6 +119,32 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
       });
     }
   }, [userProfile]);
+
+  // Load Tutor's pets if vet clinic
+  useEffect(() => {
+    if (!firestore || !user || !isVet) return;
+
+    async function fetchMyPets() {
+      setLoadingPets(true);
+      try {
+        const q = query(collection(firestore, 'pets'), where('tutorId', '==', user.uid));
+        const snap = await getDocs(q);
+        const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setMyPets(list);
+        if (list.length > 0) {
+          setSelectedPet(list[0]);
+          setIsCreatingNewPet(false);
+        } else {
+          setIsCreatingNewPet(true);
+        }
+      } catch (err) {
+        console.error("Erro ao carregar pets:", err);
+      } finally {
+        setLoadingPets(false);
+      }
+    }
+    fetchMyPets();
+  }, [firestore, user, isVet]);
 
   useEffect(() => {
     async function fetchData() {
@@ -117,6 +161,13 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
           .map(doc => ({ id: doc.id, ...doc.data() } as Professional))
           .filter(p => !p.disabled);
         setProfessionals(profList);
+
+        // Fetch establishment settings
+        const estSettingsSnap = await getDoc(doc(firestore, 'establishmentSettings', 'main'));
+        if (estSettingsSnap.exists()) {
+          const estData = estSettingsSnap.data();
+          setEstCategory(estData?.businessCategory || 'general_practice');
+        }
 
         // Fetch establishment schedule settings
         const settingsSnap = await getDoc(doc(firestore, 'scheduleSettings', 'main'));
@@ -267,8 +318,40 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
         servicePrice: selectedService.price,
         serviceDuration: String(selectedService.duration),
         reminderSent: false,
-        notes: ''
+        notes: '',
+        appointmentType: appointmentType,
+        paymentType: paymentType,
+        healthInsurance: paymentType === 'insurance' ? healthInsurance : '',
+        healthInsuranceCard: paymentType === 'insurance' ? healthInsuranceCard : '',
       };
+
+      if (isVet) {
+        // Save pet details
+        if (isCreatingNewPet && newPetName) {
+          // If logged in tutor, create pet in db
+          let petId = 'manual';
+          if (user) {
+            const petRef = await addDoc(collection(firestore, 'pets'), {
+              name: newPetName,
+              species: newPetSpecies,
+              breed: newPetBreed,
+              tutorId: user.uid,
+              tutorName: contactInfo.name || userProfile?.name || 'Tutor',
+              createdAt: Timestamp.now()
+            });
+            petId = petRef.id;
+          }
+          appointmentData.petId = petId;
+          appointmentData.petName = newPetName;
+          appointmentData.petSpecies = newPetSpecies;
+          appointmentData.petBreed = newPetBreed;
+        } else if (selectedPet) {
+          appointmentData.petId = selectedPet.id;
+          appointmentData.petName = selectedPet.name;
+          appointmentData.petSpecies = selectedPet.species;
+          appointmentData.petBreed = selectedPet.breed || '';
+        }
+      }
 
       const isServiceIncluded = activeMembershipPlan?.includedServiceIds?.includes(selectedService.id);
       if (user && activeMembershipPlan && useSubscription && isServiceIncluded) {
@@ -354,16 +437,19 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
       {/* Progress Indicator */}
       <div className="flex items-center justify-between mb-8 relative">
         <div className="absolute top-1/2 left-0 w-full h-0.5 bg-muted -translate-y-1/2 -z-10"></div>
-        {[1, 2, 3].map((s) => (
-          <div 
-            key={s}
-            className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all duration-300 ${
-              step >= s ? 'bg-primary text-white scale-110 shadow-lg' : 'bg-muted text-muted-foreground'
-            }`}
-          >
-            {step > s ? <Check className="w-5 h-5" /> : s}
-          </div>
-        ))}
+        {Array.from({ length: totalSteps }).map((_, idx) => {
+          const s = idx + 1;
+          return (
+            <div 
+              key={s}
+              className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all duration-300 ${
+                step >= s ? 'bg-primary text-white scale-110 shadow-lg' : 'bg-muted text-muted-foreground'
+              }`}
+            >
+              {step > s ? <Check className="w-5 h-5" /> : s}
+            </div>
+          );
+        })}
       </div>
 
       {/* Step 1: Services */}
@@ -477,8 +563,114 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
         </div>
       )}
 
-      {/* Step 3: Date & Details */}
-      {step === 3 && (
+      {/* Step 3: Pet Selection (Veterinary Only) */}
+      {step === 3 && isVet && (
+        <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+          <div className="text-center space-y-2">
+            <h2 className="text-2xl font-bold flex items-center justify-center gap-2">
+              🐾 Qual pet será atendido?
+            </h2>
+            <p className="text-muted-foreground">Selecione ou cadastre o animal para a consulta</p>
+          </div>
+
+          {user && myPets.length > 0 && (
+            <div className="space-y-3">
+              <label className="text-xs font-bold uppercase tracking-widest text-primary">Seus Pets Cadastrados</label>
+              <div className="grid grid-cols-2 gap-3">
+                {myPets.map(pet => (
+                  <button
+                    key={pet.id}
+                    type="button"
+                    onClick={() => { setSelectedPet(pet); setIsCreatingNewPet(false); }}
+                    className={`p-4 rounded-xl border text-left flex items-center gap-3 transition-all ${
+                      selectedPet?.id === pet.id && !isCreatingNewPet ? 'border-primary bg-primary/5' : 'border-border bg-card'
+                    }`}
+                  >
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                      {pet.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm">{pet.name}</h4>
+                      <p className="text-[10px] text-muted-foreground capitalize">{pet.species === 'dog' ? 'Cão' : pet.species === 'cat' ? 'Gato' : pet.species} • {pet.breed || 'SRD'}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              <div className="text-center py-2">
+                <Button 
+                  type="button" 
+                  variant="link" 
+                  onClick={() => setIsCreatingNewPet(true)}
+                  className="text-xs text-primary font-semibold"
+                >
+                  + Cadastrar outro pet para esta consulta
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {(!user || isCreatingNewPet) && (
+            <div className="space-y-4 p-5 border rounded-2xl bg-muted/20 animate-in fade-in duration-200">
+              <h3 className="font-bold text-sm text-slate-800">Dados do Novo Pet</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <input
+                  type="text"
+                  placeholder="Nome do Pet"
+                  value={newPetName}
+                  onChange={e => setNewPetName(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none"
+                  required
+                />
+                <select
+                  value={newPetSpecies}
+                  onChange={e => setNewPetSpecies(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none"
+                >
+                  <option value="dog">Cão</option>
+                  <option value="cat">Gato</option>
+                  <option value="bird">Ave</option>
+                  <option value="reptile">Réptil</option>
+                  <option value="other">Outro</option>
+                </select>
+              </div>
+              <input
+                type="text"
+                placeholder="Raça (opcional)"
+                value={newPetBreed}
+                onChange={e => setNewPetBreed(e.target.value)}
+                className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none"
+              />
+              {user && myPets.length > 0 && (
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  onClick={() => setIsCreatingNewPet(false)}
+                  className="text-xs text-muted-foreground w-full"
+                >
+                  Cancelar e selecionar pet existente
+                </Button>
+              )}
+            </div>
+          )}
+
+          <div className="flex gap-4">
+            <button onClick={prevStep} className="flex-1 py-4 px-6 rounded-2xl border border-border font-bold hover:bg-muted transition-colors">
+              Anterior
+            </button>
+            <button 
+              onClick={nextStep}
+              disabled={isCreatingNewPet ? !newPetName : !selectedPet}
+              className="flex-1 py-4 px-6 rounded-2xl bg-primary text-white font-bold hover:opacity-90 transition-all disabled:opacity-50"
+            >
+              Continuar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 3 or 4: Date & Details */}
+      {((step === 3 && !isVet) || (step === 4 && isVet)) && (
         <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
           <div className="text-center space-y-2">
             <h2 className="text-2xl font-bold flex items-center justify-center gap-2">
@@ -560,6 +752,53 @@ export default function StepBooking({ onComplete }: StepBookingProps) {
                 </div>
               )}
               
+              <h4 className="font-bold flex items-center gap-2 px-1">Detalhes da Consulta</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground block mb-1">Tipo de Atendimento</label>
+                  <select 
+                    value={appointmentType}
+                    onChange={(e) => setAppointmentType(e.target.value as any)}
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none text-foreground"
+                  >
+                    <option value="presencial">Presencial (Clínica)</option>
+                    <option value="teleconsulta">Teleconsulta (Vídeo/Online)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground block mb-1">Tipo de Pagamento</label>
+                  <select 
+                    value={paymentType}
+                    onChange={(e) => setPaymentType(e.target.value as any)}
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none text-foreground"
+                  >
+                    <option value="particular">Particular</option>
+                    <option value="insurance">Plano / Convênio de Saúde</option>
+                  </select>
+                </div>
+              </div>
+
+              {paymentType === 'insurance' && (
+                <div className="grid grid-cols-2 gap-4 animate-in fade-in duration-200">
+                  <input
+                    type="text"
+                    placeholder="Nome do Convênio (ex: Unimed)"
+                    value={healthInsurance}
+                    onChange={(e) => setHealthInsurance(e.target.value)}
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none"
+                    required
+                  />
+                  <input
+                    type="text"
+                    placeholder="Número da Carteirinha"
+                    value={healthInsuranceCard}
+                    onChange={(e) => setHealthInsuranceCard(e.target.value)}
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none"
+                    required
+                  />
+                </div>
+              )}
+
               <h4 className="font-bold flex items-center gap-2 px-1">Seus dados para contato</h4>
               <div className="space-y-3">
                 <input

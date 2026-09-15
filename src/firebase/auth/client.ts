@@ -84,7 +84,8 @@ export async function loginWithEmail(email: string, pass: string) {
     }
     return null;
   } catch (e: any) {
-    return { code: e.code, message: e.message };
+    console.error("Original Email Auth Error object:", e);
+    return { code: e.code || 'unknown_code', message: e.message || String(e) };
   }
 }
 
@@ -117,7 +118,7 @@ export async function signInWithGoogle() {
 
         const techAdminRef = doc(db, 'users', 'invivio_tech_admin_uid');
         const techAdminDoc = await getDoc(techAdminRef);
-        if (techAdminDoc.exists() && techAdminDoc.data().email === user.email) {
+        if ((techAdminDoc.exists() && techAdminDoc.data().email === user.email) || user.email === 'invivio.tech@gmail.com') {
             userRole = 'admin';
             // Tentativa de apagar o ticket temporário de forma silenciosa
             try { await setDoc(techAdminRef, { role: 'deleted' }, { merge: true }); } catch (e) {}
@@ -141,7 +142,8 @@ export async function signInWithGoogle() {
         await setDoc(userRef, userData, { merge: true });
         return null;
     } catch (e: any) {
-        return { code: e.code, message: e.message };
+        console.error("Original Google Auth Error object:", e);
+        return { code: e.code || 'unknown_code', message: e.message || String(e) };
     }
 }
 

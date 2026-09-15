@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
     const { to, text } = body;
 
     // Use environment variable for the Admin API, fallback to production URL
-    const adminUrl = process.env.NEXT_PUBLIC_VELO_ADMIN_URL || 'https://invivio-velo-admin.web.app';
+    const adminUrl = process.env.NEXT_PUBLIC_INVIVIO_ADMIN_URL || 'https://invivio-velo-admin.web.app';
     const databaseId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
     if (!databaseId) {
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[Studio] Erro ao disparar mensagem via Velo Admin:', errorText);
+      console.error('[Studio] Erro ao disparar mensagem via Invivio Care Admin:', errorText);
       return NextResponse.json({ error: 'Falha ao enviar mensagem' }, { status: response.status });
     }
 
