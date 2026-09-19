@@ -14,6 +14,7 @@ interface Service {
   description?: string;
   featured?: boolean;
   priceOnRequest?: boolean;
+  relatedProductIds?: string[];
 }
 
 interface Professional {
@@ -79,6 +80,7 @@ export default function StepBooking({ onComplete, kioskMode = false }: StepBooki
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [upsellProduct, setUpsellProduct] = useState<any>(null);
   
   // Subscription State
   const [activeMembershipPlan, setActiveMembershipPlan] = useState<any>(null);
@@ -303,6 +305,18 @@ export default function StepBooking({ onComplete, kioskMode = false }: StepBooki
          }
       }
 
+      // Fetch Upsell Product if relatedProductIds exists
+      if (selectedService?.relatedProductIds && selectedService.relatedProductIds.length > 0) {
+        try {
+          const productDoc = await getDoc(doc(firestore, 'products', selectedService.relatedProductIds[0]));
+          if (productDoc.exists()) {
+            setUpsellProduct({ id: productDoc.id, ...productDoc.data() });
+          }
+        } catch (err) {
+          console.error("Erro ao buscar produto de upsell:", err);
+        }
+      }
+
       setBookingSuccess(true);
       if (onComplete) onComplete();
     } catch (error) {
@@ -332,21 +346,52 @@ export default function StepBooking({ onComplete, kioskMode = false }: StepBooki
 
   if (bookingSuccess) {
     return (
-      <div className="text-center p-10 space-y-6 animate-in fade-in zoom-in duration-500">
-        <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto">
-          <Check className="w-10 h-10 text-green-500" />
+      <div className="text-center p-10 space-y-8 animate-in fade-in zoom-in duration-500">
+        <div className="space-y-6">
+          <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto">
+            <Check className="w-10 h-10 text-green-500" />
+          </div>
+          <h2 className="text-3xl font-bold">Agendamento Solicitado!</h2>
+          <p className="text-muted-foreground max-w-xs mx-auto">
+            {contactInfo.name}, recebemos seu pedido para {selectedService?.name} com {selectedProfessional?.name}. 
+            Te aguardamos em breve!
+          </p>
         </div>
-        <h2 className="text-3xl font-bold">Agendamento Solicitado!</h2>
-        <p className="text-muted-foreground max-w-xs mx-auto">
-          {contactInfo.name}, recebemos seu pedido para {selectedService?.name} com {selectedProfessional?.name}. 
-          Te aguardamos em breve!
-        </p>
-        <button 
-          onClick={() => window.location.reload()}
-          className="px-8 py-3 bg-primary text-white rounded-full font-bold hover:scale-105 transition-transform"
-        >
-          Fazer novo agendamento
-        </button>
+
+        {upsellProduct && (
+          <div className="max-w-md mx-auto text-left bg-primary/5 border border-primary/20 rounded-2xl p-5 shadow-sm">
+            <h3 className="text-sm font-bold text-primary flex items-center gap-2 mb-3">
+              <Star className="w-4 h-4 fill-primary" /> Dica do Profissional
+            </h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Para manter o resultado do seu <strong className="text-foreground">{selectedService?.name}</strong> por mais tempo, 
+              recomendamos levar nosso(a) <strong className="text-foreground">{upsellProduct.name}</strong>.
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => window.location.href = '/store'}
+                className="flex-1 bg-primary text-white py-2 rounded-lg font-semibold text-sm hover:bg-primary/90 transition-colors"
+              >
+                Ver na Loja →
+              </button>
+              <button 
+                onClick={() => window.location.reload()}
+                className="flex-1 border border-input bg-background hover:bg-accent py-2 rounded-lg font-semibold text-sm transition-colors"
+              >
+                Agora não
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!upsellProduct && (
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-8 py-3 bg-primary text-white rounded-full font-bold hover:scale-105 transition-transform"
+          >
+            Fazer novo agendamento
+          </button>
+        )}
       </div>
     );
   }

@@ -41,6 +41,7 @@ export interface EstablishmentSettings {
   address: string;
   whatsapp?: string;
   instagram?: string;
+  botName?: string;
   context?: string;
   aiTimeoutHours?: number;
   cancellationTimeLimitHours?: number;
@@ -93,6 +94,7 @@ const formSchema = z.object({
   address: z.string().min(10, { message: 'O endereço é obrigatório.' }),
   whatsapp: z.string().optional(),
   instagram: z.string().optional(),
+  botName: z.string().optional(),
   aiTimeoutHours: z.coerce.number().min(1, { message: 'O valor mínimo é 1 hora.' }).optional(),
   cancellationTimeLimitHours: z.coerce.number().min(0, { message: 'O valor não pode ser negativo.' }).optional(),
   loyaltyPercentage: z.coerce.number().min(0, { message: 'O percentual não pode ser negativo.' }).max(100, { message: 'O máximo é 100%.' }).optional(),
@@ -162,6 +164,7 @@ export default function EstablishmentPage() {
     address: 'Rua da Barbearia, 123 - Centro, Sua Cidade',
     whatsapp: '',
     instagram: '',
+    botName: 'Assistente Virtual',
     backgroundImageUrl: '',
     context: 'Somos uma barbearia com pegada moderna e profissional.',
     aiTimeoutHours: 12,
@@ -206,6 +209,7 @@ export default function EstablishmentPage() {
         aboutImagePrompt: settings.aboutImagePrompt || '',
         whatsapp: settings.whatsapp || '',
         instagram: settings.instagram || '',
+        botName: settings.botName || 'Assistente Virtual',
         context: settings.context || '',
         aiTimeoutHours: settings.aiTimeoutHours === undefined ? 12 : settings.aiTimeoutHours,
         cancellationTimeLimitHours: settings.cancellationTimeLimitHours === undefined ? 24 : settings.cancellationTimeLimitHours,
@@ -559,6 +563,19 @@ export default function EstablishmentPage() {
                       <FormMessage />
                     </FormItem>
                   )} />
+
+                  {settings?.planLimits?.whatsappBot?.enabled && (
+                    <FormField control={form.control} name="botName" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nome do Bot (IA do WhatsApp)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Ex: Zeca, Maria, Assistente Virtual" {...field} />
+                        </FormControl>
+                        <FormDescription>Como a IA deve se apresentar ao atender clientes no WhatsApp.</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  )}
 
                   <FormField control={form.control} name="logoUrl" render={({ field }) => (
                     <FormItem>
