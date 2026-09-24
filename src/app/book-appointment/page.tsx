@@ -242,7 +242,7 @@ export default function BookAppointmentPage() {
             professionalName: prof.name
           });
         }
-        currentTime = addMinutes(currentTime, 15); // Check every 15 minutes
+        currentTime = addMinutes(currentTime, establishmentSettings?.slotIntervalMinutes || 30); // Check dynamically
       }
     }
 
