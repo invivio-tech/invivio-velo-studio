@@ -234,7 +234,7 @@ export default function StepBooking({ onComplete, kioskMode = false }: StepBooki
       if (!isOverlapping && isAfter(slotStart, new Date())) {
         slots.push(format(slotStart, 'HH:mm'));
       }
-      currentTime = addMinutes(currentTime, 15);
+      currentTime = addMinutes(currentTime, establishmentSettings?.slotIntervalMinutes || 30);
     }
 
     return slots;

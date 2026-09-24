@@ -45,6 +45,7 @@ export interface EstablishmentSettings {
   context?: string;
   aiTimeoutHours?: number;
   cancellationTimeLimitHours?: number;
+  slotIntervalMinutes?: number;
   loyaltyPercentage?: number;
   pointsPenaltyForNoShow?: number;
   professionalCommissionPercentage?: number;
@@ -97,6 +98,7 @@ const formSchema = z.object({
   botName: z.string().optional(),
   aiTimeoutHours: z.coerce.number().min(1, { message: 'O valor mínimo é 1 hora.' }).optional(),
   cancellationTimeLimitHours: z.coerce.number().min(0, { message: 'O valor não pode ser negativo.' }).optional(),
+  slotIntervalMinutes: z.coerce.number().min(10).max(60).optional(),
   loyaltyPercentage: z.coerce.number().min(0, { message: 'O percentual não pode ser negativo.' }).max(100, { message: 'O máximo é 100%.' }).optional(),
   pointsPenaltyForNoShow: z.coerce.number().min(0, { message: 'A penalidade deve ser um valor positivo.' }).optional(),
   professionalCommissionPercentage: z.coerce.number().min(0, { message: 'A comissão não pode ser negativa.' }).max(100, { message: 'O máximo é 100%.' }).optional(),
@@ -169,6 +171,7 @@ export default function EstablishmentPage() {
     context: 'Somos uma barbearia com pegada moderna e profissional.',
     aiTimeoutHours: 12,
     cancellationTimeLimitHours: 24,
+    slotIntervalMinutes: 30,
     loyaltyPercentage: 10,
     pointsPenaltyForNoShow: 5,
     professionalCommissionPercentage: 25,
@@ -213,6 +216,7 @@ export default function EstablishmentPage() {
         context: settings.context || '',
         aiTimeoutHours: settings.aiTimeoutHours === undefined ? 12 : settings.aiTimeoutHours,
         cancellationTimeLimitHours: settings.cancellationTimeLimitHours === undefined ? 24 : settings.cancellationTimeLimitHours,
+        slotIntervalMinutes: settings.slotIntervalMinutes === undefined ? 30 : settings.slotIntervalMinutes,
         loyaltyPercentage: settings.loyaltyPercentage === undefined ? 10 : settings.loyaltyPercentage,
         pointsPenaltyForNoShow: settings.pointsPenaltyForNoShow === undefined ? 5 : settings.pointsPenaltyForNoShow,
         professionalCommissionPercentage: settings.professionalCommissionPercentage === undefined ? 25 : settings.professionalCommissionPercentage,
@@ -1101,6 +1105,29 @@ export default function EstablishmentPage() {
                         <FormDescription>
                           Com quantas horas de antecedência um cliente pode cancelar ou reagendar? (0 = a qualquer momento).
                         </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="slotIntervalMinutes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Ancoragem de Horários na Agenda (minutos)</FormLabel>
+                        <FormControl>
+                          <select 
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            {...field}
+                            value={field.value || 30}
+                            onChange={(e) => field.onChange(parseInt(e.target.value))}
+                          >
+                            <option value={15}>A cada 15 minutos (ex: 14:00, 14:15, 14:30)</option>
+                            <option value={30}>A cada 30 minutos (ex: 14:00, 14:30)</option>
+                            <option value={60}>A cada 1 hora (ex: 14:00, 15:00)</option>
+                          </select>
+                        </FormControl>
+                        <FormDescription>Define de quanto em quanto tempo a agenda gera um horário livre (na IA e no app).</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
