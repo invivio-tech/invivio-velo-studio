@@ -46,6 +46,7 @@ export interface EstablishmentSettings {
   aiTimeoutHours?: number;
   cancellationTimeLimitHours?: number;
   slotIntervalMinutes?: number;
+  totemPin?: string;
   loyaltyPercentage?: number;
   pointsPenaltyForNoShow?: number;
   professionalCommissionPercentage?: number;
@@ -99,6 +100,7 @@ const formSchema = z.object({
   aiTimeoutHours: z.coerce.number().min(1, { message: 'O valor mínimo é 1 hora.' }).optional(),
   cancellationTimeLimitHours: z.coerce.number().min(0, { message: 'O valor não pode ser negativo.' }).optional(),
   slotIntervalMinutes: z.coerce.number().min(10).max(60).optional(),
+  totemPin: z.string().max(4, { message: 'O PIN deve ter no máximo 4 dígitos.' }).optional(),
   loyaltyPercentage: z.coerce.number().min(0, { message: 'O percentual não pode ser negativo.' }).max(100, { message: 'O máximo é 100%.' }).optional(),
   pointsPenaltyForNoShow: z.coerce.number().min(0, { message: 'A penalidade deve ser um valor positivo.' }).optional(),
   professionalCommissionPercentage: z.coerce.number().min(0, { message: 'A comissão não pode ser negativa.' }).max(100, { message: 'O máximo é 100%.' }).optional(),
@@ -172,6 +174,7 @@ export default function EstablishmentPage() {
     aiTimeoutHours: 12,
     cancellationTimeLimitHours: 24,
     slotIntervalMinutes: 30,
+    totemPin: '',
     loyaltyPercentage: 10,
     pointsPenaltyForNoShow: 5,
     professionalCommissionPercentage: 25,
@@ -217,6 +220,7 @@ export default function EstablishmentPage() {
         aiTimeoutHours: settings.aiTimeoutHours === undefined ? 12 : settings.aiTimeoutHours,
         cancellationTimeLimitHours: settings.cancellationTimeLimitHours === undefined ? 24 : settings.cancellationTimeLimitHours,
         slotIntervalMinutes: settings.slotIntervalMinutes === undefined ? 30 : settings.slotIntervalMinutes,
+        totemPin: settings.totemPin || '',
         loyaltyPercentage: settings.loyaltyPercentage === undefined ? 10 : settings.loyaltyPercentage,
         pointsPenaltyForNoShow: settings.pointsPenaltyForNoShow === undefined ? 5 : settings.pointsPenaltyForNoShow,
         professionalCommissionPercentage: settings.professionalCommissionPercentage === undefined ? 25 : settings.professionalCommissionPercentage,
@@ -1128,6 +1132,20 @@ export default function EstablishmentPage() {
                           </select>
                         </FormControl>
                         <FormDescription>Define de quanto em quanto tempo a agenda gera um horário livre (na IA e no app).</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="totemPin"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>PIN de Segurança do Totem (Opcional)</FormLabel>
+                        <FormControl><Input type="password" placeholder="ex: 1234" maxLength={4} {...field} /></FormControl>
+                        <FormDescription>
+                          Se preenchido, a tela do Totem solicitará este PIN numérico para liberar o acesso pela primeira vez.
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
