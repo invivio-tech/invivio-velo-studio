@@ -19,7 +19,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Calendar } from '@/components/ui/calendar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar as CalendarIcon, Clock, Users, Scissors, User, Check, ArrowLeft, Loader2 } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, Users, Scissors, User, Check, ArrowLeft, Loader2, Star } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { parseDuration } from '@/lib/utils';
 
@@ -242,7 +242,7 @@ export default function BookAppointmentPage() {
             professionalName: prof.name
           });
         }
-        currentTime = addMinutes(currentTime, 15); // Check every 15 minutes
+        currentTime = addMinutes(currentTime, establishmentSettings?.slotIntervalMinutes || 30); // Check dynamically
       }
     }
 
@@ -271,7 +271,16 @@ export default function BookAppointmentPage() {
       }
     });
 
-    return Array.from(categoryMap.values()).filter(cat => cat.services.length > 0);
+    // P1: Sort featured services first within each category
+    const result = Array.from(categoryMap.values()).filter(cat => cat.services.length > 0);
+    result.forEach(cat => {
+      cat.services.sort((a, b) => {
+        if ((a as any).featured && !(b as any).featured) return -1;
+        if (!(a as any).featured && (b as any).featured) return 1;
+        return 0;
+      });
+    });
+    return result;
   }, [services, categories]);
 
 
@@ -426,9 +435,12 @@ export default function BookAppointmentPage() {
                   <AccordionContent>
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                       {category.services.map(service => (
-                        <Card key={service.id} onClick={() => handleSelectService(service)} className="cursor-pointer hover:border-primary transition-colors">
+                        <Card key={service.id} onClick={() => handleSelectService(service)} className={`cursor-pointer hover:border-primary transition-colors relative ${ (service as any).featured ? 'border-primary/40 bg-primary/5' : '' }`}>
                           <CardHeader>
-                            <CardTitle className="font-headline text-lg">{service.name}</CardTitle>
+                            <CardTitle className="font-headline text-lg flex items-center gap-2">
+                              {(service as any).featured && <Star className="w-4 h-4 fill-primary text-primary flex-shrink-0" />}
+                              {service.name}
+                            </CardTitle>
                           </CardHeader>
                           <CardContent>
                             <p className="text-sm text-muted-foreground">{service.description}</p>

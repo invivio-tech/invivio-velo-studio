@@ -52,6 +52,7 @@ const formSchema = z.object({
   featured: z.boolean().default(false),
   priceOnRequest: z.boolean().default(false),
   imagePrompt: z.string().optional(),
+  relatedProductIds: z.array(z.string()).default([]),
 });
 
 type ServiceFormProps = {
@@ -80,6 +81,13 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
   );
   const { data: settings } = useDoc<EstablishmentSettings>(settingsRef);
 
+  const productsCollection = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'products') : null),
+    [firestore]
+  );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: products } = useCollection<any>(productsCollection);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -92,6 +100,7 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
       featured: false,
       priceOnRequest: false,
       imagePrompt: '',
+      relatedProductIds: [],
     },
   });
 
@@ -103,6 +112,7 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
         featured: service.featured || false,
         priceOnRequest: service.priceOnRequest || false,
         imagePrompt: service.imagePrompt || '',
+        relatedProductIds: service.relatedProductIds || [],
       } : {
         name: '',
         description: '',
@@ -113,6 +123,7 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
         featured: false,
         priceOnRequest: false,
         imagePrompt: '',
+        relatedProductIds: [],
       });
     }
   }, [service, isOpen, form]);
@@ -265,6 +276,59 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
                     </FormItem>
                   )}
                 />
+
+                <FormField
+                  control={form.control}
+                  name="relatedProductIds"
+                  render={() => (
+                    <FormItem>
+                      <FormLabel>Produtos Recomendados (Upsell)</FormLabel>
+                      <div className="border rounded-md p-3 space-y-2 max-h-[150px] overflow-y-auto bg-muted/20">
+                        {products?.filter((p: any) => p.active !== false).map((product: any) => (
+                          <FormField
+                            key={product.id}
+                            control={form.control}
+                            name="relatedProductIds"
+                            render={({ field }) => {
+                              return (
+                                <FormItem
+                                  key={product.id}
+                                  className="flex flex-row items-start space-x-3 space-y-0"
+                                >
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value?.includes(product.id)}
+                                      onCheckedChange={(checked) => {
+                                        return checked
+                                          ? field.onChange([...(field.value || []), product.id])
+                                          : field.onChange(
+                                              field.value?.filter(
+                                                (value: string) => value !== product.id
+                                              )
+                                            )
+                                      }}
+                                    />
+                                  </FormControl>
+                                  <FormLabel className="font-normal text-sm cursor-pointer">
+                                    {product.name}
+                                  </FormLabel>
+                                </FormItem>
+                              )
+                            }}
+                          />
+                        ))}
+                        {(!products || products.length === 0) && (
+                          <p className="text-xs text-muted-foreground">Nenhum produto cadastrado na loja.</p>
+                        )}
+                      </div>
+                      <FormDescription>
+                        Esses produtos serão oferecidos ao cliente após a confirmação deste agendamento.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}

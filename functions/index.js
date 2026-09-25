@@ -595,3 +595,53 @@ exports.processscheduledpush = onSchedule('every 5 minutes', async (event) => {
 });
 
 
+/**
+ * Scheduled: Resetar o uso mensal das assinaturas do Clube
+ * Executa todo dia 1 de cada mês às 00:00 horário de Brasília (= 03:00 UTC)
+ */
+exports.resetmonthlyusage = onSchedule('0 3 1 * *', async (event) => {
+    const db = admin.firestore();
+    const now = admin.firestore.Timestamp.now();
+    const nowDate = now.toDate();
+
+    console.log(`[Clube] Iniciando reset mensal de uso em ${nowDate.toISOString()}`);
+
+    // Busca todas as assinaturas ativas
+    const membershipsSnapshot = await db.collection('userMemberships')
+        .where('status', '==', 'active')
+        .get();
+
+    if (membershipsSnapshot.empty) {
+        console.log('[Clube] Nenhuma assinatura ativa encontrada. Nada a resetar.');
+        return null;
+    }
+
+    console.log(`[Clube] Encontradas ${membershipsSnapshot.size} assinatura(s) ativa(s) para resetar.`);
+
+    // Calcula o novo período: do dia 1 do mês atual até o dia 1 do próximo mês
+    const periodStart = new Date(nowDate.getFullYear(), nowDate.getMonth(), 1, 0, 0, 0, 0);
+    const periodEnd = new Date(nowDate.getFullYear(), nowDate.getMonth() + 1, 1, 0, 0, 0, 0);
+
+    const batch = db.batch();
+    let resetCount = 0;
+
+    membershipsSnapshot.forEach(membershipDoc => {
+        const data = membershipDoc.data();
+        const previousUsage = data.usageThisMonth || 0;
+
+        batch.update(membershipDoc.ref, {
+            usageThisMonth: 0,
+            usageCount: 0, // Compatibilidade com campo legado
+            currentPeriodStart: admin.firestore.Timestamp.fromDate(periodStart),
+            currentPeriodEnd: admin.firestore.Timestamp.fromDate(periodEnd),
+        });
+
+        console.log(`[Clube] Resetando assinatura ${membershipDoc.id} (usuário: ${data.userId}, plano: ${data.planId}) — uso anterior: ${previousUsage}`);
+        resetCount++;
+    });
+
+    await batch.commit();
+
+    console.log(`[Clube] Reset mensal concluído! ${resetCount} assinatura(s) resetada(s). Novo período: ${periodStart.toLocaleDateString('pt-BR')} → ${periodEnd.toLocaleDateString('pt-BR')}`);
+    return null;
+});
