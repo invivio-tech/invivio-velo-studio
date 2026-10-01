@@ -1,4 +1,3 @@
-import type { NextConfig } from 'next';
 import { execSync } from 'child_process';
 
 let gitSha = 'v1.00056';
@@ -8,12 +7,13 @@ try {
   console.log('Could not fetch git sha');
 }
 
-console.log('--- LOADING NEXT.CONFIG.TS ---');
-const nextConfig: NextConfig = {
+console.log('--- LOADING NEXT.CONFIG.MJS ---');
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   env: {
     NEXT_PUBLIC_GIT_SHA: gitSha,
   },
-  /* config options here */
   typescript: {
     ignoreBuildErrors: true,
   },
