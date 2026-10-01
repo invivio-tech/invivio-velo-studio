@@ -5,7 +5,7 @@ import { useFirestore } from '@/firebase';
 import { collection, query, where, getDocs, doc, updateDoc, Timestamp, orderBy } from 'firebase/firestore';
 import { VirtualKeypad } from '@/components/totem/VirtualKeypad';
 import StepBooking from '@/components/booking/StepBooking';
-import { Scissors, UserCheck, ArrowLeft, CheckCircle2, AlertCircle, Calendar } from 'lucide-react';
+import { Scissors, UserCheck, ArrowLeft, CheckCircle2, AlertCircle, Calendar, Lock } from 'lucide-react';
 import { startOfDay, endOfDay } from 'date-fns';
 import { useMemoFirebase, useDoc } from '@/firebase';
 import type { EstablishmentSettings } from '@/app/establishment/page';
@@ -27,6 +27,8 @@ export default function TotemPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [clientName, setClientName] = useState('');
+  const [isLocked, setIsLocked] = useState(true);
+  const [pinInput, setPinInput] = useState('');
   const firestore = useFirestore();
   
   const settingsRef = useMemoFirebase(
@@ -46,6 +48,26 @@ export default function TotemPage() {
       return () => clearTimeout(t);
     }
   }, [mode]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (sessionStorage.getItem('totem_unlocked') === 'true') {
+        setIsLocked(false);
+      }
+    }
+  }, []);
+
+  const handlePinEnter = () => {
+    if (pinInput === settings?.totemPin) {
+      setIsLocked(false);
+      sessionStorage.setItem('totem_unlocked', 'true');
+      setError('');
+      setPinInput('');
+    } else {
+      setError('PIN Incorreto');
+      setPinInput('');
+    }
+  };
 
   const handleCheckinSearch = async () => {
     if (phone.length < 10) {
@@ -115,6 +137,42 @@ export default function TotemPage() {
     
     setMode('success_checkin');
   };
+
+  if (settings?.totemPin && isLocked) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center relative">
+        <div className="max-w-xl w-full space-y-8 animate-in fade-in duration-500">
+          <div className="text-center space-y-4">
+            <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Lock className="w-12 h-12 text-primary" />
+            </div>
+            <h1 className="text-4xl font-bold">Totem Bloqueado</h1>
+            <p className="text-xl text-muted-foreground">Digite o PIN do estabelecimento para liberar</p>
+          </div>
+          
+          <div className="bg-white/5 border border-white/10 rounded-3xl p-8 space-y-8">
+            <div className="text-center">
+              <div className="text-5xl font-bold tracking-widest text-primary h-16 flex items-center justify-center">
+                {pinInput.split('').map(() => '•').join('') || <span className="text-white/20">____</span>}
+              </div>
+              {error && (
+                <p className="text-red-500 mt-4 flex items-center justify-center gap-2 text-lg">
+                  <AlertCircle className="w-5 h-5" /> {error}
+                </p>
+              )}
+            </div>
+            
+            <VirtualKeypad 
+              value={pinInput} 
+              onChange={(val) => { setPinInput(val); setError(''); }}
+              onEnter={handlePinEnter}
+              maxLength={4}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (mode === 'success_checkin') {
     return (
