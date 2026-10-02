@@ -2,7 +2,8 @@
 
 // ─── Imports ───────────────────────────────────────────────────────────────────
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { collection, addDoc, doc } from 'firebase/firestore';
 import { useFirestore, useCollection, useMemoFirebase, useUserProfile, useDoc } from '@/firebase';
 import type { EstablishmentSettings } from '@/app/establishment/page';
@@ -54,15 +55,22 @@ type CheckoutFormValues = z.infer<typeof checkoutSchema>;
 function ProductCard({
   product,
   onAddToCart,
+  isHighlighted,
+  highlightRef,
 }: {
   product: Product;
   onAddToCart: (product: Product) => void;
+  isHighlighted?: boolean;
+  highlightRef?: React.RefObject<HTMLDivElement | null>;
 }) {
   const formatPrice = (p: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p);
 
   return (
-    <div className="group relative flex flex-col rounded-2xl border bg-card overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
+    <div 
+      ref={highlightRef}
+      className={`group relative flex flex-col rounded-2xl border bg-card overflow-hidden transition-all duration-500 ${isHighlighted ? 'ring-2 ring-primary ring-offset-2 scale-105 shadow-xl z-10' : 'shadow-sm hover:shadow-lg'}`}
+    >
       {/* Product Image */}
       <div className="relative h-48 bg-muted overflow-hidden">
         {(product.imageURLs?.[0] || product.imageURL) ? (
@@ -174,6 +182,10 @@ export default function StorePage() {
     defaultValues: { clientName: '', clientPhone: '' },
   });
 
+  const searchParams = useSearchParams();
+  const highlightedProductId = searchParams.get('product');
+  const highlightedRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (userProfile) {
       form.setValue('clientName', userProfile.name);
@@ -182,6 +194,13 @@ export default function StorePage() {
       }
     }
   }, [userProfile, form]);
+
+  // Rola e destaca o produto indicado pela URL (?product=<id>)
+  useEffect(() => {
+    if (highlightedProductId && products && products.length > 0 && highlightedRef.current) {
+      highlightedRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [highlightedProductId, products]);
 
   const filteredProducts = useMemo(() => {
     if (selectedCategoryId === 'all') return products;
@@ -364,7 +383,13 @@ export default function StorePage() {
         {!isLoading && filteredProducts.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {filteredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} onAddToCart={handleAddToCart} />
+              <ProductCard 
+                key={product.id} 
+                product={product} 
+                onAddToCart={handleAddToCart}
+                isHighlighted={product.id === highlightedProductId}
+                highlightRef={product.id === highlightedProductId ? highlightedRef : undefined}
+              />
             ))}
           </div>
         )}

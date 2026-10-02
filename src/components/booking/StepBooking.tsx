@@ -369,7 +369,7 @@ export default function StepBooking({ onComplete, kioskMode = false }: StepBooki
             </p>
             <div className="flex gap-3">
               <button 
-                onClick={() => window.location.href = '/store'}
+                onClick={() => window.location.href = `/store?product=${upsellProduct.id}`}
                 className="flex-1 bg-primary text-white py-2 rounded-lg font-semibold text-sm hover:bg-primary/90 transition-colors"
               >
                 Ver na Loja →
