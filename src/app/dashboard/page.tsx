@@ -62,13 +62,27 @@ export default function DashboardPage() {
   const router = useRouter();
   const firestore = useFirestore();
 
+  const settingsRef = useMemoFirebase(
+    () => (firestore ? doc(firestore, 'establishmentSettings', 'main') : null),
+    [firestore]
+  );
+  const { data: settings, isLoading: areSettingsLoading } = useDoc<any>(settingsRef);
+
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/login');
     } else if (!isProfileLoading && userProfile && userProfile.role !== 'admin') {
       router.push('/schedule');
+    } else if (!areSettingsLoading && settings) {
+      // Se não tem financeiro nem loja, é plano essencial (WhatsApp Only), dashboard não faz sentido
+      const hasFinance = settings?.planLimits?.financial?.enabled ?? true;
+      const hasStore = settings?.planLimits?.store?.enabled ?? true;
+      
+      if (!hasFinance && !hasStore) {
+        router.push('/schedule');
+      }
     }
-  }, [user, isUserLoading, userProfile, isProfileLoading, router]);
+  }, [user, isUserLoading, userProfile, isProfileLoading, areSettingsLoading, settings, router]);
 
   const [filterMode, setFilterMode] = useState<'range' | 'month'>('range');
   const [timeRange, setTimeRange] = useState<7 | 15 | 30>(30);
@@ -126,8 +140,7 @@ export default function DashboardPage() {
   , [firestore]);
   const { data: categories } = useCollection<CategoryWithId>(categoriesQuery);
   
-  const settingsRef = useMemoFirebase(() => firestore ? doc(firestore, 'establishmentSettings', 'main') : null, [firestore]);
-  const { data: settings } = useDoc<EstablishmentSettings>(settingsRef);
+  // Removed duplicated settingsRef and settings declarations. The top ones are used.
 
   const stats = useMemo(() => {
     if (!recentAppointments) return null;
