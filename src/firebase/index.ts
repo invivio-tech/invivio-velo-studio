@@ -2,7 +2,7 @@
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { getFirestore, initializeFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -22,6 +22,13 @@ export function getSdks(firebaseApp: FirebaseApp) {
   const auth = getAuth(firebaseApp);
   auth.useDeviceLanguage();
   
+  // Força persistência de login longa no Local Storage para evitar deslogar no Mobile (PWA/Chrome)
+  if (typeof window !== 'undefined') {
+    setPersistence(auth, browserLocalPersistence).catch((error) => {
+      console.error("Erro ao forçar persistência do Firebase Auth", error);
+    });
+  }
+
   // Normalize storage bucket URL to gs:// format for maximum compatibility
   let bucketUrl = firebaseConfig.storageBucket;
   if (bucketUrl && !bucketUrl.startsWith('gs://')) {
