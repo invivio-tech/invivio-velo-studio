@@ -43,6 +43,12 @@ export default function MensagensPage() {
     return new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(date);
   };
 
+  const getMediaUrl = (mediaId: string) => {
+    const adminUrl = process.env.NEXT_PUBLIC_VELO_ADMIN_URL || 'https://invivio-velo-admin.web.app';
+    const tenantId = process.env.NEXT_PUBLIC_FIREBASE_DATABASE_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    return `${adminUrl}/api/webhooks/whatsapp/media?mediaId=${mediaId}&tenantId=${tenantId}`;
+  };
+
   const toggleAi = async () => {
     if (!firestore || !selectedChat) return;
     const chatRef = doc(firestore, 'chats', selectedChat.id);
@@ -153,6 +159,27 @@ export default function MensagensPage() {
                 <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}>
                   {msg.role === 'user' ? (
                     <div className="bg-white dark:bg-slate-800 border rounded-2xl rounded-tl-sm p-3 max-w-[80%] shadow-sm">
+                      {msg.mediaId && (
+                        <div className="mb-2">
+                          {msg.mimeType?.startsWith('audio/') ? (
+                            <audio controls className="max-w-full h-10">
+                              <source src={getMediaUrl(msg.mediaId)} type={msg.mimeType} />
+                              Seu navegador não suporta áudio.
+                            </audio>
+                          ) : msg.mimeType?.startsWith('image/') ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img src={getMediaUrl(msg.mediaId)} alt="Imagem recebida" className="max-w-[200px] rounded cursor-pointer border" onClick={() => window.open(getMediaUrl(msg.mediaId), '_blank')} />
+                          ) : msg.mimeType?.startsWith('video/') ? (
+                            <video controls className="max-w-[200px] rounded border">
+                              <source src={getMediaUrl(msg.mediaId)} type={msg.mimeType} />
+                            </video>
+                          ) : (
+                            <a href={getMediaUrl(msg.mediaId)} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-blue-500 underline text-sm bg-blue-50 p-2 rounded">
+                              📎 Abrir Anexo Documento
+                            </a>
+                          )}
+                        </div>
+                      )}
                       <p className="text-sm">{msg.content}</p>
                       <span className="text-[10px] text-muted-foreground mt-1 block">{formatTime(msg.timestamp)}</span>
                     </div>

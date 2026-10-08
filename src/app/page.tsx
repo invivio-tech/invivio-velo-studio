@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import {
@@ -50,6 +51,17 @@ export default function LandingPage() {
     [firestore]
   );
   const { data: settings, isLoading: areSettingsLoading } = useDoc<EstablishmentSettings>(settingsRef);
+  
+  const router = useRouter();
+  useEffect(() => {
+    if (!areSettingsLoading && settings) {
+      // No plano whatsapp_only a loja pública é desligada. O site redireciona direto pro agendamento.
+      const hasStore = settings?.planLimits?.store?.enabled ?? true;
+      if (!hasStore) {
+        router.push('/book-appointment');
+      }
+    }
+  }, [areSettingsLoading, settings, router]);
 
   // Fetch Featured Products (up to 4 active products)
   const featuredProductsQuery = useMemoFirebase(
@@ -301,7 +313,7 @@ export default function LandingPage() {
                   </div>
                   <CardFooter className="flex justify-between items-center bg-muted/50 p-6 pt-4">
                     <span className="text-xl font-bold font-headline text-primary">
-                      {`R$${(service.price ?? 0).toFixed(2).replace('.', ',')}`}
+                      {service.priceOnRequest ? 'Sob Consulta' : `R$${(service.price ?? 0).toFixed(2).replace('.', ',')}`}
                     </span>
                     <Badge variant="secondary">{service.duration || 'Consultar'}</Badge>
                   </CardFooter>

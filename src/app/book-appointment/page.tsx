@@ -19,8 +19,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Calendar } from '@/components/ui/calendar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar as CalendarIcon, Clock, Users, Scissors, User, Check, ArrowLeft, Loader2 } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, Users, Scissors, User, Check, ArrowLeft, Loader2, Star } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { parseDuration } from '@/lib/utils';
 
 // Types for data used in this page
 interface Appointment {
@@ -160,8 +161,6 @@ export default function BookAppointmentPage() {
 
   }, [firestore, selectedDate, toast]);
 
-  const parseDuration = (durationStr: string): number => parseInt(durationStr, 10) || 30;
-
   // State for professional schedules
   const [professionalSchedules, setProfessionalSchedules] = useState<Record<string, ScheduleSettings>>({});
 
@@ -243,7 +242,7 @@ export default function BookAppointmentPage() {
             professionalName: prof.name
           });
         }
-        currentTime = addMinutes(currentTime, 15); // Check every 15 minutes
+        currentTime = addMinutes(currentTime, establishmentSettings?.slotIntervalMinutes || 30); // Check dynamically
       }
     }
 
@@ -272,7 +271,16 @@ export default function BookAppointmentPage() {
       }
     });
 
-    return Array.from(categoryMap.values()).filter(cat => cat.services.length > 0);
+    // P1: Sort featured services first within each category
+    const result = Array.from(categoryMap.values()).filter(cat => cat.services.length > 0);
+    result.forEach(cat => {
+      cat.services.sort((a, b) => {
+        if ((a as any).featured && !(b as any).featured) return -1;
+        if (!(a as any).featured && (b as any).featured) return 1;
+        return 0;
+      });
+    });
+    return result;
   }, [services, categories]);
 
 
@@ -333,6 +341,7 @@ export default function BookAppointmentPage() {
       professionalName: finalProfessional.name,
       serviceDuration: selectedService.duration,
       servicePrice: finalPrice,
+      priceOnRequest: (selectedService as any).priceOnRequest || false,
       reminderSent: false,
     };
 
@@ -426,15 +435,18 @@ export default function BookAppointmentPage() {
                   <AccordionContent>
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                       {category.services.map(service => (
-                        <Card key={service.id} onClick={() => handleSelectService(service)} className="cursor-pointer hover:border-primary transition-colors">
+                        <Card key={service.id} onClick={() => handleSelectService(service)} className={`cursor-pointer hover:border-primary transition-colors relative ${ (service as any).featured ? 'border-primary/40 bg-primary/5' : '' }`}>
                           <CardHeader>
-                            <CardTitle className="font-headline text-lg">{service.name}</CardTitle>
+                            <CardTitle className="font-headline text-lg flex items-center gap-2">
+                              {(service as any).featured && <Star className="w-4 h-4 fill-primary text-primary flex-shrink-0" />}
+                              {service.name}
+                            </CardTitle>
                           </CardHeader>
                           <CardContent>
                             <p className="text-sm text-muted-foreground">{service.description}</p>
                           </CardContent>
                           <CardFooter className="flex justify-between text-sm">
-                            <span className="font-bold text-primary">{`R$${service.price.toFixed(2).replace('.', ',')}`}</span>
+                            <span className="font-bold text-primary">{(service as any).priceOnRequest ? 'Sob Consulta' : `R$${service.price.toFixed(2).replace('.', ',')}`}</span>
                             <span className="text-muted-foreground">{service.duration}</span>
                           </CardFooter>
                         </Card>
@@ -542,7 +554,7 @@ export default function BookAppointmentPage() {
                   <div className="mt-4 p-4 bg-primary/10 border border-primary/20 rounded-md">
                     <p className="font-semibold text-primary mb-1">Benefício do Clube Aplicado 🎉</p>
                     <div className="flex justify-between items-center text-lg">
-                      <span className="line-through text-muted-foreground">R$ {selectedService.price.toFixed(2).replace('.', ',')}</span>
+                      <span className="line-through text-muted-foreground">{(selectedService as any).priceOnRequest ? 'Sob Consulta' : `R$ ${selectedService.price.toFixed(2).replace('.', ',')}`}</span>
                       <span className="font-bold text-primary">R$ 0,00</span>
                     </div>
                   </div>
@@ -555,7 +567,7 @@ export default function BookAppointmentPage() {
                     )}
                     <div className="flex justify-between items-center text-lg">
                       <span className="font-semibold">Valor Total:</span>
-                      <span className="font-bold">R$ {selectedService.price.toFixed(2).replace('.', ',')}</span>
+                      <span className="font-bold">{(selectedService as any).priceOnRequest ? 'A definir no local' : `R$ ${selectedService.price.toFixed(2).replace('.', ',')}`}</span>
                     </div>
                   </div>
                 )}

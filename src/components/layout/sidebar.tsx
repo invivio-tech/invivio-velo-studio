@@ -141,6 +141,8 @@ export default function AppSidebar() {
 
   const filteredAdminOperationsItems = adminOperationsItems.filter(item => {
     if (!whatsappBotEnabled && item.href === '/admin/mensagens') return false;
+    // Opcional: Se for plano apenas WhatsApp e não financeiro, esconder dashboard?
+    // Na dúvida, deixamos o Dashboard se não houver regra.
     return true;
   });
 
@@ -151,6 +153,7 @@ export default function AppSidebar() {
 
   const filteredAdminFinanceMarketingItems = adminFinanceMarketingItems.filter(item => {
     if (!financialEnabled && item.href === '/financial-report') return false;
+    if (!financialEnabled && item.href === '/invoices') return false; // Esconde financeiro básico no WhatsApp only
     if (!marketingEnabled && item.href === '/promotions') return false;
     return true;
   });
@@ -161,6 +164,8 @@ export default function AppSidebar() {
     if (!rewardsEnabled && item.href === '/rewards') return false;
     return true;
   });
+
+  const filteredStoreMenuItems = storeEnabled ? storeMenuItems : [];
 
   const handleLogout = async () => {
     await logout();
@@ -286,7 +291,7 @@ export default function AppSidebar() {
                         <span>Loja e Produtos</span>
                       </div>
                       <SidebarMenu>
-                        {storeMenuItems.map((item) => (
+                        {filteredStoreMenuItems.map((item) => (
                           <SidebarMenuItem key={item.href}>
                             <SidebarMenuButton
                               asChild
@@ -424,7 +429,7 @@ export default function AppSidebar() {
             </div>
           )}
           <div className="pb-4 pt-2 flex flex-col items-center justify-center gap-1 opacity-50 hover:opacity-100 transition-opacity">
-             <span className="text-[10px] text-muted-foreground">v1.00056</span>
+             <span className="text-[10px] text-muted-foreground font-mono">v-{process.env.NEXT_PUBLIC_GIT_SHA || 'dev'}</span>
              <p className="text-[10px] font-medium leading-tight text-primary font-bold">
                Invivio Velo
              </p>

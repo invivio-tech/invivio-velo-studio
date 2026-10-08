@@ -45,12 +45,14 @@ interface Category {
 const formSchema = z.object({
   name: z.string().min(2, { message: 'O nome do serviço deve ter pelo menos 2 caracteres.' }),
   description: z.string().min(10, { message: 'A descrição deve ter pelo menos 10 caracteres.' }),
-  price: z.coerce.number().positive({ message: 'O preço deve ser um número positivo.' }),
+  price: z.coerce.number().min(0, { message: 'O preço não pode ser negativo.' }),
   duration: z.string().min(2, { message: 'A duração é obrigatória.' }),
   imageUrl: z.string().optional().or(z.literal('')),
   categoryId: z.string().min(1, { message: 'A categoria é obrigatória.' }),
   featured: z.boolean().default(false),
+  priceOnRequest: z.boolean().default(false),
   imagePrompt: z.string().optional(),
+  relatedProductIds: z.array(z.string()).default([]),
 });
 
 type ServiceFormProps = {
@@ -79,6 +81,13 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
   );
   const { data: settings } = useDoc<EstablishmentSettings>(settingsRef);
 
+  const productsCollection = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'products') : null),
+    [firestore]
+  );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: products } = useCollection<any>(productsCollection);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -89,7 +98,9 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
       imageUrl: '',
       categoryId: '',
       featured: false,
+      priceOnRequest: false,
       imagePrompt: '',
+      relatedProductIds: [],
     },
   });
 
@@ -99,7 +110,9 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
         ...service,
         imageUrl: service.imageUrl || '',
         featured: service.featured || false,
+        priceOnRequest: service.priceOnRequest || false,
         imagePrompt: service.imagePrompt || '',
+        relatedProductIds: service.relatedProductIds || [],
       } : {
         name: '',
         description: '',
@@ -108,7 +121,9 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
         imageUrl: '',
         categoryId: '',
         featured: false,
+        priceOnRequest: false,
         imagePrompt: '',
+        relatedProductIds: [],
       });
     }
   }, [service, isOpen, form]);
@@ -116,7 +131,11 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSaving(true);
     try {
-      const serviceData = service ? { ...service, ...values } : values;
+      const finalValues = { ...values };
+      if (finalValues.priceOnRequest) {
+        finalValues.price = 0;
+      }
+      const serviceData = service ? { ...service, ...finalValues } : finalValues;
       await onSave(serviceData as Service | ServiceWithId);
       setIsOpen(false);
     } finally {
@@ -181,12 +200,12 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
     setIsSuggesting(true);
     try {
       const result = await generateServiceDescription({
-        name,
-        price: String(price),
-        duration,
-        establishmentName: settings?.name || '',
-        nicheContext: settings?.context || settings?.about || '',
-        imageStylePrompt: settings?.productImageDescription || '',
+        name: typeof name === 'string' ? name : 'Serviço',
+        price: String(price || 0),
+        duration: typeof duration === 'string' ? duration : '30 min',
+        establishmentName: typeof settings?.name === 'string' ? settings.name : '',
+        nicheContext: typeof settings?.context === 'string' ? settings.context : (typeof settings?.about === 'string' ? settings.about : ''),
+        imageStylePrompt: typeof settings?.productImageDescription === 'string' ? settings.productImageDescription : '',
       });
       if (result.description) {
         form.setValue('description', result.description, { shouldValidate: true });
@@ -257,6 +276,59 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
                     </FormItem>
                   )}
                 />
+
+                <FormField
+                  control={form.control}
+                  name="relatedProductIds"
+                  render={() => (
+                    <FormItem>
+                      <FormLabel>Produtos Recomendados (Upsell)</FormLabel>
+                      <div className="border rounded-md p-3 space-y-2 max-h-[150px] overflow-y-auto bg-muted/20">
+                        {products?.filter((p: any) => p.active !== false).map((product: any) => (
+                          <FormField
+                            key={product.id}
+                            control={form.control}
+                            name="relatedProductIds"
+                            render={({ field }) => {
+                              return (
+                                <FormItem
+                                  key={product.id}
+                                  className="flex flex-row items-start space-x-3 space-y-0"
+                                >
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value?.includes(product.id)}
+                                      onCheckedChange={(checked) => {
+                                        return checked
+                                          ? field.onChange([...(field.value || []), product.id])
+                                          : field.onChange(
+                                              field.value?.filter(
+                                                (value: string) => value !== product.id
+                                              )
+                                            )
+                                      }}
+                                    />
+                                  </FormControl>
+                                  <FormLabel className="font-normal text-sm cursor-pointer">
+                                    {product.name}
+                                  </FormLabel>
+                                </FormItem>
+                              )
+                            }}
+                          />
+                        ))}
+                        {(!products || products.length === 0) && (
+                          <p className="text-xs text-muted-foreground">Nenhum produto cadastrado na loja.</p>
+                        )}
+                      </div>
+                      <FormDescription>
+                        Esses produtos serão oferecidos ao cliente após a confirmação deste agendamento.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -265,7 +337,13 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
                       <FormItem>
                         <FormLabel>Preço (R$)</FormLabel>
                         <FormControl>
-                          <Input type="number" step="0.01" placeholder="ex: 55.00" {...field} />
+                          <Input 
+                            type="number" 
+                            step="0.01" 
+                            placeholder="ex: 55.00" 
+                            disabled={form.watch('priceOnRequest')}
+                            {...field} 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -285,6 +363,31 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
                     )}
                   />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="priceOnRequest"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 p-2">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={(checked) => {
+                             field.onChange(checked);
+                             if (checked) {
+                               form.setValue('price', 0);
+                             }
+                          }}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>
+                          Preço Sob Consulta (Orçamento)
+                        </FormLabel>
+                      </div>
+                    </FormItem>
+                  )}
+                />
 
                 <FormField
                   control={form.control}
