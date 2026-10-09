@@ -192,12 +192,12 @@ export default function MensagensPage() {
                       <span className="text-[10px] text-primary/60 mt-1 block text-right">{formatTime(msg.timestamp)}</span>
                     </div>
                   ) : (
-                    <div className="bg-blue-100 dark:bg-blue-900/30 border-blue-200 border rounded-2xl rounded-tr-sm p-3 max-w-[80%] shadow-sm">
-                      <div className="flex items-center gap-1 mb-1 text-blue-700 dark:text-blue-400 text-xs font-medium">
-                        <User className="w-3 h-3" /> Você
+                    <div className="bg-emerald-50 dark:bg-emerald-950/40 border-emerald-100 dark:border-emerald-900/50 border rounded-2xl rounded-tr-sm p-3 max-w-[80%] shadow-sm">
+                      <div className="flex items-center gap-1 mb-1 text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
+                        <User className="w-3 h-3" /> Barbearia
                       </div>
-                      <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                      <span className="text-[10px] text-blue-700/60 mt-1 block text-right">{formatTime(msg.timestamp)}</span>
+                      <p className="text-[15px] whitespace-pre-wrap text-slate-800 dark:text-slate-200">{msg.content}</p>
+                      <span className="text-[10px] text-emerald-600/60 dark:text-emerald-400/60 mt-1 block text-right">{formatTime(msg.timestamp)}</span>
                     </div>
                   )}
                 </div>
