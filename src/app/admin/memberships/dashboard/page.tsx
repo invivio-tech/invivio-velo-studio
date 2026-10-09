@@ -141,7 +141,7 @@ export default function MembershipsDashboardPage() {
         margin: globalMargin
       }
     };
-  }, [plans, activeMemberships, invoices, appointments, currentMonthStart, currentMonthEnd, commissionPercentage]);
+  }, [plans, activeMemberships, invoices, appointmentsRaw, currentMonthStart, currentMonthEnd, commissionPercentage]);
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
