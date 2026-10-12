@@ -56,13 +56,9 @@ export default function LandingPage() {
   const router = useRouter();
   const { user, isUserLoading } = useUser();
 
-  // App instalado (PWA): se já existe sessão salva, pula a landing pública e vai direto ao painel.
+  // Se o usuário já está logado, vai direto para a agenda/painel
   useEffect(() => {
-    if (isUserLoading || !user) return;
-    const isStandalone =
-      window.matchMedia?.('(display-mode: standalone)').matches ||
-      (window.navigator as any).standalone === true;
-    if (isStandalone) {
+    if (!isUserLoading && user) {
       router.replace('/schedule');
     }
   }, [user, isUserLoading, router]);
@@ -114,16 +110,16 @@ export default function LandingPage() {
   const isLoading = areServicesLoading || areSettingsLoading;
 
   const defaultSettings: EstablishmentSettings = {
-    name: 'Barbearia Inteligente',
-    about: 'Fundada em 2024, nossa barbearia nasceu com o propósito de resgatar a essência das barbearias clássicas, incorporando tecnologia para oferecer uma experiência única e conveniente. Nossos profissionais são artistas apaixonados, dedicados a entregar o melhor resultado para cada cliente. Utilizamos produtos de alta qualidade e as técnicas mais apuradas para garantir que seu cabelo e barba estejam sempre impecáveis. Venha nos visitar e descubra por que somos a escolha inteligente para o homem moderno.',
+    name: '',
+    about: '',
     heroTitle: 'Estilo e Precisão em Cada Corte.',
-    heroSubtitle: 'Experimente a combination perfeita de tradição e modernidade. Na Barbearia Inteligente, cuidamos do seu visual com a maestria que você merece.',
+    heroSubtitle: 'Experimente a combinação perfeita de tradição e modernidade.',
     servicesTitle: 'Nossos Serviços Premium',
     servicesSubtitle: 'Do clássico ao contemporâneo, temos o serviço perfeito para você.',
-    storeSubtitle: 'Produtos profissionais usados pelos nossos barbeiros, disponíveis para você.',
-    address: 'Rua da Barbearia, 123 - Centro, Sua Cidade',
-    whatsapp: '5511999998888',
-    instagram: 'barbearia.inteligente',
+    storeSubtitle: 'Produtos profissionais recomendados para você.',
+    address: '',
+    whatsapp: '',
+    instagram: '',
     businessCategory: 'barbershop',
     businessTone: 'luxury',
   };
@@ -618,11 +614,13 @@ export default function LandingPage() {
           ) : (
             <>
               <p>
-                &copy; {new Date().getFullYear()} {establishmentName}. Todos os direitos reservados.
+                &copy; {new Date().getFullYear()} {establishmentName || 'Todos os direitos reservados.'}{establishmentName ? '. Todos os direitos reservados.' : ''}
               </p>
-              <p className="mt-2">
-                {establishmentAddress}
-              </p>
+              {establishmentAddress && (
+                <p className="mt-2">
+                  {establishmentAddress}
+                </p>
+              )}
               <div className="pb-4 pt-2 flex flex-col items-center justify-center gap-1 opacity-50 hover:opacity-100 transition-all duration-300">
                 <p className="text-[10px]">Invivio Velo v1.00056</p>
                 <p className="text-[10px] font-medium leading-tight">

@@ -129,7 +129,7 @@ export default function AppSidebar() {
     [firestore]
   );
   const { data: settings, isLoading: areSettingsLoading } = useDoc<EstablishmentSettings>(settingsRef);
-  const establishmentName = settings?.name || 'Barbearia Inteligente';
+  const establishmentName = settings?.name || '';
   const establishmentLogo = settings?.logoUrl;
 
   const storeEnabled = settings?.planLimits?.store?.enabled ?? true;
