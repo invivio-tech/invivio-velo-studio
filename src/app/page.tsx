@@ -24,12 +24,13 @@ import {
   useDoc,
   useMemoFirebase,
   useUser,
+  hasStoredAuthSession,
 } from '@/firebase';
 import type { Service } from '@/app/services/page';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { EstablishmentSettings } from '@/app/establishment/page';
 import type { Product } from '@/types/store';
-import { Instagram, Star, Scissors as ScissorsIcon, User as UserIcon, ShoppingBag, Package, ArrowRight, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Instagram, Star, Scissors as ScissorsIcon, User as UserIcon, ShoppingBag, Package, ArrowRight, Sparkles, CheckCircle2, Loader2 } from 'lucide-react';
 
 export default function LandingPage() {
   const heroImage = PlaceHolderImages.find((p) => p.id === 'landing-hero');
@@ -56,9 +57,9 @@ export default function LandingPage() {
   const router = useRouter();
   const { user, isUserLoading } = useUser();
 
-  // Se o usuário já está logado, vai direto para a agenda/painel
+  // Se o usuário já está logado (ou tem sessão salva no localStorage), vai direto para a agenda/painel
   useEffect(() => {
-    if (!isUserLoading && user) {
+    if ((!isUserLoading && user) || hasStoredAuthSession()) {
       router.replace('/schedule');
     }
   }, [user, isUserLoading, router]);
@@ -156,6 +157,14 @@ export default function LandingPage() {
   const establishmentStoreSubtitle = settings?.storeSubtitle || getStoreSubtitle(establishmentCategory);
 
 
+  if (user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -203,13 +212,17 @@ export default function LandingPage() {
             </a>
           </nav>
           <div className="flex flex-1 items-center justify-end space-x-2">
-            <Button variant="ghost" asChild>
-              {user ? (
-                <Link href="/schedule">Meu Painel</Link>
-              ) : (
-                <Link href="/login">Login</Link>
-              )}
-            </Button>
+            {isUserLoading ? (
+              <Skeleton className="h-9 w-20" />
+            ) : (
+              <Button variant="ghost" asChild>
+                {user ? (
+                  <Link href="/schedule">Meu Painel</Link>
+                ) : (
+                  <Link href="/login">Login</Link>
+                )}
+              </Button>
+            )}
             <Button asChild>
               <Link href="/agendar">Agendar Agora</Link>
             </Button>

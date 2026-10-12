@@ -27,7 +27,7 @@ import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { loginWithEmail, signInWithGoogle } from '@/firebase/auth/client';
 import { GoogleIcon } from '@/components/icons/google-icon';
-import { useUser } from '@/firebase';
+import { useUser, hasStoredAuthSession } from '@/firebase';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Por favor, insira um e-mail válido.' }),
@@ -43,7 +43,7 @@ export default function LoginPage() {
 
   // Sessão já salva no dispositivo: não pede login de novo.
   useEffect(() => {
-    if (!isUserLoading && user) {
+    if ((!isUserLoading && user) || hasStoredAuthSession()) {
       router.replace('/schedule');
     }
   }, [user, isUserLoading, router]);
@@ -87,6 +87,14 @@ export default function LoginPage() {
     } else {
        router.push('/schedule');
     }
+  }
+
+  if (isUserLoading || user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   return (
