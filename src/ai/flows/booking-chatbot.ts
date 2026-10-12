@@ -86,12 +86,21 @@ const checkAvailability = ai.defineTool(
       };
     });
 
+    const now = new Date();
+    const todayStr = format(now, 'yyyy-MM-dd');
+    const currentTimeStr = format(now, 'HH:mm');
+    
+    let instructions = '';
+    if (date === todayStr) {
+      instructions = `ATENÇÃO CRÍTICA: Hoje é dia ${todayStr} e a hora atual exata é ${currentTimeStr}. VOCÊ É OBRIGADO a ocultar, remover e não sugerir NENHUM horário antes de ${currentTimeStr}. Só sugira horários futuros!`;
+    }
+
     return {
       date,
       busySlots,
       message: busySlots.length > 0 
-        ? `Temos ${busySlots.length} horários ocupados nesta data.` 
-        : 'Todos os horários estão livres nesta data.'
+        ? `Temos ${busySlots.length} horários ocupados nesta data. ${instructions}` 
+        : `Todos os horários da grade padrão do salão estão livres nesta data (excluindo os que já passaram). ${instructions}`
     };
   }
 );
@@ -152,6 +161,60 @@ const confirmBooking = ai.defineTool(
   }
 );
 
+const rescheduleAppointment = ai.defineTool(
+  {
+    name: 'reschedule_appointment',
+    description: 'Localiza um agendamento futuro do cliente pelo telefone e altera para uma nova data e hora. Apenas use se o cliente já tiver algo agendado e quiser mudar.',
+    inputSchema: z.object({
+      customerPhone: z.string().describe('Telefone do cliente'),
+      newDate: z.string().describe('YYYY-MM-DD'),
+      newTime: z.string().describe('HH:mm'),
+    }),
+  },
+  async (input) => {
+    initAdmin();
+    const db = getAdminFirestore();
+    const now = Timestamp.now();
+
+    // Find the closest future appointment for this phone
+    const snapshot = await db.collection('appointments')
+      .where('customerPhoneNumber', '==', input.customerPhone)
+      .where('status', '==', 'scheduled')
+      .where('startTime', '>=', now)
+      .orderBy('startTime', 'asc')
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) {
+      return {
+        success: false,
+        message: 'Não encontramos nenhum agendamento futuro para este número de telefone para ser remarcado.'
+      };
+    }
+
+    const docRef = snapshot.docs[0].ref;
+    const oldData = snapshot.docs[0].data();
+
+    // Parse the new Date and Time
+    const newStart = parse(`${input.newDate} ${input.newTime}`, 'yyyy-MM-dd HH:mm', new Date());
+    
+    // We assume the duration is the same, so we add it to the newStart
+    const durationMins = oldData.serviceDuration || 30; // default to 30 if missing
+    const newEnd = addMinutes(newStart, durationMins);
+
+    await docRef.update({
+      startTime: Timestamp.fromDate(newStart),
+      endTime: Timestamp.fromDate(newEnd),
+      notes: (oldData.notes || '') + ' (Reagendado via Chat IA)'
+    });
+
+    return {
+      success: true,
+      message: `O agendamento de ${oldData.serviceName} foi alterado com sucesso para ${input.newDate} às ${input.newTime}!`
+    };
+  }
+);
+
 // --- The Flow ---
 
 export const bookingChatbotFlow = ai.defineFlow(
@@ -171,7 +234,7 @@ export const bookingChatbotFlow = ai.defineFlow(
           content: [{ text: m.content }]
         })),
         prompt: input.message,
-        tools: [getServices, getProfessionals, checkAvailability, confirmBooking],
+        tools: [getServices, getProfessionals, checkAvailability, confirmBooking, rescheduleAppointment],
         system: `Você é uma assistente virtual simpática e eficiente da barbearia. 
         Seu objetivo é ajudar o cliente a agendar um serviço de forma rápida e agradável.
         

@@ -19,9 +19,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useUser, useUserProfile, useFirestore, useCollection, useMemoFirebase, useDoc, type UserProfile } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { collection, query, where, orderBy, Timestamp, getDocs, doc, updateDoc, runTransaction, getDoc, limit, addDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, Timestamp, getDocs, doc, updateDoc, runTransaction, getDoc, limit, addDoc, onSnapshot } from 'firebase/firestore';
 import { format, startOfDay, isBefore, subHours, startOfMonth, endOfMonth, endOfDay, addMonths, subMonths, isSameMonth, addMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -67,6 +67,7 @@ interface Appointment {
   serviceDuration: string;
   servicePrice: number;
   priceOnRequest?: boolean;
+  customerArrived?: boolean;
   notes: string;
   status: 'scheduled' | 'completed' | 'cancelled' | 'no-show';
   completionNotes?: string;
@@ -75,6 +76,31 @@ interface Appointment {
   isPortfolioFeatured?: boolean;
   type?: 'guest' | 'client';
 }
+
+// Audio context helper for the "Ding" sound
+const playDing = () => {
+  try {
+    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+    oscillator.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.1); // A4
+    
+    gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(1, audioCtx.currentTime + 0.05);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1);
+    
+    oscillator.start(audioCtx.currentTime);
+    oscillator.stop(audioCtx.currentTime + 1);
+  } catch (e) {
+    console.error('Audio not supported or blocked', e);
+  }
+};
 
 export default function SchedulePage() {
   const { user, isUserLoading } = useUser();
@@ -773,6 +799,22 @@ function AdminDashboard({
     return Array.from(new Set(appointments.map(a => a.serviceName)));
   }, [appointments]);
 
+  // Check for newly arrived customers to play ding
+  useEffect(() => {
+    if (!upcomingAppointments) return;
+    const arrivedNow = upcomingAppointments.some(a => a.customerArrived && !a.arrivedNotified);
+    if (arrivedNow) {
+      playDing();
+      // Mark as notified in local state (prevent infinite ringing). 
+      // In a real app we might update the DB, but mutating the object locally is enough for the current session.
+      upcomingAppointments.forEach(a => {
+        if (a.customerArrived) {
+          (a as any).arrivedNotified = true;
+        }
+      });
+    }
+  }, [upcomingAppointments]);
+
   const handlePrevMonth = () => setSelectedMonth(prev => subMonths(prev, 1));
   const handleNextMonth = () => setSelectedMonth(prev => addMonths(prev, 1));
 
@@ -876,15 +918,20 @@ function AdminDashboard({
         <CardContent>
           {isUpcomingLoading || isPendingLoading ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"><Skeleton className="h-[120px] w-full" /><Skeleton className="h-[120px] w-full" /><Skeleton className="h-[120px] w-full" /></div> : (showPending ? pendingAppointments : upcomingAppointments)?.length ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {(showPending ? pendingAppointments : upcomingAppointments)?.map((apt) => (
-                <div key={apt.id} className={cn("flex flex-col p-4 border rounded-lg hover:border-primary transition-colors gap-3 bg-card/50", showPending && "border-orange-200 bg-orange-50/30")}>
+              {(showPending ? pendingAppointments : upcomingAppointments)?.map((apt) => {
+                const isArrived = apt.status === 'arrived' || apt.customerArrived;
+                return (
+                <div key={apt.id} className={cn("flex flex-col p-4 border rounded-lg hover:border-primary transition-colors gap-3 bg-card/50", showPending && "border-orange-200 bg-orange-50/30", isArrived && "border-emerald-500 bg-emerald-50/50 shadow-[0_0_15px_rgba(16,185,129,0.3)] ring-1 ring-emerald-500")}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Badge variant={showPending ? "destructive" : "outline"} className="capitalize">
                         {format(apt.startTime.toDate(), "EEEE, dd/MM", { locale: ptBR })}
                       </Badge>
                       {apt.type === 'guest' && (
-                        <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200">Novo Cliente</Badge>
+                        <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200 text-[10px] py-0 h-4">Novo Cliente</Badge>
+                      )}
+                      {isArrived && (
+                        <Badge className="bg-emerald-500 text-white text-[10px] py-0 h-4">Na recepção</Badge>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
@@ -909,7 +956,7 @@ function AdminDashboard({
                     <div className="flex-1 min-w-0"><p className="font-medium truncate text-sm">{apt.customerName}</p><p className="text-[10px] text-muted-foreground truncate">{apt.serviceName}</p></div>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           ) : <div className="text-center py-10 text-muted-foreground border-2 border-dashed rounded-lg"><CalendarIcon className="h-10 w-10 mx-auto mb-2 opacity-20" /><p>{showPending ? "Nenhum pendente." : "Nenhum agendamento futuro."}</p></div>}
         </CardContent>
@@ -1020,41 +1067,72 @@ function ProfessionalDashboard({
   , [user, firestore, isUserLoading]);
   const { data: completedAppointments } = useCollection<Appointment>(qCompleted);
 
+  useEffect(() => {
+    if (!upcomingAppointments) return;
+    const arrivedNow = upcomingAppointments.some(a => a.customerArrived && !a.arrivedNotified);
+    if (arrivedNow) {
+      playDing();
+      upcomingAppointments.forEach(a => {
+        if (a.customerArrived) {
+          (a as any).arrivedNotified = true;
+        }
+      });
+    }
+  }, [upcomingAppointments]);
+
   const wrapComplete = async (apt: Appointment) => {
     setIsUpdating(apt.id);
     await onCompleteClick(apt);
     setIsUpdating(null);
   };
 
-  const AppointmentItem = ({ appointment }: { appointment: Appointment }) => (
-    <div key={appointment.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-lg border">
-      <div className="flex items-center gap-4">
-        <Avatar><AvatarImage src={appointment.customerPhotoURL} /><AvatarFallback>{appointment.customerName?.charAt(0)}</AvatarFallback></Avatar>
-        <div>
-          <div className="flex items-center gap-2">
-            <p className="font-semibold">{appointment.customerName}</p>
-            {appointment.type === 'guest' && (
-              <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200 text-[10px] py-0 h-4">Novo Cliente</Badge>
-            )}
+
+
+  const handleSetArrived = async (apt: Appointment) => {
+    const success = await onUpdateStatus(apt, 'arrived' as any);
+    if (success) {
+      playDing();
+    }
+  };
+
+  const AppointmentItem = ({ appointment }: { appointment: Appointment }) => {
+    const isArrived = appointment.status === 'arrived';
+    return (
+      <div key={appointment.id} className={cn("flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-lg border transition-all", isArrived ? "border-emerald-500 bg-emerald-50/50" : "")}>
+        <div className="flex items-center gap-4">
+          <Avatar><AvatarImage src={appointment.customerPhotoURL} /><AvatarFallback>{appointment.customerName?.charAt(0)}</AvatarFallback></Avatar>
+          <div>
+            <div className="flex items-center gap-2">
+              <p className="font-semibold">{appointment.customerName}</p>
+              {appointment.type === 'guest' && (
+                <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200 text-[10px] py-0 h-4">Novo Cliente</Badge>
+              )}
+              {isArrived && <Badge className="bg-emerald-500 text-white text-[10px] py-0 h-4">Na recepção</Badge>}
+            </div>
+            <p className="text-sm text-muted-foreground">{appointment.serviceName} • {format(appointment.startTime.toDate(), "HH:mm")}</p>
           </div>
-          <p className="text-sm text-muted-foreground">{appointment.serviceName} • {format(appointment.startTime.toDate(), "HH:mm")}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {!isArrived && (
+            <Button size="sm" variant="outline" className="border-emerald-500 text-emerald-600 hover:bg-emerald-50" onClick={() => handleSetArrived(appointment)}>
+              Chegou
+            </Button>
+          )}
+          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1" onClick={() => wrapComplete(appointment)} disabled={isUpdating === appointment.id}>
+            {isUpdating === appointment.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} Concluir
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild><Button variant="outline" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+               <DropdownMenuItem onSelect={() => onTogglePortfolioFeatured(appointment)}><Star className={cn("h-4 w-4 mr-2", appointment.isPortfolioFeatured ? "text-amber-500 fill-amber-500" : "")} /> {appointment.isPortfolioFeatured ? 'Remover da Galeria' : 'Exibir na Galeria'}</DropdownMenuItem>
+               <DropdownMenuItem onSelect={() => onUpdateStatus(appointment, 'no-show')} className="text-orange-600"><AlertCircle className="h-4 w-4 mr-2" /> Não Compareceu</DropdownMenuItem>
+               <DropdownMenuItem onSelect={() => onCancelClick(appointment)} className="text-destructive"><X className="h-4 w-4 mr-2" /> Cancelar</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
-      <div className="flex items-center gap-2">
-        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1" onClick={() => wrapComplete(appointment)} disabled={isUpdating === appointment.id}>
-          {isUpdating === appointment.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} Concluir
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild><Button variant="outline" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-             <DropdownMenuItem onSelect={() => onTogglePortfolioFeatured(appointment)}><Star className={cn("h-4 w-4 mr-2", appointment.isPortfolioFeatured ? "text-amber-500 fill-amber-500" : "")} /> {appointment.isPortfolioFeatured ? 'Remover da Galeria' : 'Exibir na Galeria'}</DropdownMenuItem>
-             <DropdownMenuItem onSelect={() => onUpdateStatus(appointment, 'no-show')} className="text-orange-600"><AlertCircle className="h-4 w-4 mr-2" /> Não Compareceu</DropdownMenuItem>
-             <DropdownMenuItem onSelect={() => onCancelClick(appointment)} className="text-destructive"><X className="h-4 w-4 mr-2" /> Cancelar</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
      <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">

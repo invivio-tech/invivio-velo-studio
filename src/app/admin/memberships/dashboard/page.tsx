@@ -57,21 +57,26 @@ export default function MembershipsDashboardPage() {
     useMemoFirebase(() => firestore ? query(collection(firestore, 'membershipInvoices'), where('status', '==', 'paid')) : null, [firestore])
   );
 
-  const { data: appointments, isLoading: appointmentsLoading } = useCollection(
+  const { data: appointmentsRaw, isLoading: appointmentsLoading } = useCollection(
     useMemoFirebase(() => firestore ? query(
       collection(firestore, 'appointments'),
-      where('status', '==', 'completed'),
-      where('isSubscriptionUsage', '==', true),
-      where('startTime', '>=', Timestamp.fromDate(currentMonthStart)),
-      where('startTime', '<=', Timestamp.fromDate(currentMonthEnd))
-    ) : null, [firestore, currentMonthStart, currentMonthEnd])
+      where('isSubscriptionUsage', '==', true)
+    ) : null, [firestore])
   );
 
   const isLoading = isProfileLoading || plansLoading || membershipsLoading || invoicesLoading || appointmentsLoading;
   const isAdmin = userProfile?.role === 'admin';
 
   const metrics = useMemo(() => {
-    if (!plans || !activeMemberships || !invoices || !appointments) return null;
+    if (!plans || !activeMemberships || !invoices || !appointmentsRaw) return null;
+
+    // Filter appointments in memory to avoid composite index requirements
+    const appointments = appointmentsRaw.filter(apt => {
+      if (apt.status !== 'completed') return false;
+      if (!apt.startTime) return false;
+      const date = apt.startTime.toDate();
+      return date.getTime() >= currentMonthStart.getTime() && date.getTime() <= currentMonthEnd.getTime();
+    });
 
     // Filter invoices locally by month
     const monthlyInvoices = invoices.filter(inv => {
@@ -136,7 +141,7 @@ export default function MembershipsDashboardPage() {
         margin: globalMargin
       }
     };
-  }, [plans, activeMemberships, invoices, appointments, currentMonthStart, currentMonthEnd, commissionPercentage]);
+  }, [plans, activeMemberships, invoices, appointmentsRaw, currentMonthStart, currentMonthEnd, commissionPercentage]);
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 

@@ -43,6 +43,12 @@ export default function MensagensPage() {
     return new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(date);
   };
 
+  const getMediaUrl = (mediaId: string) => {
+    const adminUrl = process.env.NEXT_PUBLIC_VELO_ADMIN_URL || 'https://invivio-velo-admin.web.app';
+    const tenantId = process.env.NEXT_PUBLIC_FIREBASE_DATABASE_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    return `${adminUrl}/api/webhooks/whatsapp/media?mediaId=${mediaId}&tenantId=${tenantId}`;
+  };
+
   const toggleAi = async () => {
     if (!firestore || !selectedChat) return;
     const chatRef = doc(firestore, 'chats', selectedChat.id);
@@ -153,6 +159,27 @@ export default function MensagensPage() {
                 <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}>
                   {msg.role === 'user' ? (
                     <div className="bg-white dark:bg-slate-800 border rounded-2xl rounded-tl-sm p-3 max-w-[80%] shadow-sm">
+                      {msg.mediaId && (
+                        <div className="mb-2">
+                          {msg.mimeType?.startsWith('audio/') ? (
+                            <audio controls className="max-w-full h-10">
+                              <source src={getMediaUrl(msg.mediaId)} type={msg.mimeType} />
+                              Seu navegador não suporta áudio.
+                            </audio>
+                          ) : msg.mimeType?.startsWith('image/') ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img src={getMediaUrl(msg.mediaId)} alt="Imagem recebida" className="max-w-[200px] rounded cursor-pointer border" onClick={() => window.open(getMediaUrl(msg.mediaId), '_blank')} />
+                          ) : msg.mimeType?.startsWith('video/') ? (
+                            <video controls className="max-w-[200px] rounded border">
+                              <source src={getMediaUrl(msg.mediaId)} type={msg.mimeType} />
+                            </video>
+                          ) : (
+                            <a href={getMediaUrl(msg.mediaId)} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-blue-500 underline text-sm bg-blue-50 p-2 rounded">
+                              📎 Abrir Anexo Documento
+                            </a>
+                          )}
+                        </div>
+                      )}
                       <p className="text-sm">{msg.content}</p>
                       <span className="text-[10px] text-muted-foreground mt-1 block">{formatTime(msg.timestamp)}</span>
                     </div>
@@ -165,12 +192,12 @@ export default function MensagensPage() {
                       <span className="text-[10px] text-primary/60 mt-1 block text-right">{formatTime(msg.timestamp)}</span>
                     </div>
                   ) : (
-                    <div className="bg-blue-100 dark:bg-blue-900/30 border-blue-200 border rounded-2xl rounded-tr-sm p-3 max-w-[80%] shadow-sm">
-                      <div className="flex items-center gap-1 mb-1 text-blue-700 dark:text-blue-400 text-xs font-medium">
-                        <User className="w-3 h-3" /> Você
+                    <div className="bg-emerald-50 dark:bg-emerald-950/40 border-emerald-100 dark:border-emerald-900/50 border rounded-2xl rounded-tr-sm p-3 max-w-[80%] shadow-sm">
+                      <div className="flex items-center gap-1 mb-1 text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
+                        <User className="w-3 h-3" /> Barbearia
                       </div>
-                      <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                      <span className="text-[10px] text-blue-700/60 mt-1 block text-right">{formatTime(msg.timestamp)}</span>
+                      <p className="text-[15px] whitespace-pre-wrap text-slate-800 dark:text-slate-200">{msg.content}</p>
+                      <span className="text-[10px] text-emerald-600/60 dark:text-emerald-400/60 mt-1 block text-right">{formatTime(msg.timestamp)}</span>
                     </div>
                   )}
                 </div>
