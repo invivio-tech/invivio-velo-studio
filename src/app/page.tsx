@@ -56,13 +56,9 @@ export default function LandingPage() {
   const router = useRouter();
   const { user, isUserLoading } = useUser();
 
-  // App instalado (PWA): se já existe sessão salva, pula a landing pública e vai direto ao painel.
+  // Se o usuário já está logado, vai direto para a agenda/painel
   useEffect(() => {
-    if (isUserLoading || !user) return;
-    const isStandalone =
-      window.matchMedia?.('(display-mode: standalone)').matches ||
-      (window.navigator as any).standalone === true;
-    if (isStandalone) {
+    if (!isUserLoading && user) {
       router.replace('/schedule');
     }
   }, [user, isUserLoading, router]);
