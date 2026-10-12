@@ -23,6 +23,7 @@ import {
   useCollection,
   useDoc,
   useMemoFirebase,
+  useUser,
 } from '@/firebase';
 import type { Service } from '@/app/services/page';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -53,6 +54,19 @@ export default function LandingPage() {
   const { data: settings, isLoading: areSettingsLoading } = useDoc<EstablishmentSettings>(settingsRef);
   
   const router = useRouter();
+  const { user, isUserLoading } = useUser();
+
+  // App instalado (PWA): se já existe sessão salva, pula a landing pública e vai direto ao painel.
+  useEffect(() => {
+    if (isUserLoading || !user) return;
+    const isStandalone =
+      window.matchMedia?.('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone === true;
+    if (isStandalone) {
+      router.replace('/schedule');
+    }
+  }, [user, isUserLoading, router]);
+
   useEffect(() => {
     if (!areSettingsLoading && settings) {
       // No plano whatsapp_only a loja pública é desligada. O site redireciona direto pro agendamento.
@@ -194,7 +208,11 @@ export default function LandingPage() {
           </nav>
           <div className="flex flex-1 items-center justify-end space-x-2">
             <Button variant="ghost" asChild>
-              <Link href="/login">Login</Link>
+              {user ? (
+                <Link href="/schedule">Meu Painel</Link>
+              ) : (
+                <Link href="/login">Login</Link>
+              )}
             </Button>
             <Button asChild>
               <Link href="/agendar">Agendar Agora</Link>
