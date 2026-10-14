@@ -32,6 +32,7 @@ import {
 import Link from 'next/link';
 import type { MembershipPlanWithId } from '@/components/admin/MembershipPlanForm';
 import type { EstablishmentSettings } from '@/app/establishment/page';
+import { PlanGate } from '@/components/PlanGate';
 
 export default function MembershipsDashboardPage() {
   const firestore = useFirestore();
@@ -155,7 +156,8 @@ export default function MembershipsDashboardPage() {
   }
 
   return (
-    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 pb-20">
+    <PlanGate module="club">
+      <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 pb-20">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex flex-col">
           <div className="flex items-center gap-2 mb-2">
@@ -279,9 +281,9 @@ export default function MembershipsDashboardPage() {
                       <XAxis dataKey="name" axisLine={false} tickLine={false} />
                       <YAxis tickFormatter={(val) => `${val}%`} axisLine={false} tickLine={false} />
                       <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
-                      <Bar dataKey="margin" name="Margem Bruta">
+                      <Bar dataKey="margin" name="Margem Bruta" radius={[4, 4, 0, 0]}>
                         {metrics.planMetrics.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.margin >= 0 ? "#10b981" : "#ef4444"} radius={[4, 4, 0, 0]} />
+                          <Cell key={`cell-${index}`} fill={entry.margin >= 0 ? "#10b981" : "#ef4444"} />
                         ))}
                       </Bar>
                     </BarChart>
@@ -342,6 +344,7 @@ export default function MembershipsDashboardPage() {
           </Card>
         </>
       )}
-    </div>
+      </div>
+    </PlanGate>
   );
 }

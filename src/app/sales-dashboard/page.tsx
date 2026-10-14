@@ -24,6 +24,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { DollarSign, ShoppingBag, TrendingUp, Package, BarChart3, ChevronDown, Calendar, CalendarCheck, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { PlanGate } from '@/components/PlanGate';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -188,7 +189,8 @@ export default function SalesDashboardPage() {
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
   return (
-    <div className="flex-1 space-y-6 p-8 pt-6 bg-background min-h-screen">
+    <PlanGate module="store">
+      <div className="flex-1 space-y-6 p-8 pt-6 bg-background min-h-screen">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-headline font-bold tracking-tight text-foreground">Dashboard Vendas</h1>
@@ -372,5 +374,6 @@ export default function SalesDashboardPage() {
         </div>
       </footer>
     </div>
+    </PlanGate>
   );
 }

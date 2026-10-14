@@ -13,6 +13,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PlanGate } from '@/components/PlanGate';
 import {
   Select,
   SelectContent,
@@ -179,7 +180,8 @@ export default function OrdersPage() {
   };
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <PlanGate module="store">
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-4">
           <ShoppingCart className="h-8 w-8 text-secondary" />
@@ -374,5 +376,6 @@ export default function OrdersPage() {
         onConfirm={handleQuickSaleConfirm}
       />
     </div>
+    </PlanGate>
   );
 }

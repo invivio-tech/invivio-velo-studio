@@ -54,6 +54,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PlanGate } from '@/components/PlanGate';
 
 const formSchema = z.object({
   serviceCatalog: z
@@ -258,7 +259,8 @@ export default function PromotionsPage() {
   };
 
   return (
-    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
+    <PlanGate module="marketing">
+      <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -713,5 +715,6 @@ export default function PromotionsPage() {
         </div>
       </div>
     </div>
+    </PlanGate>
   );
 }

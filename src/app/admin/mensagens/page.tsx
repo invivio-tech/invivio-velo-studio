@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Bot, User, Send, PauseCircle, PlayCircle, Clock } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { PlanGate } from '@/components/PlanGate';
 import { Chat, Message } from '@/types/chat';
 
 export default function MensagensPage() {
@@ -83,7 +84,8 @@ export default function MensagensPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] gap-4 p-4">
+    <PlanGate module="whatsappBot">
+      <div className="flex h-[calc(100vh-8rem)] gap-4 p-4">
       {/* Sidebar de Conversas */}
       <Card className="w-1/3 flex flex-col overflow-hidden">
         <div className="p-4 border-b bg-muted/30">
@@ -236,5 +238,6 @@ export default function MensagensPage() {
         )}
       </Card>
     </div>
+    </PlanGate>
   );
 }
