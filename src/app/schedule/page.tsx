@@ -877,7 +877,7 @@ function AdminDashboard({
           <Button onClick={onQuickServiceOpen} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
             <Zap className="h-4 w-4" /> Novo Atendimento
           </Button>
-          <Button onClick={() => router.push('/schedule/block')} variant="outline" className="gap-2 text-rose-700 border-rose-200 hover:bg-rose-50">
+          <Button onClick={() => router.push('/schedule/block')} variant="outline" className="gap-2 text-rose-400 border-rose-500/30 hover:bg-rose-500/10">
             <Lock className="h-4 w-4" /> Bloquear Agenda
           </Button>
           <Select value={selectedProfessionalId} onValueChange={setSelectedProfessionalId}>
@@ -927,16 +927,16 @@ function AdminDashboard({
       </div>
 
       {activeBlocksForSelectedDay && activeBlocksForSelectedDay.length > 0 && (
-        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
           <div className="flex items-start sm:items-center gap-3">
-            <div className="p-2 bg-rose-100 text-rose-600 rounded-xl shrink-0 mt-0.5 sm:mt-0">
+            <div className="p-2 bg-rose-500/20 text-rose-400 rounded-xl shrink-0 mt-0.5 sm:mt-0">
               <Lock className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-rose-900">
+              <p className="text-sm font-semibold text-foreground">
                 Atenção: Há {activeBlocksForSelectedDay.length} {activeBlocksForSelectedDay.length === 1 ? 'bloqueio de horário ativo' : 'bloqueios de horário ativos'} nesta data:
               </p>
-              <p className="text-xs text-rose-700 mt-0.5">
+              <p className="text-xs text-rose-300 mt-0.5">
                 {activeBlocksForSelectedDay.map((b: any) => {
                   const s = b.startTime?.toDate ? b.startTime.toDate() : new Date(b.startTime);
                   const e = b.endTime?.toDate ? b.endTime.toDate() : new Date(b.endTime);
@@ -948,7 +948,7 @@ function AdminDashboard({
           <Button 
             size="sm" 
             variant="outline" 
-            className="border-rose-300 text-rose-800 bg-white hover:bg-rose-100 text-xs shrink-0 font-medium rounded-xl" 
+            className="border-rose-500/30 text-rose-300 bg-background hover:bg-rose-500/10 text-xs shrink-0 font-medium rounded-xl" 
             onClick={() => router.push('/schedule/block')}
           >
             Gerenciar / Desbloquear

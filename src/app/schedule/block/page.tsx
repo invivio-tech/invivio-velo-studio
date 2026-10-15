@@ -301,16 +301,16 @@ export default function BlockSchedulePage() {
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 max-w-7xl mx-auto">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2 border-b">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-border/40">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-rose-50 text-rose-600 rounded-xl border border-rose-100">
+          <div className="p-2.5 bg-rose-500/10 text-rose-500 rounded-xl border border-rose-500/20">
             <Lock className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-2xl md:text-3xl font-headline font-bold tracking-tight text-slate-900">
+            <h1 className="text-2xl md:text-3xl font-headline font-bold tracking-tight text-foreground">
               Bloquear Horários & Agenda
             </h1>
-            <p className="text-sm text-slate-500 mt-0.5">
+            <p className="text-sm text-muted-foreground mt-0.5">
               Defina intervalos indisponíveis para a barbearia e gerencie todos os bloqueios ativos.
             </p>
           </div>
@@ -319,9 +319,9 @@ export default function BlockSchedulePage() {
         <Button 
           variant="outline" 
           onClick={() => router.push('/schedule')}
-          className="text-xs font-medium"
+          className="text-xs font-medium border-border hover:bg-muted"
         >
-          <CalendarViewIcon className="w-4 h-4 mr-1.5" />
+          <CalendarViewIcon className="w-4 h-4 mr-1.5 text-primary" />
           Voltar para a Agenda
         </Button>
       </div>
@@ -330,31 +330,31 @@ export default function BlockSchedulePage() {
         {/* COLUNA ESQUERDA: FORMULÁRIO DE BLOQUEIO / EDIÇÃO (5 colunas no desktop) */}
         <div className="lg:col-span-5">
           <Card className={cn(
-            "w-full transition-all border shadow-sm",
-            editingBlockId ? "border-amber-400 bg-amber-50/20 shadow-amber-100 ring-1 ring-amber-300" : "border-slate-200"
+            "w-full transition-all border shadow-sm bg-card",
+            editingBlockId ? "border-amber-500/50 bg-amber-500/5 ring-1 ring-amber-500/20" : "border-border"
           )}>
-            <CardHeader>
+            <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg font-headline flex items-center gap-2">
+                <CardTitle className="text-lg font-headline flex items-center gap-2 text-foreground">
                   {editingBlockId ? (
                     <>
-                      <Pencil className="w-4 h-4 text-amber-600" />
+                      <Pencil className="w-4 h-4 text-amber-500" />
                       Editar Bloqueio
                     </>
                   ) : (
                     <>
-                      <Lock className="w-4 h-4 text-slate-700" />
+                      <Lock className="w-4 h-4 text-primary" />
                       Novo Bloqueio Geral
                     </>
                   )}
                 </CardTitle>
                 {editingBlockId && (
-                  <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 text-xs">
+                  <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 text-xs font-medium">
                     Modo Edição
                   </Badge>
                 )}
               </div>
-              <CardDescription>
+              <CardDescription className="text-xs text-muted-foreground">
                 {editingBlockId 
                   ? 'Altere a data, horários ou o motivo deste bloqueio.' 
                   : 'O horário definido aqui ficará bloqueado para agendamentos online e no WhatsApp.'}
@@ -362,20 +362,20 @@ export default function BlockSchedulePage() {
             </CardHeader>
             <CardContent>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                   <FormField
                     control={form.control}
                     name="date"
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
-                        <FormLabel className="text-xs font-semibold text-slate-700">Data do Bloqueio</FormLabel>
+                        <FormLabel className="text-xs font-medium text-foreground">Data do Bloqueio</FormLabel>
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
                               <Button
                                 variant={"outline"}
                                 className={cn(
-                                  "w-full pl-3 text-left font-normal bg-white",
+                                  "w-full pl-3 text-left font-normal border-border justify-start",
                                   !field.value && "text-muted-foreground"
                                 )}
                               >
@@ -410,9 +410,9 @@ export default function BlockSchedulePage() {
                       name="startTime"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs font-semibold text-slate-700">Hora de Início</FormLabel>
+                          <FormLabel className="text-xs font-medium text-foreground">Hora de Início</FormLabel>
                           <FormControl>
-                            <Input type="time" className="bg-white" {...field} />
+                            <Input type="time" className="border-border" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -423,9 +423,9 @@ export default function BlockSchedulePage() {
                       name="endTime"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs font-semibold text-slate-700">Hora de Término</FormLabel>
+                          <FormLabel className="text-xs font-medium text-foreground">Hora de Término</FormLabel>
                           <FormControl>
-                            <Input type="time" className="bg-white" {...field} />
+                            <Input type="time" className="border-border" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -438,16 +438,16 @@ export default function BlockSchedulePage() {
                     name="reason"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-xs font-semibold text-slate-700">Motivo do Bloqueio</FormLabel>
+                        <FormLabel className="text-xs font-medium text-foreground">Motivo do Bloqueio</FormLabel>
                         <FormControl>
                           <Textarea 
                             rows={3}
                             placeholder="Ex: Almoço, Manutenção, Treinamento, Feriado..." 
-                            className="bg-white resize-none" 
+                            className="resize-none border-border" 
                             {...field} 
                           />
                         </FormControl>
-                        <FormDescription className="text-[11px] text-slate-400">
+                        <FormDescription className="text-[11px] text-muted-foreground">
                           Identificação interna do motivo da indisponibilidade.
                         </FormDescription>
                         <FormMessage />
@@ -460,10 +460,10 @@ export default function BlockSchedulePage() {
                       type="submit" 
                       disabled={isSaving}
                       className={cn(
-                        "flex-1 font-medium text-white",
+                        "flex-1 font-medium",
                         editingBlockId 
-                          ? "bg-amber-600 hover:bg-amber-700" 
-                          : "bg-slate-900 hover:bg-slate-800"
+                          ? "bg-amber-600 hover:bg-amber-500 text-white" 
+                          : ""
                       )}
                     >
                       {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -476,7 +476,7 @@ export default function BlockSchedulePage() {
                         variant="ghost" 
                         onClick={handleCancelEdit}
                         disabled={isSaving}
-                        className="text-slate-500 hover:text-slate-700"
+                        className="text-muted-foreground hover:text-foreground hover:bg-muted"
                       >
                         <X className="w-4 h-4 mr-1" />
                         Cancelar
@@ -491,15 +491,15 @@ export default function BlockSchedulePage() {
 
         {/* COLUNA DIREITA: LISTA DE BLOQUEIOS ATIVOS & HISTÓRICO (7 colunas no desktop) */}
         <div className="lg:col-span-7">
-          <Card className="border-slate-200 shadow-sm">
-            <CardHeader className="bg-slate-50/60 border-b border-slate-100 rounded-t-xl">
+          <Card className="border-border shadow-sm bg-card">
+            <CardHeader className="border-b border-border/40 pb-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-base text-slate-900 flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-slate-500" />
+                  <CardTitle className="text-base text-foreground flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-primary" />
                     Bloqueios de Horário Cadastrados
                   </CardTitle>
-                  <CardDescription className="text-xs mt-0.5">
+                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
                     Todos os períodos travados no sistema de agendamento.
                   </CardDescription>
                 </div>
@@ -516,12 +516,12 @@ export default function BlockSchedulePage() {
                   <Skeleton className="h-20 w-full rounded-xl" />
                 </div>
               ) : blockedTimes.length === 0 ? (
-                <div className="text-center py-12 px-4 border border-dashed rounded-2xl bg-slate-50/50">
-                  <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                <div className="text-center py-12 px-4 border border-dashed rounded-2xl border-border bg-muted/10">
+                  <div className="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-3">
                     <CheckCircle2 className="w-6 h-6" />
                   </div>
-                  <h3 className="font-semibold text-slate-800 text-sm">Nenhum bloqueio cadastrado</h3>
-                  <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                  <h3 className="font-semibold text-foreground text-sm">Nenhum bloqueio cadastrado</h3>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
                     A agenda está totalmente livre para agendamentos nos horários normais de funcionamento.
                   </p>
                 </div>
@@ -541,64 +541,66 @@ export default function BlockSchedulePage() {
                         className={cn(
                           "flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-xl border transition-all gap-4",
                           isCurrentEditing
-                            ? "border-amber-400 bg-amber-50/40 ring-1 ring-amber-300 shadow-sm"
+                            ? "border-amber-500/60 bg-amber-500/10 shadow-sm ring-1 ring-amber-500/20"
                             : isFinished 
-                            ? "bg-slate-50/60 border-slate-200 opacity-60 hover:opacity-100" 
-                            : "bg-white border-slate-200 hover:border-slate-300 shadow-sm"
+                            ? "bg-muted/10 border-border/30 opacity-60 hover:opacity-100" 
+                            : "bg-muted/20 hover:bg-muted/40 border-border shadow-sm"
                         )}
                       >
                         <div className="space-y-1.5 flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-semibold text-slate-900 text-sm capitalize">
+                            <span className="font-semibold text-foreground text-sm capitalize">
                               {format(startDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
                             </span>
 
                             {isGeneral ? (
-                              <Badge className="bg-rose-50 text-rose-700 border-rose-200 text-[11px] font-medium hover:bg-rose-50">
+                              <Badge variant="outline" className="bg-rose-500/10 text-rose-400 border-rose-500/30 text-[11px] font-medium">
                                 Geral (Estabelecimento)
                               </Badge>
                             ) : (
-                              <Badge className="bg-blue-50 text-blue-700 border-blue-200 text-[11px] font-medium hover:bg-blue-50">
+                              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-[11px] font-medium">
                                 {getProfessionalName(block.professionalId)}
                               </Badge>
                             )}
 
                             {isFinished ? (
-                              <Badge variant="outline" className="text-slate-400 text-[10px]">
+                              <Badge variant="outline" className="text-muted-foreground border-border/40 text-[10px]">
                                 Passado
                               </Badge>
                             ) : (
-                              <Badge variant="outline" className="border-emerald-200 text-emerald-700 bg-emerald-50/50 text-[10px]">
+                              <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 text-[10px] font-medium">
                                 Ativo
                               </Badge>
                             )}
                           </div>
 
-                          <div className="flex flex-wrap items-center gap-4 text-xs text-slate-600">
-                            <span className="flex items-center gap-1 font-mono font-medium text-slate-800">
-                              <Clock className="w-3.5 h-3.5 text-slate-400" />
+                          <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1 font-mono font-medium text-foreground">
+                              <Clock className="w-3.5 h-3.5 text-muted-foreground" />
                               {format(startDate, 'HH:mm')} às {format(endDate, 'HH:mm')}
                             </span>
                             
-                            <span className="truncate text-slate-500 max-w-xs" title={block.reason}>
-                              Motivo: <strong className="text-slate-700 font-medium">{block.reason || 'Não informado'}</strong>
+                            <span className="truncate max-w-xs text-muted-foreground" title={block.reason}>
+                              Motivo: <strong className="text-foreground font-medium">{block.reason || 'Não informado'}</strong>
                             </span>
                           </div>
                         </div>
 
                         {/* Botões de Ação */}
-                        <div className="flex items-center gap-1 shrink-0 self-end sm:self-center">
+                        <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleStartEdit(block)}
                             className={cn(
                               "h-8 px-2.5 text-xs font-medium rounded-lg",
-                              isCurrentEditing ? "text-amber-700 bg-amber-100" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                              isCurrentEditing 
+                                ? "text-amber-400 bg-amber-500/20 hover:bg-amber-500/30" 
+                                : "text-muted-foreground hover:text-foreground hover:bg-muted"
                             )}
                             title="Editar bloqueio"
                           >
-                            <Pencil className="w-3.5 h-3.5 mr-1" />
+                            <Pencil className="w-3.5 h-3.5 mr-1 text-amber-500" />
                             Editar
                           </Button>
 
@@ -607,14 +609,14 @@ export default function BlockSchedulePage() {
                             size="sm"
                             onClick={() => handleDeleteBlock(blockId)}
                             disabled={deletingId === blockId}
-                            className="h-8 px-2.5 text-xs font-medium text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg"
+                            className="h-8 px-2.5 text-xs font-medium text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg"
                             title="Excluir bloqueio e liberar horário"
                           >
                             {deletingId === blockId ? (
                               <Loader2 className="w-3.5 h-3.5 animate-spin" />
                             ) : (
                               <>
-                                <Trash2 className="w-3.5 h-3.5 mr-1" />
+                                <Trash2 className="w-3.5 h-3.5 mr-1 text-rose-400" />
                                 Remover
                               </>
                             )}
