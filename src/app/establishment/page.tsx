@@ -61,6 +61,7 @@ export interface EstablishmentSettings {
   retargetingDays?: number;
   retargetingTitle?: string;
   retargetingBody?: string;
+  quickReplies?: string[];
   primaryColor?: string;
   primaryForegroundColor?: string;
   secondaryColor?: string;
@@ -571,19 +572,6 @@ export default function EstablishmentPage() {
                       <FormMessage />
                     </FormItem>
                   )} />
-
-                  {settings?.planLimits?.whatsappBot?.enabled && (
-                    <FormField control={form.control} name="botName" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nome do Bot (IA do WhatsApp)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ex: Zeca, Maria, Assistente Virtual" {...field} />
-                        </FormControl>
-                        <FormDescription>Como a IA deve se apresentar ao atender clientes no WhatsApp.</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                  )}
 
                   <FormField control={form.control} name="logoUrl" render={({ field }) => (
                     <FormItem>
@@ -1173,20 +1161,64 @@ export default function EstablishmentPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="font-headline flex items-center gap-2">
-                    <Bot className="h-5 w-5 text-primary" /> Inteligência Artificial
+                    <Bot className="h-5 w-5 text-primary" /> Assistente Virtual IA (WhatsApp)
                   </CardTitle>
-                  <CardDescription>Configurações do comportamento do seu assistente IA.</CardDescription>
+                  <CardDescription>
+                    Personalize a identidade, o tom de conversa e as regras de atendimento do seu robô no WhatsApp.
+                  </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField
+                      control={form.control}
+                      name="botName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nome do Assistente Virtual</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Ex: Zeca, Maria, Barbearia Bot" {...field} />
+                          </FormControl>
+                          <FormDescription>
+                            Como a IA se apresentará nas conversas (ex: &quot;Sou o Zeca, assistente da barbearia...&quot;).
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="aiTimeoutHours"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Timeout de Retomada Automática (Horas)</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="ex: 12" {...field} />
+                          </FormControl>
+                          <FormDescription>
+                            Tempo sem mensagens após atendimento humano para a IA religar automaticamente.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
                   <FormField
                     control={form.control}
-                    name="aiTimeoutHours"
+                    name="context"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Timeout de Retomada Automática (Horas)</FormLabel>
-                        <FormControl><Input type="number" placeholder="ex: 12" {...field} /></FormControl>
+                        <FormLabel>Regras e Dicas da Barbearia (Instruções Livres para a IA)</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Ex: Temos estacionamento conveniado gratuito por 1h ao lado. Servimos café e cerveja cortesia. Não atendemos sem hora marcada aos sábados."
+                            className="min-h-24"
+                            {...field}
+                          />
+                        </FormControl>
                         <FormDescription>
-                          Quando você assumir uma conversa pausando a IA, a IA voltará a responder automaticamente após essa quantidade de horas sem atividade do cliente.
+                          Instruções extras que o bot deve saber ao responder perguntas dos clientes pelo WhatsApp.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
