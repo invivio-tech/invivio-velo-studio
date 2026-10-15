@@ -61,6 +61,7 @@ export interface EstablishmentSettings {
   retargetingDays?: number;
   retargetingTitle?: string;
   retargetingBody?: string;
+  quickReplies?: string[];
   primaryColor?: string;
   primaryForegroundColor?: string;
   secondaryColor?: string;
