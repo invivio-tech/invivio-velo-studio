@@ -13,6 +13,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Product } from '@/types/store';
+import { PlanGate } from '@/components/PlanGate';
 
 export default function EditProductPage() {
   const router = useRouter();
@@ -76,46 +77,48 @@ export default function EditProductPage() {
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="outline" size="icon" onClick={() => router.push('/products')}>
-          <ChevronLeft className="w-4 h-4" />
-        </Button>
-        <h1 className="text-3xl font-headline font-bold tracking-tight">Editar Produto</h1>
+    <PlanGate module="store">
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        <div className="flex items-center gap-4 mb-6">
+          <Button variant="outline" size="icon" onClick={() => router.push('/products')}>
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <h1 className="text-3xl font-headline font-bold tracking-tight">Editar Produto</h1>
+        </div>
+        
+        {isLoading ? (
+          <Card className="w-full max-w-4xl">
+             <CardHeader>
+               <Skeleton className="h-6 w-32 mb-2" />
+               <Skeleton className="h-4 w-64" />
+             </CardHeader>
+             <CardContent>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Skeleton className="h-10 w-full md:col-span-2" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-24 w-full md:col-span-2" />
+               </div>
+             </CardContent>
+          </Card>
+        ) : product ? (
+          <Card className="w-full max-w-4xl">
+            <CardHeader>
+              <CardTitle className="font-headline">Ajustar os Detalhes</CardTitle>
+              <CardDescription>
+                Modifique preços, suba novas fotos ou altere o status de exibição.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ProductForm initialData={product} onSave={handleSave} />
+            </CardContent>
+          </Card>
+        ) : (
+           <p>Produto inexistente.</p>
+        )}
       </div>
-      
-      {isLoading ? (
-        <Card className="w-full max-w-4xl">
-           <CardHeader>
-             <Skeleton className="h-6 w-32 mb-2" />
-             <Skeleton className="h-4 w-64" />
-           </CardHeader>
-           <CardContent>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Skeleton className="h-10 w-full md:col-span-2" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-24 w-full md:col-span-2" />
-             </div>
-           </CardContent>
-        </Card>
-      ) : product ? (
-        <Card className="w-full max-w-4xl">
-          <CardHeader>
-            <CardTitle className="font-headline">Ajustar os Detalhes</CardTitle>
-            <CardDescription>
-              Modifique preços, suba novas fotos ou altere o status de exibição.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ProductForm initialData={product} onSave={handleSave} />
-          </CardContent>
-        </Card>
-      ) : (
-         <p>Produto inexistente.</p>
-      )}
-    </div>
+    </PlanGate>
   );
 }

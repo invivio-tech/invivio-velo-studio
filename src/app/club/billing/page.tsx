@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { PlanGate } from '@/components/PlanGate';
 
 interface MembershipInvoice {
   id: string;
@@ -72,7 +73,8 @@ export default function ClubBillingPage() {
   const isLoading = isUserLoading || areInvoicesLoading;
 
   return (
-    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 max-w-6xl mx-auto">
+    <PlanGate module="club">
+      <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 max-w-6xl mx-auto">
       <div className="flex items-center gap-4 mb-8">
         <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
           <Receipt className="h-6 w-6 text-primary" />
@@ -208,6 +210,7 @@ export default function ClubBillingPage() {
 
         </div>
       )}
-    </div>
+      </div>
+    </PlanGate>
   );
 }

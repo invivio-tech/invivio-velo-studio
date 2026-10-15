@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
+import { PlanGate } from '@/components/PlanGate';
 import { FileText, DollarSign, Wallet, ArrowLeft, ArrowRight, Printer, PlusCircle, TrendingDown, TrendingUp, Pencil, Trash2 } from 'lucide-react';
 
 interface Expense {
@@ -1046,16 +1047,18 @@ export default function InvoicesPage() {
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
-        <h1 className="text-3xl font-headline font-bold tracking-tight">Gestão Financeira</h1>
+    <PlanGate module="financial">
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 max-w-7xl mx-auto">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+          <h1 className="text-3xl font-headline font-bold tracking-tight">Gestão Financeira</h1>
+        </div>
+
+        {renderMonthNavigation()}
+
+        {role === 'admin' && renderAdminView()}
+        {role === 'professional' && renderProfessionalView()}
       </div>
-
-      {renderMonthNavigation()}
-
-      {role === 'admin' && renderAdminView()}
-      {role === 'professional' && renderProfessionalView()}
-    </div>
+    </PlanGate>
   );
 }
 
