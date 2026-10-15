@@ -542,25 +542,6 @@ export default function EstablishmentPage() {
                         <FormMessage />
                       </FormItem>
                     )} />
-
-                    <FormField control={form.control} name="businessTone" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tom de Voz da Comunicação</FormLabel>
-                        <FormControl>
-                          <select
-                            {...field}
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            <option value="friendly">Amigável e Próximo</option>
-                            <option value="casual">Casual e Moderno</option>
-                            <option value="formal">Formal e Profissional</option>
-                            <option value="luxury">Luxuoso e Exclusivo</option>
-                          </select>
-                        </FormControl>
-                        <FormDescription>Como a IA deve escrever seus textos.</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
                   </div>
 
                   <FormField control={form.control} name="name" render={({ field }) => (
@@ -1168,7 +1149,7 @@ export default function EstablishmentPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <FormField
                       control={form.control}
                       name="botName"
@@ -1179,7 +1160,32 @@ export default function EstablishmentPage() {
                             <Input placeholder="Ex: Zeca, Maria, Barbearia Bot" {...field} />
                           </FormControl>
                           <FormDescription>
-                            Como a IA se apresentará nas conversas (ex: &quot;Sou o Zeca, assistente da barbearia...&quot;).
+                            Como a IA se apresentará nas conversas (ex: &quot;Sou o Zeca...&quot;).
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="businessTone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tom de Voz da IA</FormLabel>
+                          <FormControl>
+                            <select
+                              {...field}
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              <option value="friendly">Amigável e Próximo</option>
+                              <option value="casual">Casual e Moderno</option>
+                              <option value="formal">Formal e Profissional</option>
+                              <option value="luxury">Luxuoso e Exclusivo</option>
+                            </select>
+                          </FormControl>
+                          <FormDescription>
+                            Estilo e personalidade das respostas do bot.
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -1191,12 +1197,12 @@ export default function EstablishmentPage() {
                       name="aiTimeoutHours"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Timeout de Retomada Automática (Horas)</FormLabel>
+                          <FormLabel>Timeout de Retomada (Horas)</FormLabel>
                           <FormControl>
                             <Input type="number" placeholder="ex: 12" {...field} />
                           </FormControl>
                           <FormDescription>
-                            Tempo sem mensagens após atendimento humano para a IA religar automaticamente.
+                            Horas para religar a IA após atendimento humano.
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
