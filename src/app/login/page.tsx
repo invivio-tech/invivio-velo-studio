@@ -23,10 +23,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { loginWithEmail, signInWithGoogle } from '@/firebase/auth/client';
 import { GoogleIcon } from '@/components/icons/google-icon';
+import { useUser, hasStoredAuthSession } from '@/firebase';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Por favor, insira um e-mail válido.' }),
@@ -38,6 +39,14 @@ export default function LoginPage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const { user, isUserLoading } = useUser();
+
+  // Sessão já salva no dispositivo: não pede login de novo.
+  useEffect(() => {
+    if ((!isUserLoading && user) || hasStoredAuthSession()) {
+      router.replace('/schedule');
+    }
+  }, [user, isUserLoading, router]);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -78,6 +87,14 @@ export default function LoginPage() {
     } else {
        router.push('/schedule');
     }
+  }
+
+  if (isUserLoading || user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   return (

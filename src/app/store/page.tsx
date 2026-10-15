@@ -33,6 +33,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import type { Product, ProductCategory, OrderItem } from '@/types/store';
+import { PlanGate } from '@/components/PlanGate';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -274,7 +275,8 @@ export default function StorePage() {
   const isLoading = areProductsLoading || areCategoriesLoading;
 
   return (
-    <div className="min-h-screen bg-background">
+    <PlanGate module="store">
+      <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-md border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-4">
@@ -569,5 +571,6 @@ export default function StorePage() {
         </DialogContent>
       </Dialog>
     </div>
+    </PlanGate>
   );
 }

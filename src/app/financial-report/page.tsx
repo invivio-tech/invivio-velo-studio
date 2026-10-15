@@ -36,6 +36,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { PlanGate } from '@/components/PlanGate';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   TrendingUp, 
@@ -300,7 +301,8 @@ export default function FinancialReportPage() {
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <PlanGate module="financial">
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-headline font-bold tracking-tight">Relatório Financeiro</h1>
@@ -551,5 +553,6 @@ export default function FinancialReportPage() {
         </Card>
       </div>
     </div>
+    </PlanGate>
   );
 }

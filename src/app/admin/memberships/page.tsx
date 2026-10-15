@@ -33,6 +33,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PlanGate } from '@/components/PlanGate';
 import MembershipPlanForm, { MembershipPlan, MembershipPlanWithId } from '@/components/admin/MembershipPlanForm';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -182,7 +183,8 @@ export default function AdminMembershipsPage() {
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <PlanGate module="club">
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Sparkles className="h-8 w-8 text-secondary" />
@@ -342,5 +344,6 @@ export default function AdminMembershipsPage() {
         commissionPercentage={commissionPercentage}
       />
     </div>
+    </PlanGate>
   );
 }
