@@ -1,0 +1,89 @@
+name: Segurança
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 9 * * 1'   # segunda, 06:17 (Brasília)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  secrets:
+    name: Segredos versionados (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        run: |
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.24.2/gitleaks_8.24.2_linux_x64.tar.gz | tar xz gitleaks
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # Bloqueia apenas segredos INTRODUZIDOS pelo PR
+            ./gitleaks git --log-opts="${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}" --redact --exit-code 1 .
+          else
+            ./gitleaks dir --redact --exit-code 0 . || true
+            echo "Varredura completa informativa — achados antigos viram issue pela manutenção semanal."
+          fi
+
+  sast:
+    name: SAST (Semgrep)
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep:latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Semgrep
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          ARGS="--config p/typescript --config p/react --config p/nextjs --config p/secrets --config p/owasp-top-ten --severity ERROR --metrics off"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # Só falha por achados NOVOS em relação à base do PR
+            semgrep scan $ARGS --baseline-commit "${{ github.event.pull_request.base.sha }}" --error
+          else
+            semgrep scan $ARGS || true
+          fi
+
+  dependencies:
+    name: Dependências vulneráveis (npm audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Contagem alta/crítica (head)
+        id: head
+        run: |
+          n=$(npm audit --omit=dev --json 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const v=JSON.parse(s).metadata.vulnerabilities;console.log((v.high||0)+(v.critical||0))}catch{console.log(0)}})')
+          echo "count=$n" >> "$GITHUB_OUTPUT"; echo "Alta+crítica no head: $n"
+      - name: Contagem alta/crítica (base) e comparação
+        if: github.event_name == 'pull_request'
+        run: |
+          git checkout -q "${{ github.event.pull_request.base.sha }}" -- package.json package-lock.json
+          n=$(npm audit --omit=dev --json 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const v=JSON.parse(s).metadata.vulnerabilities;console.log((v.high||0)+(v.critical||0))}catch{console.log(0)}})')
+          echo "Alta+crítica na base: $n"
+          if [ "${{ steps.head.outputs.count }}" -gt "$n" ]; then
+            echo "::error::O PR introduz vulnerabilidades altas/críticas em dependências ($n -> ${{ steps.head.outputs.count }})."; exit 1
+          fi
+
+  codeql:
+    name: CodeQL (requer GitHub Advanced Security em repo privado)
+    if: vars.GHAS_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+      - uses: github/codeql-action/analyze@v3

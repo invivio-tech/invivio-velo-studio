@@ -1,0 +1,83 @@
+name: "Agentes: entregar issue"
+
+# Dispara quando você coloca o rótulo "agent:go" numa issue,
+# ou comenta "/agente" numa issue (dono/colaborador), ou manualmente.
+on:
+  issues:
+    types: [labeled]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: Número da issue
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: read
+  id-token: write
+
+concurrency:
+  group: agent-issue-${{ github.event.issue.number || inputs.issue }}
+  cancel-in-progress: false
+
+jobs:
+  deliver:
+    if: >-
+      (github.event_name == 'issues' && github.event.label.name == 'agent:go') ||
+      (github.event_name == 'issue_comment' && !github.event.issue.pull_request &&
+        startsWith(github.event.comment.body, '/agente') &&
+        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      ISSUE: ${{ github.event.issue.number || inputs.issue }}
+      GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.AGENT_GH_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4   # emulador do Firebase (testes de regras)
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Preparar ambiente
+        env:
+          BUILD_ENV: ${{ secrets.BUILD_ENV }}
+        run: |
+          npm ci
+          if [ -n "$BUILD_ENV" ]; then printf '%s\n' "$BUILD_ENV" > .env.local; fi
+          git config user.name "invivio-agents[bot]"
+          git config user.email "agents@invivio.dev"
+          for l in "agent:go|0E8A16" "agent:working|FBCA04" "agent:blocked|B60205" "agent:pr|1D76DB" "human-action|D93F0B" "security|B60205" "tech-debt|C5DEF5" "release|5319E7" "report|EDEDED" "requer-deploy-manual|D93F0B"; do
+            gh label create "${l%%|*}" --color "${l##*|}" --force >/dev/null 2>&1 || true
+          done
+      - name: Esteira de agentes
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.AGENT_GH_TOKEN }}
+          prompt: |
+            Leia o arquivo .claude/commands/deliver.md e execute-o integralmente,
+            substituindo $ARGUMENTS pelo número da issue: ${{ env.ISSUE }}.
+            Repositório: ${{ github.repository }}.
+          claude_args: >-
+            --model ${{ vars.CLAUDE_MODEL || 'opus' }}
+            --max-turns 250
+            --allowedTools "Bash(npm:*),Bash(npx:*),Bash(node:*),Bash(git:*),Bash(gh:*),Bash(bash scripts/ci/*),Bash(ls:*),Bash(mkdir:*),Bash(mv:*),Bash(cp:*),Bash(rm:*),Bash(cat:*),Bash(grep:*),Bash(find:*),Bash(sed:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(sort:*),Bash(jq:*),Bash(firebase emulators:*),Bash(npx firebase-tools emulators:*),Read,Write,Edit,MultiEdit,Glob,Grep,Task,Agent,TodoWrite,WebFetch,WebSearch"
+      - name: Sinalizar falha na issue
+        if: failure()
+        run: |
+          gh issue edit "$ISSUE" --add-label agent:blocked --remove-label agent:working || true
+          gh issue comment "$ISSUE" --body "⚠️ A esteira de agentes falhou. Log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} — comente `/agente` para tentar de novo." || true

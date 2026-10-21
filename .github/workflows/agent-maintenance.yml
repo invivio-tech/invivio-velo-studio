@@ -1,0 +1,37 @@
+name: "Agentes: manutenção semanal"
+
+on:
+  schedule:
+    - cron: '7 10 * * 1'   # segunda, 07:07 (Brasília)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  id-token: write
+
+jobs:
+  maintenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.AGENT_GH_TOKEN }}
+          prompt: Leia .claude/commands/maintenance.md e execute-o. Repositório ${{ github.repository }}.
+          claude_args: >-
+            --model ${{ vars.CLAUDE_REVIEW_MODEL || vars.CLAUDE_MODEL || 'opus' }}
+            --max-turns 100
+            --allowedTools "Bash(npm audit:*),Bash(npx tsc:*),Bash(bash scripts/ci/ratchet.sh:*),Bash(git grep:*),Bash(git log:*),Bash(gh issue:*),Bash(gh label:*),Bash(ls:*),Bash(cat:*),Bash(grep:*),Bash(find:*),Read,Glob,Grep,Task,Agent"

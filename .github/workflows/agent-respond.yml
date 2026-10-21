@@ -1,0 +1,50 @@
+name: "Agentes: responder @claude"
+
+# Comente "@claude <pedido>" em qualquer issue ou PR (ex.: num PR: "@claude troque o texto do botão para Salvar").
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: read
+  id-token: write
+
+jobs:
+  respond:
+    if: >-
+      contains(github.event.comment.body || github.event.review.body || '', '@claude') &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association || github.event.review.author_association)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.AGENT_GH_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.AGENT_GH_TOKEN }}
+          track_progress: true
+          base_branch: main
+          branch_prefix: agent/
+          claude_args: >-
+            --model ${{ vars.CLAUDE_MODEL || 'opus' }}
+            --max-turns 150
+            --allowedTools "Bash(npm:*),Bash(npx:*),Bash(node:*),Bash(git:*),Bash(gh:*),Bash(bash scripts/ci/*),Bash(ls:*),Bash(mkdir:*),Bash(mv:*),Bash(cp:*),Bash(rm:*),Bash(cat:*),Bash(grep:*),Bash(find:*),Bash(sed:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(sort:*),Bash(jq:*),Bash(firebase emulators:*),Bash(npx firebase-tools emulators:*),Read,Write,Edit,MultiEdit,Glob,Grep,Task,Agent,TodoWrite,WebFetch,WebSearch"
+            --append-system-prompt "Use os subagentes de .claude/agents conforme a natureza do pedido. Após alterar código rode bash scripts/ci/ratchet.sh, npm test --if-present e npm run build antes do push."

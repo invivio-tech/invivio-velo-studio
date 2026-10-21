@@ -1,0 +1,18 @@
+name: Bug
+description: Algo não funciona como deveria.
+labels: ["agent:go", "bug"]
+body:
+  - type: textarea
+    id: oque
+    attributes:
+      label: O que aconteceu e o que era esperado?
+    validations:
+      required: true
+  - type: textarea
+    id: passos
+    attributes:
+      label: Como reproduzir (se souber)
+  - type: input
+    id: onde
+    attributes:
+      label: Onde (URL/tela/cliente)

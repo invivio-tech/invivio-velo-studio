@@ -1,0 +1,52 @@
+name: "Agentes: revisão de PR"
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, reopened, labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+
+concurrency:
+  group: agent-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: >-
+      !github.event.pull_request.draft &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (github.event.action != 'labeled' || github.event.label.name == 'agent:review')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ secrets.AGENT_GH_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: |
+          git config user.name "invivio-agents[bot]"
+          git config user.email "agents@invivio.dev"
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.AGENT_GH_TOKEN }}
+          prompt: |
+            Leia .claude/commands/review-pr.md e execute-o substituindo $ARGUMENTS por ${{ github.event.pull_request.number }}.
+            Branch base do PR: ${{ github.event.pull_request.base.ref }}. Branch do PR: ${{ github.event.pull_request.head.ref }}.
+          claude_args: >-
+            --model ${{ vars.CLAUDE_REVIEW_MODEL || vars.CLAUDE_MODEL || 'opus' }}
+            --max-turns 120
+            --allowedTools "Bash(npm:*),Bash(npx:*),Bash(node:*),Bash(git:*),Bash(gh:*),Bash(bash scripts/ci/*),Bash(ls:*),Bash(mkdir:*),Bash(mv:*),Bash(cp:*),Bash(rm:*),Bash(cat:*),Bash(grep:*),Bash(find:*),Bash(sed:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(sort:*),Bash(jq:*),Bash(firebase emulators:*),Bash(npx firebase-tools emulators:*),Read,Write,Edit,MultiEdit,Glob,Grep,Task,Agent,TodoWrite,WebFetch,WebSearch"

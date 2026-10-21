@@ -1,0 +1,25 @@
+name: Nova funcionalidade / melhoria
+description: Descreva o que você quer. Os agentes cuidam do resto.
+labels: ["agent:go"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Escreva do jeito que preferir — os agentes completam requisitos, critérios de aceite e premissas.
+        Ao criar a issue com o rótulo **agent:go**, a esteira começa sozinha e você recebe um PR para aprovar.
+  - type: textarea
+    id: pedido
+    attributes:
+      label: O que você quer?
+      placeholder: "Ex.: Permitir que o cliente remarque o horário até 2h antes, pelo link do WhatsApp."
+    validations:
+      required: true
+  - type: textarea
+    id: contexto
+    attributes:
+      label: Contexto, exemplos, prints (opcional)
+  - type: dropdown
+    id: prioridade
+    attributes:
+      label: Prioridade
+      options: [Normal, Alta, Urgente]
