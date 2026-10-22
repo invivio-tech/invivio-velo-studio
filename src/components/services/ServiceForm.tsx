@@ -1,5 +1,6 @@
 'use client';
 
+import { authFetch } from '@/lib/auth-fetch';
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -155,7 +156,7 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
         const formData = new FormData();
         formData.append('file', compressedFile);
         formData.append('folder', 'uploads/services');
-        const response = await fetch('/api/upload', { method: 'POST', body: formData });
+        const response = await authFetch('/api/upload', { method: 'POST', body: formData });
         if (!response.ok) {
           const errorText = await response.text();
           let errorMessage = errorText;

@@ -1,5 +1,7 @@
 'use client';
 
+import { authFetch } from '@/lib/auth-fetch';
+import { WhatsAppMedia } from '@/components/admin/WhatsAppMedia';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,7 +21,6 @@ import {
   MessageSquare, 
   Zap, 
   CheckCheck,
-  FileText,
   Settings,
   Plus,
   Trash2,
@@ -106,11 +107,6 @@ export default function MensagensPage() {
     return name.slice(0, 2).toUpperCase();
   };
 
-  const getMediaUrl = (mediaId: string) => {
-    const adminUrl = process.env.NEXT_PUBLIC_VELO_ADMIN_URL || 'https://invivio-velo-admin.web.app';
-    const tenantId = process.env.NEXT_PUBLIC_FIREBASE_DATABASE_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-    return `${adminUrl}/api/webhooks/whatsapp/media?mediaId=${mediaId}&tenantId=${tenantId}`;
-  };
 
   const toggleAi = async () => {
     if (!firestore || !selectedChat) return;
@@ -127,7 +123,7 @@ export default function MensagensPage() {
     setMessageText('');
 
     try {
-      const res = await fetch('/api/chat/send', {
+      const res = await authFetch('/api/chat/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to: selectedChatId, text: textToSend }),
@@ -431,30 +427,7 @@ export default function MensagensPage() {
                         <div className="flex items-center gap-1 mb-1 text-[11px] font-semibold text-muted-foreground">
                           <User className="w-3 h-3 text-muted-foreground/70" /> {selectedChat.customerName || 'Cliente'}
                         </div>
-                        {msg.mediaId && (() => {
-                          const mediaUrl = getMediaUrl(msg.mediaId!);
-                          return (
-                            <div className="mb-2">
-                              {msg.mimeType?.startsWith('audio/') ? (
-                                <audio controls className="max-w-full h-10">
-                                  <source src={mediaUrl} type={msg.mimeType} />
-                                  Seu navegador não suporta áudio.
-                                </audio>
-                              ) : msg.mimeType?.startsWith('image/') ? (
-                                /* eslint-disable-next-line @next/next/no-img-element */
-                                <img src={mediaUrl} alt="Imagem recebida" className="max-w-[200px] rounded cursor-pointer border border-border" onClick={() => window.open(mediaUrl, '_blank')} />
-                              ) : msg.mimeType?.startsWith('video/') ? (
-                                <video controls className="max-w-[200px] rounded border border-border">
-                                  <source src={mediaUrl} type={msg.mimeType} />
-                                </video>
-                              ) : (
-                                <a href={mediaUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-primary underline text-xs bg-primary/5 p-2 rounded-lg border border-primary/10">
-                                  <FileText className="w-3.5 h-3.5" /> Abrir Anexo Documento
-                                </a>
-                              )}
-                            </div>
-                          );
-                        })()}
+                        {msg.mediaId && <WhatsAppMedia mediaId={msg.mediaId} mimeType={msg.mimeType} />}
                         <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
                         <span className="text-[10px] text-muted-foreground/70 mt-1.5 block text-right font-mono">
                           {formatTime(msg.timestamp)}

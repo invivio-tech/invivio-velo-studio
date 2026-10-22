@@ -1,5 +1,6 @@
 'use client';
 
+import { authFetch } from '@/lib/auth-fetch';
 import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -148,7 +149,7 @@ export default function PromotionsPage() {
         payload.scheduledFor = new Date(scheduledTime).toISOString();
       }
 
-      const response = await fetch('/api/send-push', {
+      const response = await authFetch('/api/send-push', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
