@@ -1,3 +1,4 @@
+import { authFetch } from '@/lib/auth-fetch';
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -60,7 +61,7 @@ export function CompleteServiceDialog({
       const formData = new FormData();
       formData.append('file', file);
       formData.append('folder', 'uploads/appointments');
-      const response = await fetch('/api/upload', { method: 'POST', body: formData });
+      const response = await authFetch('/api/upload', { method: 'POST', body: formData });
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || 'Falha no upload');

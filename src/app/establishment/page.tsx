@@ -1,5 +1,6 @@
 'use client';
 
+import { authFetch } from '@/lib/auth-fetch';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -259,7 +260,7 @@ export default function EstablishmentPage() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('folder', 'uploads/establishment/logo');
-      const response = await fetch('/api/upload', { method: 'POST', body: formData });
+      const response = await authFetch('/api/upload', { method: 'POST', body: formData });
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || 'Falha no upload');
@@ -285,7 +286,7 @@ export default function EstablishmentPage() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('folder', 'uploads/establishment/about');
-      const response = await fetch('/api/upload', { method: 'POST', body: formData });
+      const response = await authFetch('/api/upload', { method: 'POST', body: formData });
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || 'Falha no upload');
@@ -311,7 +312,7 @@ export default function EstablishmentPage() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('folder', 'uploads/establishment/background');
-      const response = await fetch('/api/upload', { method: 'POST', body: formData });
+      const response = await authFetch('/api/upload', { method: 'POST', body: formData });
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || 'Falha no upload');

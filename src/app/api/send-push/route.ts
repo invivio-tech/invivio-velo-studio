@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminFirestore, initAdmin } from '@/firebase/admin';
 import * as admin from 'firebase-admin';
+import { requireStaff } from '@/lib/server-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+    const guard = await requireStaff(request, ['admin']);
+    if (!guard.ok) return guard.response;
+
     try {
         const bodyData = await request.json();
         const { title, body, scheduledFor } = bodyData;

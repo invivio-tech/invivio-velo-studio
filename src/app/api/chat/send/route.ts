@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireStaff } from '@/lib/server-auth';
 
 export async function POST(request: NextRequest) {
+  const guard = await requireStaff(request, ['admin']);
+  if (!guard.ok) return guard.response;
+
   try {
     const body = await request.json();
     const { to, text } = body;
@@ -17,6 +21,8 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        // o velo-admin confere o mesmo token e o papel neste banco
+        Authorization: `Bearer ${guard.token}`,
       },
       body: JSON.stringify({
         databaseId,

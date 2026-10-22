@@ -1,5 +1,6 @@
 'use client';
 
+import { authFetch } from '@/lib/auth-fetch';
 import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -73,7 +74,7 @@ export default function MembershipPlanForm({ isOpen, setIsOpen, plan, onSave }: 
         const formData = new FormData();
         formData.append('file', compressedFile);
         formData.append('folder', 'uploads/memberships');
-        const response = await fetch('/api/upload', { method: 'POST', body: formData });
+        const response = await authFetch('/api/upload', { method: 'POST', body: formData });
         if (!response.ok) {
           const errorText = await response.text();
           let errorMessage = errorText;
