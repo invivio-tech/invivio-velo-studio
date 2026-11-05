@@ -10,6 +10,7 @@ import {
   analyzeBusinessData,
   type PromotionalOfferOutput,
 } from '@/ai/flows/generate-promotional-offers';
+import { withWalletGuard } from '@/lib/studio-wallet';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { format } from 'date-fns';
@@ -230,7 +231,12 @@ export default function PromotionsPage() {
     setIsLoading(true);
     setResult(null);
     try {
-      const output = await generatePromotionalOffers(values);
+      const output = await withWalletGuard({
+        category: 'GEMINI_MARKETING',
+        description: 'IA: Geração de ofertas e campanhas promocionais',
+        estimatedTokens: 600,
+        action: () => generatePromotionalOffers(values)
+      });
       setResult(output);
       
       // Pre-fill push form with AI suggestion
@@ -241,11 +247,11 @@ export default function PromotionsPage() {
         title: 'Campanha Gerada e Salva! 🌟',
         description: 'A oferta e a sugestão de push foram gravadas no histórico.',
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Ocorreu um erro',
-        description: 'Falha ao gerar oferta. Por favor, tente novamente.',
+        title: error?.message?.includes('créditos') ? 'Créditos Insuficientes' : 'Ocorreu um erro',
+        description: error?.message || 'Falha ao gerar oferta. Por favor, tente novamente.',
       });
     } finally {
       setIsLoading(false);

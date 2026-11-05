@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { generateProductDescription } from '@/ai/flows/generate-product-description';
+import { withWalletGuard } from '@/lib/studio-wallet';
 import { type EstablishmentSettings } from '@/app/establishment/page';
 import { compressImage } from '@/lib/image-compression';
 
@@ -174,12 +175,17 @@ export default function ProductForm({ initialData, onSave }: ProductFormProps) {
 
     setIsGeneratingDescription(true);
     try {
-      const result = await generateProductDescription({
-        name,
-        price,
-        categoryName,
-        establishmentName: settings?.name || 'Nossa Barbearia',
-        nicheContext: settings?.context || '',
+      const result = await withWalletGuard({
+        category: 'GEMINI_COPYWRITING',
+        description: `IA: Descrição do produto "${name}"`,
+        estimatedTokens: 400,
+        action: () => generateProductDescription({
+          name,
+          price,
+          categoryName,
+          establishmentName: settings?.name || 'Nossa Barbearia',
+          nicheContext: settings?.context || '',
+        })
       });
 
       if (result) {
@@ -189,12 +195,12 @@ export default function ProductForm({ initialData, onSave }: ProductFormProps) {
           description: 'A IA criou um anúncio persuasivo para seu produto.',
         });
       }
-    } catch (error) {
+    } catch (error: any) {
        console.error(error);
        toast({
         variant: 'destructive',
-        title: 'Erro na IA',
-        description: 'Não foi possível conectar com o serviço de IA.',
+        title: error?.message?.includes('créditos') ? 'Créditos Insuficientes' : 'Erro na IA',
+        description: error?.message || 'Não foi possível conectar com o serviço de IA.',
       });
     } finally {
       setIsGeneratingDescription(false);
