@@ -1,12 +1,12 @@
 'use client';
 
-import { authFetch } from '@/lib/auth-fetch';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { doc, setDoc } from 'firebase/firestore';
+import { authFetch } from '@/lib/auth-fetch';
 
 import { useUserProfile, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -223,7 +223,7 @@ export default function EstablishmentPage() {
         aiTimeoutHours: settings.aiTimeoutHours === undefined ? 12 : settings.aiTimeoutHours,
         cancellationTimeLimitHours: settings.cancellationTimeLimitHours === undefined ? 24 : settings.cancellationTimeLimitHours,
         slotIntervalMinutes: settings.slotIntervalMinutes === undefined ? 30 : settings.slotIntervalMinutes,
-        totemPin: settings.totemPin || '',
+        totemPin: form.getValues('totemPin') || '',
         loyaltyPercentage: settings.loyaltyPercentage === undefined ? 10 : settings.loyaltyPercentage,
         pointsPenaltyForNoShow: settings.pointsPenaltyForNoShow === undefined ? 5 : settings.pointsPenaltyForNoShow,
         professionalCommissionPercentage: settings.professionalCommissionPercentage === undefined ? 25 : settings.professionalCommissionPercentage,
@@ -329,10 +329,26 @@ export default function EstablishmentPage() {
     }
   };
 
+  // PIN do totem: guardado no servidor, fora do documento público de configurações
+  useEffect(() => {
+    authFetch('/api/establishment/totem-pin')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d && typeof d.pin === 'string') form.setValue('totemPin', d.pin); })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function onSubmit(values: SettingsFormValues) {
     if (!settingsRef) return;
     setIsSaving(true);
-    const settingsData = values;
+    const { totemPin, ...settingsData } = values;
+    authFetch('/api/establishment/totem-pin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin: totemPin || '' }),
+    }).then((r) => {
+      if (!r.ok) toast({ variant: 'destructive', title: 'PIN do totem não salvo', description: 'Tente novamente.' });
+    }).catch(() => {});
     setDoc(settingsRef, settingsData, { merge: true })
       .then(() => {
         toast({ title: 'Configurações salvas!', description: 'As informações do estabelecimento foram atualizadas.' });

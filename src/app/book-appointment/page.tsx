@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { addMinutes, format, isAfter, isBefore, isEqual, parse, set, startOfDay, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { fetchBusyAppointments, createBookingRequest } from '@/lib/booking-client';
 import { addDoc, collection, query, where, getDocs, Timestamp, doc, updateDoc, getDoc } from 'firebase/firestore';
 
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase, type UserProfile, useUserProfile } from '@/firebase';
@@ -122,15 +123,9 @@ export default function BookAppointmentPage() {
         const startOfSelectedDay = startOfDay(selectedDate);
         const endOfSelectedDay = addDays(startOfSelectedDay, 1);
 
-        // Fetch appointments
-        const appointmentsQuery = query(
-          collection(firestore, 'appointments'),
-          where('startTime', '>=', Timestamp.fromDate(startOfSelectedDay)),
-          where('startTime', '<', Timestamp.fromDate(endOfSelectedDay))
-        );
-        const appointmentsSnapshot = await getDocs(appointmentsQuery);
-        const appointmentsData = appointmentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
-        setDailyAppointments(appointmentsData);
+        // Horários ocupados vêm do servidor, sem dados de outros clientes
+        const appointmentsData = await fetchBusyAppointments(startOfSelectedDay);
+        setDailyAppointments(appointmentsData as unknown as Appointment[]);
 
         // Fetch blocked times
         const blockedTimesQuery = query(
@@ -178,8 +173,6 @@ export default function BookAppointmentPage() {
       await Promise.all(profsToFetch.map(async (prof) => {
         try {
           const scheduleRef = doc(firestore, `users/${prof.id}/scheduleSettings/main`);
-          const snapshot = await getDocs(query(collection(firestore, 'users'), where('__name__', '==', prof.id))); // This is wrong, I need getDoc.
-          // Correct way:
           const docSnap = await import('firebase/firestore').then(mod => mod.getDoc(scheduleRef));
 
           if (docSnap.exists()) {
@@ -322,59 +315,19 @@ export default function BookAppointmentPage() {
     const startTime = set(selectedDate, { hours, minutes, seconds: 0, milliseconds: 0 });
     const endTime = addMinutes(startTime, parseDuration(selectedService.duration));
 
-    const finalPrice = isCoveredByPlan ? 0 : selectedService.price;
-
-    const newAppointment: any = {
-      customerId: user.uid,
-      customerName: userProfile.name || user.displayName || 'Cliente',
-      customerPhotoURL: userProfile.photoURL || user.photoURL || '',
-      customerEmail: userProfile.email || user.email!,
-      customerPhoneNumber: userProfile.phoneNumber || '',
-      serviceId: selectedService.id,
-      professionalId: finalProfessional.id,
-      startTime: Timestamp.fromDate(startTime),
-      endTime: Timestamp.fromDate(endTime),
-      status: 'scheduled',
-      notes: isCoveredByPlan ? 'Incluso no Clube de Assinaturas' : '',
-      // Denormalized data
-      serviceName: selectedService.name,
-      professionalName: finalProfessional.name,
-      serviceDuration: selectedService.duration,
-      servicePrice: finalPrice,
-      priceOnRequest: (selectedService as any).priceOnRequest || false,
-      reminderSent: false,
-    };
-
-    if (isCoveredByPlan && activePlan) {
-      newAppointment.isSubscriptionUsage = true;
-      const repassPct = (activePlan as any).commissionRepassPercentage ?? 100;
-      newAppointment.commissionBaseValue = (selectedService.price * repassPct) / 100;
-      newAppointment.subscriptionPlanId = activePlan.id;
-    }
-
     try {
-      const appointmentsRef = collection(firestore, 'appointments');
-      await addDoc(appointmentsRef, newAppointment);
-      
-      // Update membership usage if covered
-      if (isCoveredByPlan && activeMembership?.id) {
-        const membershipRef = doc(firestore, 'userMemberships', activeMembership.id);
-        const currentUsage = activeMembership.usageThisMonth || activeMembership.usageCount || 0;
-        await updateDoc(membershipRef, {
-          usageThisMonth: currentUsage + 1,
-          usageCount: currentUsage + 1 // Keep both for backward compatibility if needed
-        });
-      }
+      // Preço, uso do plano e conflito de horário são conferidos no servidor
+      await createBookingRequest({
+        serviceId: selectedService.id,
+        professionalId: finalProfessional.id,
+        startTime,
+        useSubscription: isCoveredByPlan,
+      });
 
       toast({ title: 'Agendamento Confirmado!', description: `Seu horário para ${selectedService.name} às ${selectedTime} foi confirmado.` });
       router.push('/schedule');
-    } catch (e) {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: 'appointments',
-        operation: 'create',
-        requestResourceData: newAppointment,
-      }));
-      toast({ title: 'Erro ao Agendar', description: 'Não foi possível confirmar seu agendamento. Tente novamente.', variant: 'destructive' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao Agendar', description: e?.message || 'Não foi possível confirmar seu agendamento. Tente novamente.', variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
     }
