@@ -49,3 +49,14 @@ export async function requireStaff(request: Request, roles: StaffRole[] = ['admi
   }
   return { ok: false, response: NextResponse.json({ error: 'Sem permissão' }, { status: 403 }) };
 }
+
+/** Usuário logado (qualquer papel). Retorna o uid ou null se não houver token válido. */
+export async function optionalUser(request: Request): Promise<{ uid: string } | null | 'invalid'> {
+  const match = (request.headers.get('authorization') || '').match(/^Bearer\s+(.+)$/i);
+  if (!match) return null;
+  try {
+    return { uid: (await getAdminAuth().verifyIdToken(match[1])).uid };
+  } catch {
+    return 'invalid';
+  }
+}
