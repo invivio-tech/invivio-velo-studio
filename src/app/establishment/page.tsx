@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { doc, setDoc } from 'firebase/firestore';
+import { authFetch } from '@/lib/auth-fetch';
 
 import { useUserProfile, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -14,6 +15,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { generateEstablishmentTexts } from '@/ai/flows/generate-establishment-texts';
 import { generateBirthdayMessage } from '@/ai/flows/generate-birthday-message';
 import { generateThemePalette } from '@/ai/flows/generate-theme-palette';
+import { withWalletGuard } from '@/lib/studio-wallet';
 import { hexToTailwindHsl, tailwindHslToHex } from '@/lib/color-utils';
 
 import { Skeleton } from '@/components/ui/skeleton';
@@ -221,7 +223,7 @@ export default function EstablishmentPage() {
         aiTimeoutHours: settings.aiTimeoutHours === undefined ? 12 : settings.aiTimeoutHours,
         cancellationTimeLimitHours: settings.cancellationTimeLimitHours === undefined ? 24 : settings.cancellationTimeLimitHours,
         slotIntervalMinutes: settings.slotIntervalMinutes === undefined ? 30 : settings.slotIntervalMinutes,
-        totemPin: settings.totemPin || '',
+        totemPin: form.getValues('totemPin') || '',
         loyaltyPercentage: settings.loyaltyPercentage === undefined ? 10 : settings.loyaltyPercentage,
         pointsPenaltyForNoShow: settings.pointsPenaltyForNoShow === undefined ? 5 : settings.pointsPenaltyForNoShow,
         professionalCommissionPercentage: settings.professionalCommissionPercentage === undefined ? 25 : settings.professionalCommissionPercentage,
@@ -259,7 +261,7 @@ export default function EstablishmentPage() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('folder', 'uploads/establishment/logo');
-      const response = await fetch('/api/upload', { method: 'POST', body: formData });
+      const response = await authFetch('/api/upload', { method: 'POST', body: formData });
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || 'Falha no upload');
@@ -285,7 +287,7 @@ export default function EstablishmentPage() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('folder', 'uploads/establishment/about');
-      const response = await fetch('/api/upload', { method: 'POST', body: formData });
+      const response = await authFetch('/api/upload', { method: 'POST', body: formData });
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || 'Falha no upload');
@@ -311,7 +313,7 @@ export default function EstablishmentPage() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('folder', 'uploads/establishment/background');
-      const response = await fetch('/api/upload', { method: 'POST', body: formData });
+      const response = await authFetch('/api/upload', { method: 'POST', body: formData });
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || 'Falha no upload');
@@ -327,10 +329,26 @@ export default function EstablishmentPage() {
     }
   };
 
+  // PIN do totem: guardado no servidor, fora do documento público de configurações
+  useEffect(() => {
+    authFetch('/api/establishment/totem-pin')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d && typeof d.pin === 'string') form.setValue('totemPin', d.pin); })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function onSubmit(values: SettingsFormValues) {
     if (!settingsRef) return;
     setIsSaving(true);
-    const settingsData = values;
+    const { totemPin, ...settingsData } = values;
+    authFetch('/api/establishment/totem-pin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin: totemPin || '' }),
+    }).then((r) => {
+      if (!r.ok) toast({ variant: 'destructive', title: 'PIN do totem não salvo', description: 'Tente novamente.' });
+    }).catch(() => {});
     setDoc(settingsRef, settingsData, { merge: true })
       .then(() => {
         toast({ title: 'Configurações salvas!', description: 'As informações do estabelecimento foram atualizadas.' });
@@ -356,10 +374,11 @@ export default function EstablishmentPage() {
     }
     setIsSuggesting(true);
     try {
-      const result = await generateEstablishmentTexts({ 
-        name: typeof name === 'string' ? name : '', 
-        context: typeof context === 'string' ? context : '' 
-      });
+      const result = await withWalletGuard((idToken) => generateEstablishmentTexts(idToken, { 
+          name: typeof name === 'string' ? name : '', 
+          context: typeof context === 'string' ? context : '' 
+        })
+      );
       if (result) {
         form.setValue('heroTitle', result.heroTitle, { shouldValidate: true });
         form.setValue('heroSubtitle', result.heroSubtitle, { shouldValidate: true });
@@ -369,9 +388,13 @@ export default function EstablishmentPage() {
         form.setValue('servicesSubtitle', result.servicesSubtitle, { shouldValidate: true });
         toast({ title: 'Sugestões aplicadas!', description: 'Novos textos foram gerados e preenchidos no formulário.' });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error suggesting texts:', error);
-      toast({ variant: 'destructive', title: 'Erro ao sugerir', description: 'Não foi possível gerar uma sugestão. Tente novamente.' });
+      toast({ 
+        variant: 'destructive', 
+        title: error?.message?.includes('créditos') ? 'Créditos Insuficientes' : 'Erro ao sugerir', 
+        description: error?.message || 'Não foi possível gerar uma sugestão. Tente novamente.' 
+      });
     } finally {
       setIsSuggesting(false);
     }
@@ -382,15 +405,20 @@ export default function EstablishmentPage() {
     const context = form.getValues('context');
     setIsSuggestingBirthday(true);
     try {
-      const result = await generateBirthdayMessage({ name, context });
+      const result = await withWalletGuard((idToken) => generateBirthdayMessage(idToken, { name, context })
+      );
       if (result) {
         form.setValue('birthdayTitle', result.birthdayTitle, { shouldValidate: true });
         form.setValue('birthdayMessage', result.birthdayMessage, { shouldValidate: true });
         toast({ title: 'Sugestão aplicada!', description: 'A mensagem de aniversário foi preenchida.' });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error suggesting birthday message:', error);
-      toast({ variant: 'destructive', title: 'Erro ao sugerir', description: 'Não foi possível gerar a sugestão de aniversário.' });
+      toast({ 
+        variant: 'destructive', 
+        title: error?.message?.includes('créditos') ? 'Créditos Insuficientes' : 'Erro ao sugerir', 
+        description: error?.message || 'Não foi possível gerar a sugestão de aniversário.' 
+      });
     } finally {
       setIsSuggestingBirthday(false);
     }
@@ -408,7 +436,8 @@ export default function EstablishmentPage() {
     }
     setIsSuggestingColors(true);
     try {
-      const result = await generateThemePalette({ logoUrl, businessCategory, businessTone });
+      const result = await withWalletGuard((idToken) => generateThemePalette(idToken, { logoUrl, businessCategory, businessTone })
+      );
       if (result) {
         form.setValue('primaryColor', result.primaryColor, { shouldValidate: true });
         form.setValue('primaryForegroundColor', result.primaryForegroundColor, { shouldValidate: true });
@@ -421,9 +450,13 @@ export default function EstablishmentPage() {
         form.setValue('borderColor', result.borderColor, { shouldValidate: true });
         toast({ title: 'Sugestão de cores aplicada!', description: result.reasoning || 'As cores sugeridas foram aplicadas no formulário.' });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error suggesting colors:', error);
-      toast({ variant: 'destructive', title: 'Erro ao sugerir cores', description: 'Não foi possível analisar a logo e gerar as cores. Verifique a imagem e tente novamente.' });
+      toast({ 
+        variant: 'destructive', 
+        title: error?.message?.includes('créditos') ? 'Créditos Insuficientes' : 'Erro ao sugerir cores', 
+        description: error?.message || 'Não foi possível analisar a logo e gerar as cores. Verifique a imagem e tente novamente.' 
+      });
     } finally {
       setIsSuggestingColors(false);
     }

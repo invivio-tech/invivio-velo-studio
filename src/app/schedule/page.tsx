@@ -21,6 +21,7 @@ import { useUser, useUserProfile, useFirestore, useCollection, useMemoFirebase, 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { rescheduleBookingRequest } from '@/lib/booking-client';
 import { collection, query, where, orderBy, Timestamp, getDocs, doc, updateDoc, runTransaction, getDoc, limit, addDoc, onSnapshot } from 'firebase/firestore';
 import { format, startOfDay, isBefore, subHours, startOfMonth, endOfMonth, endOfDay, addMonths, subMonths, isSameMonth, addMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -138,9 +139,11 @@ export default function SchedulePage() {
   , [firestore, user]);
   const { data: services } = useCollection<Service>(allServicesQuery);
 
+  // Lista de clientes só para a equipe (cliente não vê outros clientes)
+  const isStaffUser = userProfile?.role === 'admin' || userProfile?.role === 'professional';
   const clientsQuery = useMemoFirebase(() =>
-    (firestore && user) ? query(collection(firestore, 'users'), where('role', '==', 'client')) : null
-  , [firestore, user]);
+    (firestore && user && isStaffUser) ? query(collection(firestore, 'users'), where('role', '==', 'client')) : null
+  , [firestore, user, isStaffUser]);
   const { data: clients } = useCollection<UserProfile>(clientsQuery);
 
   const productsQuery = useMemoFirebase(() =>
@@ -474,6 +477,24 @@ export default function SchedulePage() {
     setIsUpdatingAppointment(true);
     const { id, ...data } = editingAppointment;
 
+    // Cliente remarca pelo servidor: serviço e preço não mudam e o horário é conferido
+    if (userProfile?.role === 'client') {
+      try {
+        await rescheduleBookingRequest({
+          appointmentId: id,
+          startTime: editingAppointment.startTime.toDate(),
+          professionalId: editingAppointment.professionalId,
+        });
+        toast({ title: 'Sucesso', description: 'Agendamento remarcado com sucesso.' });
+        setIsEditDialogOpen(false);
+      } catch (error: any) {
+        toast({ title: 'Erro', description: error?.message || 'Não foi possível remarcar.', variant: 'destructive' });
+      } finally {
+        setIsUpdatingAppointment(false);
+      }
+      return;
+    }
+
     try {
       const selectedPro = professionals?.find(p => p.id === editingAppointment.professionalId);
       const selectedSvc = services?.find(s => (s as any).id === editingAppointment.serviceId);
@@ -566,6 +587,7 @@ export default function SchedulePage() {
                 </Select>
               </div>
 
+              {userProfile?.role !== 'client' && (<>
               <div className="space-y-2">
                 <Label>Serviço</Label>
                 <Select 
@@ -592,6 +614,7 @@ export default function SchedulePage() {
                   onChange={(e) => setEditingAppointment({...editingAppointment, servicePrice: Number(e.target.value)})}
                 />
               </div>
+              </>)}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

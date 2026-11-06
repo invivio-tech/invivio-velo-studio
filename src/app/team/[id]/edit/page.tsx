@@ -1,5 +1,6 @@
 'use client';
 
+import { authFetch } from '@/lib/auth-fetch';
 import { useEffect, useState } from 'react';
 import {  useRouter , useParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -149,7 +150,7 @@ export default function EditUserPage() {
       formData.append('file', file);
       formData.append('folder', 'uploads/team');
       
-      const response = await fetch('/api/upload', { method: 'POST', body: formData });
+      const response = await authFetch('/api/upload', { method: 'POST', body: formData });
       const data = await response.json();
       
       if (!response.ok) {

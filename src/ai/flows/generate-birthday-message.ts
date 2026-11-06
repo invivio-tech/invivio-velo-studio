@@ -1,5 +1,7 @@
 'use server';
 
+import { runGuardedAI } from '@/lib/ai-guard';
+import type { AIGuardError } from '@/lib/ai-guard-types';
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
@@ -34,7 +36,18 @@ const prompt = ai.definePrompt({
   `,
 });
 
-export const generateBirthdayMessage = ai.defineFlow(
+export async function generateBirthdayMessage(
+  idToken: string,
+  input: z.infer<typeof BirthdayMessageInputSchema>,
+): Promise<z.infer<typeof BirthdayMessageOutputSchema> | AIGuardError> {
+  return runGuardedAI(
+    idToken,
+    { category: 'GEMINI_COPYWRITING', description: 'IA: Mensagem de aniversário para clientes', estimatedTokens: 300 },
+    () => generateBirthdayMessageFlow(input),
+  );
+}
+
+const generateBirthdayMessageFlow = ai.defineFlow(
   {
     name: 'generateBirthdayMessage',
     inputSchema: BirthdayMessageInputSchema,

@@ -1,14 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useFirestore } from '@/firebase';
-import { collection, query, where, getDocs, doc, updateDoc, Timestamp, orderBy } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
+import { useFirestore, useMemoFirebase, useDoc } from '@/firebase';
+import type { EstablishmentSettings } from '@/app/establishment/page';
 import { VirtualKeypad } from '@/components/totem/VirtualKeypad';
 import StepBooking from '@/components/booking/StepBooking';
 import { Scissors, UserCheck, ArrowLeft, CheckCircle2, AlertCircle, Calendar, Lock } from 'lucide-react';
-import { startOfDay, endOfDay } from 'date-fns';
-import { useMemoFirebase, useDoc } from '@/firebase';
-import type { EstablishmentSettings } from '@/app/establishment/page';
+
+async function totemApi(body: Record<string, unknown>) {
+  const res = await fetch('/api/totem', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Erro no totem');
+  return data;
+}
 
 type TotemMode = 'home' | 'checkin' | 'booking' | 'success_checkin' | 'success_booking';
 
@@ -30,12 +35,19 @@ export default function TotemPage() {
   const [isLocked, setIsLocked] = useState(true);
   const [pinInput, setPinInput] = useState('');
   const firestore = useFirestore();
-  
   const settingsRef = useMemoFirebase(
     () => (firestore ? doc(firestore, 'establishmentSettings', 'main') : null),
     [firestore]
   );
   const { data: settings } = useDoc<EstablishmentSettings>(settingsRef);
+
+  // O PIN fica no servidor; aqui só sabemos se o totem exige desbloqueio
+  const [requiresPin, setRequiresPin] = useState(false);
+  useEffect(() => {
+    totemApi({ action: 'status' })
+      .then((d) => setRequiresPin(!!d.locked))
+      .catch(() => setRequiresPin(false));
+  }, []);
 
   // Reset after success
   useEffect(() => {
@@ -57,14 +69,16 @@ export default function TotemPage() {
     }
   }, []);
 
-  const handlePinEnter = () => {
-    if (pinInput === settings?.totemPin) {
+  const handlePinEnter = async () => {
+    try {
+      await totemApi({ action: 'unlock', pin: pinInput });
       setIsLocked(false);
       sessionStorage.setItem('totem_unlocked', 'true');
+      sessionStorage.setItem('totem_pin', pinInput);
       setError('');
-      setPinInput('');
-    } else {
+    } catch {
       setError('PIN Incorreto');
+    } finally {
       setPinInput('');
     }
   };
@@ -79,66 +93,18 @@ export default function TotemPage() {
     setError('');
     
     try {
-      const today = new Date();
-      const start = startOfDay(today);
-      const end = endOfDay(today);
-      
-      const q = query(
-        collection(firestore, 'appointments'),
-        where('customerPhoneNumber', '==', phone),
-        where('startTime', '>=', Timestamp.fromDate(start)),
-        where('startTime', '<=', Timestamp.fromDate(end)),
-        where('status', '==', 'scheduled')
-      );
-      
-      const snapshot = await getDocs(q);
-      
-      if (snapshot.empty) {
-        // Test with formatted phone if needed, but normally it's saved without formatting or in a specific format
-        // Depending on how we save, we might need to query the exact string.
-        // Assuming we save the raw digits or the formatted one. Let's try to query the formatted one if the first fails.
-        const formatted = formatPhone(phone);
-        const q2 = query(
-          collection(firestore, 'appointments'),
-          where('customerPhoneNumber', '==', formatted),
-          where('startTime', '>=', Timestamp.fromDate(start)),
-          where('startTime', '<=', Timestamp.fromDate(end)),
-          where('status', '==', 'scheduled')
-        );
-        const snap2 = await getDocs(q2);
-        
-        if (snap2.empty) {
-          setError('Nenhum agendamento encontrado para hoje com este número.');
-          setLoading(false);
-          return;
-        }
-        
-        await processArrival(snap2.docs[0]);
-      } else {
-        await processArrival(snapshot.docs[0]);
-      }
-      
+      // Check-in feito no servidor: o totem não lê a agenda dos clientes
+      const data = await totemApi({ action: 'checkin', phone, pin: sessionStorage.getItem('totem_pin') || '' });
+      setClientName(data.firstName || 'Cliente');
+      setMode('success_checkin');
     } catch (err: any) {
-      console.error(err);
-      setError('Erro ao buscar agendamento. Tente novamente.');
+      setError(err?.message || 'Erro ao buscar agendamento. Tente novamente.');
     } finally {
       setLoading(false);
     }
   };
 
-  const processArrival = async (docSnap: any) => {
-    const data = docSnap.data();
-    setClientName(data.customerName || 'Cliente');
-    
-    await updateDoc(doc(firestore, 'appointments', docSnap.id), {
-      customerArrived: true,
-      arrivedAt: Timestamp.now()
-    });
-    
-    setMode('success_checkin');
-  };
-
-  if (settings?.totemPin && isLocked) {
+  if (requiresPin && isLocked) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center relative">
         <div className="max-w-xl w-full space-y-8 animate-in fade-in duration-500">

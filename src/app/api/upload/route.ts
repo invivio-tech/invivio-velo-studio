@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminStorage } from '@/firebase/admin';
+import { requireStaff } from '@/lib/server-auth';
+
+// Pastas usadas pelas telas (equipe, serviços, produtos, planos, estabelecimento, atendimentos, faturas)
+const ALLOWED_PREFIXES = ['uploads/', 'invoices'];
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+    const guard = await requireStaff(request);
+    if (!guard.ok) return guard.response;
+
     try {
         const formData = await request.formData();
         const file = formData.get('file') as File | null;
@@ -15,6 +22,9 @@ export async function POST(request: NextRequest) {
         const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
         const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
         const safeFolder = folder.replace(/[^a-zA-Z0-9_\-\/]/g, '').replace(/^\/+/, '').replace(/\/+$/, '');
+        if (!ALLOWED_PREFIXES.some((prefix) => safeFolder.startsWith(prefix))) {
+            return NextResponse.json({ error: 'Pasta não permitida' }, { status: 400 });
+        }
         const filename = `${safeFolder}/${uniqueSuffix}.${ext}`;
 
         console.log(`Upload route: file=${file.name}, size=${file.size}, type=${file.type}, destination=${filename}`);
@@ -42,7 +52,7 @@ export async function POST(request: NextRequest) {
     } catch (error: any) {
         console.error('Upload route ERRO:', error);
         return NextResponse.json(
-            { error: error.message || 'Erro interno no servidor durante o upload', stack: error.stack },
+            { error: 'Erro interno no servidor durante o upload' },
             { status: 500 }
         );
     }

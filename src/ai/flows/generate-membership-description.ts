@@ -1,5 +1,7 @@
 'use server';
 
+import { runGuardedAI } from '@/lib/ai-guard';
+import type { AIGuardError } from '@/lib/ai-guard-types';
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
@@ -17,8 +19,15 @@ const MembershipDescriptionOutputSchema = z.object({
 });
 export type MembershipDescriptionOutput = z.infer<typeof MembershipDescriptionOutputSchema>;
 
-export async function generateMembershipDescription(input: MembershipDescriptionInput): Promise<MembershipDescriptionOutput> {
-  return generateMembershipDescriptionFlow(input);
+export async function generateMembershipDescription(
+  idToken: string,
+  input: MembershipDescriptionInput,
+): Promise<MembershipDescriptionOutput | AIGuardError> {
+  return runGuardedAI(
+    idToken,
+    { category: 'GEMINI_COPYWRITING', description: `IA: Descrição do plano de assinatura "${input.name}"`, estimatedTokens: 400 },
+    () => generateMembershipDescriptionFlow(input),
+  );
 }
 
 const prompt = ai.definePrompt({
