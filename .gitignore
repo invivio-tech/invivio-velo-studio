@@ -46,3 +46,13 @@ firebase-debug.log*
 
 # Logs
 *.log
+
+# Dependências em qualquer pasta (ex: functions/)
+node_modules/
+
+# Credenciais e scripts locais de manutenção
+service-account*.json
+serviceAccountKey*.json
+*-adminsdk-*.json
+admin_request.txt
+create-admin*.mjs
