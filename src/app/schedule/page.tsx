@@ -1315,7 +1315,7 @@ function ClientDashboard({
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
       <div className="flex justify-between items-center"><h1 className="text-3xl font-headline font-bold">Olá, {userProfile.name}!</h1><Button asChild><Link href="/book-appointment">Novo Agendamento</Link></Button></div>
       <Card><CardHeader><CardTitle>Seus Agendamentos</CardTitle></CardHeader><CardContent><div className="space-y-4">{appointments?.length ? appointments.map(apt => {
-        const limitHours = settings?.cancellationTimeLimitHours || 24;
+        const limitHours = settings?.cancellationTimeLimitHours ?? 24;
         const canCancel = isBefore(new Date(), subHours(apt.startTime.toDate(), limitHours));
         
         return (
@@ -1343,7 +1343,7 @@ function ClientDashboard({
       
       <div className="text-xs text-muted-foreground bg-muted p-4 rounded-lg flex items-start gap-2 max-w-full">
         <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-        <p>Cancelamentos e alterações só podem ser realizados com até <strong>{settings?.cancellationTimeLimitHours || 24} horas</strong> de antecedência. Para imprevistos de última hora, por favor contate o estabelecimento diretamente.</p>
+        <p>Cancelamentos e alterações só podem ser realizados com até <strong>{settings?.cancellationTimeLimitHours ?? 24} horas</strong> de antecedência. Para imprevistos de última hora, por favor contate o estabelecimento diretamente.</p>
       </div>
 
       <footer className="text-center text-slate-600 mt-auto opacity-40 py-8">
