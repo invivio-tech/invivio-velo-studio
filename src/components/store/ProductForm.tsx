@@ -175,18 +175,14 @@ export default function ProductForm({ initialData, onSave }: ProductFormProps) {
 
     setIsGeneratingDescription(true);
     try {
-      const result = await withWalletGuard({
-        category: 'GEMINI_COPYWRITING',
-        description: `IA: Descrição do produto "${name}"`,
-        estimatedTokens: 400,
-        action: () => generateProductDescription({
+      const result = await withWalletGuard((idToken) => generateProductDescription(idToken, {
           name,
           price,
           categoryName,
           establishmentName: settings?.name || 'Nossa Barbearia',
           nicheContext: settings?.context || '',
         })
-      });
+      );
 
       if (result) {
         form.setValue('description', result.description, { shouldValidate: true });

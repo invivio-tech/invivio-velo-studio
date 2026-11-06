@@ -122,17 +122,13 @@ export default function MembershipPlanForm({ isOpen, setIsOpen, plan, onSave }: 
       const limit = Number(maxUsesPerMonth);
       const limitText = limit === 999 ? 'Uso Ilimitado' : `Até ${limit} uso(s) por mês`;
 
-      const result = await withWalletGuard({
-        category: 'GEMINI_COPYWRITING',
-        description: `IA: Descrição do plano de assinatura "${name}"`,
-        estimatedTokens: 400,
-        action: () => generateMembershipDescription({
+      const result = await withWalletGuard((idToken) => generateMembershipDescription(idToken, {
           name,
           price: price.toString(),
           servicesCount: includedServiceIds.length,
           limitText
         })
-      });
+      );
       setDescription(result.description);
       if (result.imagePrompt) {
         setImagePrompt(result.imagePrompt);

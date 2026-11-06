@@ -8,6 +8,8 @@
  * - PromotionalOfferOutput - The return type for the generatePromotionalOffers function.
  */
 
+import { requireStaffSession, runGuardedAI } from '@/lib/ai-guard';
+import { AI_GUARD_MESSAGES, isAIGuardError, type AIGuardError } from '@/lib/ai-guard-types';
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { getAdminFirestore, initAdmin } from '@/firebase/admin';
@@ -29,7 +31,13 @@ const PromotionalOfferOutputSchema = z.object({
 });
 export type PromotionalOfferOutput = z.infer<typeof PromotionalOfferOutputSchema>;
 
-export async function analyzeBusinessData(): Promise<{ serviceCatalog: string; customerHistory: string; error?: string }> {
+export async function analyzeBusinessData(idToken: string): Promise<{ serviceCatalog: string; customerHistory: string; error?: string }> {
+  // Lê dados do estabelecimento com o Admin SDK: só a equipe pode chamar.
+  const session = await requireStaffSession(idToken);
+  if ('aiError' in session) {
+    return { serviceCatalog: '', customerHistory: '', error: AI_GUARD_MESSAGES[session.aiError] };
+  }
+
   // Step 1: Init Firebase Admin
   try {
     initAdmin();
@@ -166,8 +174,16 @@ export async function analyzeBusinessData(): Promise<{ serviceCatalog: string; c
   }
 }
 
-export async function generatePromotionalOffers(input: PromotionalOfferInput): Promise<PromotionalOfferOutput> {
-  const output = await generatePromotionalOffersFlow(input);
+export async function generatePromotionalOffers(
+  idToken: string,
+  input: PromotionalOfferInput,
+): Promise<PromotionalOfferOutput | AIGuardError> {
+  const output = await runGuardedAI(
+    idToken,
+    { category: 'GEMINI_MARKETING', description: 'IA: Geração de ofertas e campanhas promocionais', estimatedTokens: 600 },
+    () => generatePromotionalOffersFlow(input),
+  );
+  if (isAIGuardError(output)) return output;
   try {
     initAdmin();
     const db = getAdminFirestore();
