@@ -188,7 +188,7 @@ export default function PromotionsPage() {
   const handleAnalyzeBusiness = async () => {
     setIsAnalyzing(true);
     try {
-      const data = await analyzeBusinessData();
+      const data = await withWalletGuard((idToken) => analyzeBusinessData(idToken));
 
       if (data.error) {
         toast({
@@ -231,12 +231,8 @@ export default function PromotionsPage() {
     setIsLoading(true);
     setResult(null);
     try {
-      const output = await withWalletGuard({
-        category: 'GEMINI_MARKETING',
-        description: 'IA: Geração de ofertas e campanhas promocionais',
-        estimatedTokens: 600,
-        action: () => generatePromotionalOffers(values)
-      });
+      const output = await withWalletGuard((idToken) => generatePromotionalOffers(idToken, values)
+      );
       setResult(output);
       
       // Pre-fill push form with AI suggestion

@@ -201,11 +201,7 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
     }
     setIsSuggesting(true);
     try {
-      const result = await withWalletGuard({
-        category: 'GEMINI_COPYWRITING',
-        description: `IA: Descrição do serviço "${name}"`,
-        estimatedTokens: 400,
-        action: () => generateServiceDescription({
+      const result = await withWalletGuard((idToken) => generateServiceDescription(idToken, {
           name: typeof name === 'string' ? name : 'Serviço',
           price: String(price || 0),
           duration: typeof duration === 'string' ? duration : '30 min',
@@ -213,7 +209,7 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
           nicheContext: typeof settings?.context === 'string' ? settings.context : (typeof settings?.about === 'string' ? settings.about : ''),
           imageStylePrompt: typeof settings?.productImageDescription === 'string' ? settings.productImageDescription : '',
         })
-      });
+      );
       if (result.description) {
         form.setValue('description', result.description, { shouldValidate: true });
       }

@@ -7,6 +7,8 @@
  * - EstablishmentTextsOutput - The return type for the generateEstablishmentTexts function.
  */
 
+import { runGuardedAI } from '@/lib/ai-guard';
+import type { AIGuardError } from '@/lib/ai-guard-types';
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
@@ -26,8 +28,15 @@ const EstablishmentTextsOutputSchema = z.object({
 });
 export type EstablishmentTextsOutput = z.infer<typeof EstablishmentTextsOutputSchema>;
 
-export async function generateEstablishmentTexts(input: EstablishmentTextsInput): Promise<EstablishmentTextsOutput> {
-  return generateEstablishmentTextsFlow(input);
+export async function generateEstablishmentTexts(
+  idToken: string,
+  input: EstablishmentTextsInput,
+): Promise<EstablishmentTextsOutput | AIGuardError> {
+  return runGuardedAI(
+    idToken,
+    { category: 'GEMINI_COPYWRITING', description: `IA: Textos institucionais do estabelecimento "${input.name}"`, estimatedTokens: 500 },
+    () => generateEstablishmentTextsFlow(input),
+  );
 }
 
 const prompt = ai.definePrompt({

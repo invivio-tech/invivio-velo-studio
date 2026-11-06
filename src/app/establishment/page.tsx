@@ -358,15 +358,11 @@ export default function EstablishmentPage() {
     }
     setIsSuggesting(true);
     try {
-      const result = await withWalletGuard({
-        category: 'GEMINI_COPYWRITING',
-        description: `IA: Textos institucionais do estabelecimento "${name}"`,
-        estimatedTokens: 500,
-        action: () => generateEstablishmentTexts({ 
+      const result = await withWalletGuard((idToken) => generateEstablishmentTexts(idToken, { 
           name: typeof name === 'string' ? name : '', 
           context: typeof context === 'string' ? context : '' 
         })
-      });
+      );
       if (result) {
         form.setValue('heroTitle', result.heroTitle, { shouldValidate: true });
         form.setValue('heroSubtitle', result.heroSubtitle, { shouldValidate: true });
@@ -393,12 +389,8 @@ export default function EstablishmentPage() {
     const context = form.getValues('context');
     setIsSuggestingBirthday(true);
     try {
-      const result = await withWalletGuard({
-        category: 'GEMINI_COPYWRITING',
-        description: 'IA: Mensagem de aniversário para clientes',
-        estimatedTokens: 300,
-        action: () => generateBirthdayMessage({ name, context })
-      });
+      const result = await withWalletGuard((idToken) => generateBirthdayMessage(idToken, { name, context })
+      );
       if (result) {
         form.setValue('birthdayTitle', result.birthdayTitle, { shouldValidate: true });
         form.setValue('birthdayMessage', result.birthdayMessage, { shouldValidate: true });
@@ -428,12 +420,8 @@ export default function EstablishmentPage() {
     }
     setIsSuggestingColors(true);
     try {
-      const result = await withWalletGuard({
-        category: 'GEMINI_COPYWRITING',
-        description: 'IA: Paleta de cores da logo do estabelecimento',
-        estimatedTokens: 600,
-        action: () => generateThemePalette({ logoUrl, businessCategory, businessTone })
-      });
+      const result = await withWalletGuard((idToken) => generateThemePalette(idToken, { logoUrl, businessCategory, businessTone })
+      );
       if (result) {
         form.setValue('primaryColor', result.primaryColor, { shouldValidate: true });
         form.setValue('primaryForegroundColor', result.primaryForegroundColor, { shouldValidate: true });
