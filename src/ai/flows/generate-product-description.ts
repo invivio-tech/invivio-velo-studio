@@ -3,6 +3,8 @@
  * @fileOverview This file defines a Genkit flow for generating a barbershop product description.
  */
 
+import { runGuardedAI } from '@/lib/ai-guard';
+import type { AIGuardError } from '@/lib/ai-guard-types';
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
@@ -47,7 +49,16 @@ const prompt = ai.definePrompt({
   `,
 });
 
-export async function generateProductDescription(input: ProductDescriptionInput): Promise<ProductDescriptionOutput> {
-  const { output } = await prompt(input);
-  return output!;
+export async function generateProductDescription(
+  idToken: string,
+  input: ProductDescriptionInput,
+): Promise<ProductDescriptionOutput | AIGuardError> {
+  return runGuardedAI(
+    idToken,
+    { category: 'GEMINI_COPYWRITING', description: `IA: Descrição do produto "${input.name}"`, estimatedTokens: 400 },
+    async () => {
+      const { output } = await prompt(input);
+      return output!;
+    },
+  );
 }

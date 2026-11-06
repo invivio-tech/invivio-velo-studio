@@ -7,6 +7,8 @@
  * - ServiceDescriptionOutput - The return type for the generateServiceDescription function.
  */
 
+import { runGuardedAI } from '@/lib/ai-guard';
+import type { AIGuardError } from '@/lib/ai-guard-types';
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
@@ -26,8 +28,15 @@ const ServiceDescriptionOutputSchema = z.object({
 });
 export type ServiceDescriptionOutput = z.infer<typeof ServiceDescriptionOutputSchema>;
 
-export async function generateServiceDescription(input: ServiceDescriptionInput): Promise<ServiceDescriptionOutput> {
-  return generateServiceDescriptionFlow(input);
+export async function generateServiceDescription(
+  idToken: string,
+  input: ServiceDescriptionInput,
+): Promise<ServiceDescriptionOutput | AIGuardError> {
+  return runGuardedAI(
+    idToken,
+    { category: 'GEMINI_COPYWRITING', description: `IA: Descrição do serviço "${input.name}"`, estimatedTokens: 400 },
+    () => generateServiceDescriptionFlow(input),
+  );
 }
 
 const prompt = ai.definePrompt({

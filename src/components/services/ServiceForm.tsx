@@ -1,5 +1,6 @@
 'use client';
 
+import { authFetch } from '@/lib/auth-fetch';
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -29,6 +30,7 @@ import { type Service, type ServiceWithId } from '@/app/services/page';
 import { Loader2, Sparkles, Copy, Upload } from 'lucide-react';
 import { useState } from 'react';
 import { generateServiceDescription } from '@/ai/flows/generate-service-description';
+import { withWalletGuard } from '@/lib/studio-wallet';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
@@ -155,7 +157,7 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
         const formData = new FormData();
         formData.append('file', compressedFile);
         formData.append('folder', 'uploads/services');
-        const response = await fetch('/api/upload', { method: 'POST', body: formData });
+        const response = await authFetch('/api/upload', { method: 'POST', body: formData });
         if (!response.ok) {
           const errorText = await response.text();
           let errorMessage = errorText;
@@ -199,26 +201,27 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
     }
     setIsSuggesting(true);
     try {
-      const result = await generateServiceDescription({
-        name: typeof name === 'string' ? name : 'Serviço',
-        price: String(price || 0),
-        duration: typeof duration === 'string' ? duration : '30 min',
-        establishmentName: typeof settings?.name === 'string' ? settings.name : '',
-        nicheContext: typeof settings?.context === 'string' ? settings.context : (typeof settings?.about === 'string' ? settings.about : ''),
-        imageStylePrompt: typeof settings?.productImageDescription === 'string' ? settings.productImageDescription : '',
-      });
+      const result = await withWalletGuard((idToken) => generateServiceDescription(idToken, {
+          name: typeof name === 'string' ? name : 'Serviço',
+          price: String(price || 0),
+          duration: typeof duration === 'string' ? duration : '30 min',
+          establishmentName: typeof settings?.name === 'string' ? settings.name : '',
+          nicheContext: typeof settings?.context === 'string' ? settings.context : (typeof settings?.about === 'string' ? settings.about : ''),
+          imageStylePrompt: typeof settings?.productImageDescription === 'string' ? settings.productImageDescription : '',
+        })
+      );
       if (result.description) {
         form.setValue('description', result.description, { shouldValidate: true });
       }
       if (result.imagePrompt) {
         form.setValue('imagePrompt', result.imagePrompt, { shouldValidate: true });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error suggesting description:', error);
       toast({
         variant: 'destructive',
-        title: 'Erro ao sugerir',
-        description: 'Não foi possível gerar uma sugestão. Tente novamente.'
+        title: error?.message?.includes('créditos') ? 'Créditos Insuficientes' : 'Erro ao sugerir',
+        description: error?.message || 'Não foi possível gerar uma sugestão. Tente novamente.'
       });
     } finally {
       setIsSuggesting(false);

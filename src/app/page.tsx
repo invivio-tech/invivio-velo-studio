@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -88,25 +88,16 @@ export default function LandingPage() {
   );
   const { data: membershipPlans, isLoading: arePlansLoading } = useCollection<any>(membershipPlansQuery);
 
-  // Fetch Portfolio (Completed Appointments with Photos)
-  const portfolioQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(
-      collection(firestore, 'appointments'),
-      where('status', '==', 'completed'),
-      where('isPortfolioFeatured', '==', true),
-      orderBy('startTime', 'desc'),
-      limit(6)
-    );
-  }, [firestore]);
-  
-  const { data: allCompleted, isLoading: isPortfolioLoading } = useCollection<any>(portfolioQuery);
-
-  const portfolioItems = useMemo(() => {
-    if (!allCompleted) return [];
-    // Filter items that have photos
-    return allCompleted.filter(apt => apt.completionPhotos && apt.completionPhotos.length > 0);
-  }, [allCompleted]);
+  // Portfólio (trabalhos em destaque) vem do servidor só com foto, serviço e profissional
+  const [portfolioItems, setPortfolioItems] = useState<{ id: string; serviceName: string; professionalName: string; completionPhotos: string[] }[]>([]);
+  const [isPortfolioLoading, setIsPortfolioLoading] = useState(true);
+  useEffect(() => {
+    fetch('/api/public/portfolio')
+      .then((r) => (r.ok ? r.json() : { items: [] }))
+      .then((d) => setPortfolioItems(d.items || []))
+      .catch(() => setPortfolioItems([]))
+      .finally(() => setIsPortfolioLoading(false));
+  }, []);
 
   const isLoading = areServicesLoading || areSettingsLoading;
 

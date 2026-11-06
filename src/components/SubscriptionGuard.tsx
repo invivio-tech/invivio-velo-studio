@@ -38,6 +38,11 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
   );
   const { data: settings } = useDoc<any>(settingsRef);
 
+  // Clientes isentos (cortesia/teste/parceiros) nunca são bloqueados
+  if (settings?.isExempt === true) {
+    return <>{children}</>;
+  }
+
   const isExplicitlySuspended = 
     settings?.status === 'suspended' || 
     settings?.subscriptionStatus === 'suspended' || 
