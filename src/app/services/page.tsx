@@ -60,6 +60,7 @@ export interface Service {
   categoryId: string;
   featured?: boolean;
   imagePrompt?: string;
+  relatedProductIds?: string[];
 }
 
 export type ServiceWithId = Service & { id: string };

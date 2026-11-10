@@ -2,26 +2,70 @@
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import {
+  getAuth,
+  initializeAuth,
+  indexedDBLocalPersistence,
+  browserLocalPersistence,
+  browserPopupRedirectResolver,
+  type Auth,
+} from 'firebase/auth';
 import { getFirestore, initializeFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
-// IMPORTANT: DO NOT MODIFY THIS FUNCTION
-export function initializeFirebase() {
-  if (!getApps().length) {
-    const firebaseApp = initializeApp(firebaseConfig);
-    return getSdks(firebaseApp);
-  }
+let cachedSdks: ReturnType<typeof createSdks> | null = null;
 
-  // If already initialized, return the SDKs with the already initialized App
-  return getSdks(getApp());
+export function hasStoredAuthSession(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const k = window.localStorage.key(i);
+      if (k && k.startsWith('firebase:authUser:')) {
+        const val = window.localStorage.getItem(k);
+        if (val && val !== 'null') return true;
+      }
+    }
+  } catch {
+    // ignore storage errors
+  }
+  return false;
 }
 
-export function getSdks(firebaseApp: FirebaseApp) {
-  const auth = getAuth(firebaseApp);
+// IMPORTANT: DO NOT MODIFY THIS FUNCTION
+export function initializeFirebase() {
+  if (typeof window !== 'undefined' && cachedSdks) {
+    return cachedSdks;
+  }
+
+  const firebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+  const sdks = getSdks(firebaseApp);
+
+  if (typeof window !== 'undefined') {
+    cachedSdks = sdks;
+  }
+
+  return sdks;
+}
+
+function createSdks(firebaseApp: FirebaseApp) {
+  // Prioriza browserLocalPersistence (localStorage síncrono e estável em PWAs mobile)
+  // com fallback/migração automática do indexedDBLocalPersistence.
+  let auth: Auth;
+  if (typeof window !== 'undefined') {
+    try {
+      auth = initializeAuth(firebaseApp, {
+        persistence: [browserLocalPersistence, indexedDBLocalPersistence],
+        popupRedirectResolver: browserPopupRedirectResolver,
+      });
+    } catch {
+      auth = getAuth(firebaseApp);
+    }
+  } else {
+    auth = getAuth(firebaseApp);
+  }
   auth.useDeviceLanguage();
-  
+
   // Normalize storage bucket URL to gs:// format for maximum compatibility
   let bucketUrl = firebaseConfig.storageBucket;
   if (bucketUrl && !bucketUrl.startsWith('gs://')) {
@@ -38,6 +82,13 @@ export function getSdks(firebaseApp: FirebaseApp) {
     functions: getFunctions(firebaseApp, 'southamerica-east1'),
     httpsCallable
   };
+}
+
+export function getSdks(firebaseApp: FirebaseApp) {
+  if (typeof window !== 'undefined' && cachedSdks) {
+    return cachedSdks;
+  }
+  return createSdks(firebaseApp);
 }
 
 export * from './provider';

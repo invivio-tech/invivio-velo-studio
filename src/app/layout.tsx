@@ -10,6 +10,7 @@ import { NotificationManager } from '@/components/NotificationManager';
 
 import { GlobalErrorBoundary } from '@/components/layout/GlobalErrorBoundary';
 import { DynamicTheme } from '@/components/layout/DynamicTheme';
+import { WebViewBanner } from '@/components/WebViewBanner';
 
 export const metadata: Metadata = {
   title: 'Barbearia Inteligente',
@@ -31,6 +32,7 @@ export default function RootLayout({
       </head>
       <body className={cn('font-body antialiased min-h-screen')}>
         <FirebaseClientProvider>
+          <WebViewBanner />
           <DynamicTheme />
           <GlobalErrorBoundary>
             <DynamicMetadata />

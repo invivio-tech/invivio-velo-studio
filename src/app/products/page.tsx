@@ -47,6 +47,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { PlanGate } from '@/components/PlanGate';
 import type { Product, ProductCategory } from '@/types/store';
 
 export default function ProductsPage() {
@@ -147,7 +148,8 @@ export default function ProductsPage() {
   }, [products, sortedCategoryIds, hasInitializedExpanded]);
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <PlanGate module="store">
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <ShoppingBag className="h-8 w-8 text-secondary" />
@@ -367,5 +369,6 @@ export default function ProductsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </PlanGate>
   );
 }

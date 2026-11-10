@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { MembershipPlanWithId } from '@/components/admin/MembershipPlanForm';
+import { PlanGate } from '@/components/PlanGate';
 
 export default function ClubPage() {
   const { user, isUserLoading } = useUser();
@@ -88,7 +89,8 @@ export default function ClubPage() {
   );
 
   return (
-    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 max-w-7xl mx-auto">
+    <PlanGate module="club">
+      <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 max-w-7xl mx-auto">
       <div className="flex items-center gap-4 text-center justify-center flex-col md:flex-row mb-10">
         <Sparkles className="h-12 w-12 text-primary" />
         <div className="text-center md:text-left">
@@ -206,6 +208,7 @@ export default function ClubPage() {
           <p className="text-muted-foreground mt-2">A barbearia ainda não configurou os planos do clube.</p>
         </div>
       )}
-    </div>
+      </div>
+    </PlanGate>
   );
 }

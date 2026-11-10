@@ -1,5 +1,6 @@
 'use client';
 
+import { authFetch } from '@/lib/auth-fetch';
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -29,6 +30,7 @@ import { type Service, type ServiceWithId } from '@/app/services/page';
 import { Loader2, Sparkles, Copy, Upload } from 'lucide-react';
 import { useState } from 'react';
 import { generateServiceDescription } from '@/ai/flows/generate-service-description';
+import { withWalletGuard } from '@/lib/studio-wallet';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
@@ -52,6 +54,7 @@ const formSchema = z.object({
   featured: z.boolean().default(false),
   priceOnRequest: z.boolean().default(false),
   imagePrompt: z.string().optional(),
+  relatedProductIds: z.array(z.string()).default([]),
 });
 
 type ServiceFormProps = {
@@ -80,6 +83,13 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
   );
   const { data: settings } = useDoc<EstablishmentSettings>(settingsRef);
 
+  const productsCollection = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'products') : null),
+    [firestore]
+  );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: products } = useCollection<any>(productsCollection);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -92,6 +102,7 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
       featured: false,
       priceOnRequest: false,
       imagePrompt: '',
+      relatedProductIds: [],
     },
   });
 
@@ -103,6 +114,7 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
         featured: service.featured || false,
         priceOnRequest: service.priceOnRequest || false,
         imagePrompt: service.imagePrompt || '',
+        relatedProductIds: service.relatedProductIds || [],
       } : {
         name: '',
         description: '',
@@ -113,6 +125,7 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
         featured: false,
         priceOnRequest: false,
         imagePrompt: '',
+        relatedProductIds: [],
       });
     }
   }, [service, isOpen, form]);
@@ -144,7 +157,7 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
         const formData = new FormData();
         formData.append('file', compressedFile);
         formData.append('folder', 'uploads/services');
-        const response = await fetch('/api/upload', { method: 'POST', body: formData });
+        const response = await authFetch('/api/upload', { method: 'POST', body: formData });
         if (!response.ok) {
           const errorText = await response.text();
           let errorMessage = errorText;
@@ -188,26 +201,27 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
     }
     setIsSuggesting(true);
     try {
-      const result = await generateServiceDescription({
-        name,
-        price: String(price),
-        duration,
-        establishmentName: settings?.name || '',
-        nicheContext: settings?.context || settings?.about || '',
-        imageStylePrompt: settings?.productImageDescription || '',
-      });
+      const result = await withWalletGuard((idToken) => generateServiceDescription(idToken, {
+          name: typeof name === 'string' ? name : 'Serviço',
+          price: String(price || 0),
+          duration: typeof duration === 'string' ? duration : '30 min',
+          establishmentName: typeof settings?.name === 'string' ? settings.name : '',
+          nicheContext: typeof settings?.context === 'string' ? settings.context : (typeof settings?.about === 'string' ? settings.about : ''),
+          imageStylePrompt: typeof settings?.productImageDescription === 'string' ? settings.productImageDescription : '',
+        })
+      );
       if (result.description) {
         form.setValue('description', result.description, { shouldValidate: true });
       }
       if (result.imagePrompt) {
         form.setValue('imagePrompt', result.imagePrompt, { shouldValidate: true });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error suggesting description:', error);
       toast({
         variant: 'destructive',
-        title: 'Erro ao sugerir',
-        description: 'Não foi possível gerar uma sugestão. Tente novamente.'
+        title: error?.message?.includes('créditos') ? 'Créditos Insuficientes' : 'Erro ao sugerir',
+        description: error?.message || 'Não foi possível gerar uma sugestão. Tente novamente.'
       });
     } finally {
       setIsSuggesting(false);
@@ -265,6 +279,59 @@ export default function ServiceForm({ isOpen, setIsOpen, service, onSave }: Serv
                     </FormItem>
                   )}
                 />
+
+                <FormField
+                  control={form.control}
+                  name="relatedProductIds"
+                  render={() => (
+                    <FormItem>
+                      <FormLabel>Produtos Recomendados (Upsell)</FormLabel>
+                      <div className="border rounded-md p-3 space-y-2 max-h-[150px] overflow-y-auto bg-muted/20">
+                        {products?.filter((p: any) => p.active !== false).map((product: any) => (
+                          <FormField
+                            key={product.id}
+                            control={form.control}
+                            name="relatedProductIds"
+                            render={({ field }) => {
+                              return (
+                                <FormItem
+                                  key={product.id}
+                                  className="flex flex-row items-start space-x-3 space-y-0"
+                                >
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value?.includes(product.id)}
+                                      onCheckedChange={(checked) => {
+                                        return checked
+                                          ? field.onChange([...(field.value || []), product.id])
+                                          : field.onChange(
+                                              field.value?.filter(
+                                                (value: string) => value !== product.id
+                                              )
+                                            )
+                                      }}
+                                    />
+                                  </FormControl>
+                                  <FormLabel className="font-normal text-sm cursor-pointer">
+                                    {product.name}
+                                  </FormLabel>
+                                </FormItem>
+                              )
+                            }}
+                          />
+                        ))}
+                        {(!products || products.length === 0) && (
+                          <p className="text-xs text-muted-foreground">Nenhum produto cadastrado na loja.</p>
+                        )}
+                      </div>
+                      <FormDescription>
+                        Esses produtos serão oferecidos ao cliente após a confirmação deste agendamento.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}

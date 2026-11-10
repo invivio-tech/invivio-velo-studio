@@ -8,6 +8,26 @@
                 "**/.*",
                 "**/node_modules/**"
             ],
+            "headers": [
+                {
+                    "source": "**",
+                    "headers": [
+                        {
+                            "key": "Cache-Control",
+                            "value": "no-cache, no-store, must-revalidate"
+                        }
+                    ]
+                },
+                {
+                    "source": "/_next/static/**",
+                    "headers": [
+                        {
+                            "key": "Cache-Control",
+                            "value": "public, max-age=31536000, immutable"
+                        }
+                    ]
+                }
+            ],
             "frameworksBackend": {
                 "region": "southamerica-east1",
                 "memory": "512MiB"
@@ -21,6 +41,26 @@
                 "**/.*",
                 "**/node_modules/**"
             ],
+            "headers": [
+                {
+                    "source": "**",
+                    "headers": [
+                        {
+                            "key": "Cache-Control",
+                            "value": "no-cache, no-store, must-revalidate"
+                        }
+                    ]
+                },
+                {
+                    "source": "/_next/static/**",
+                    "headers": [
+                        {
+                            "key": "Cache-Control",
+                            "value": "public, max-age=31536000, immutable"
+                        }
+                    ]
+                }
+            ],
             "frameworksBackend": {
                 "region": "southamerica-east1",
                 "memory": "512MiB"
@@ -33,6 +73,26 @@
                 "firebase.json",
                 "**/.*",
                 "**/node_modules/**"
+            ],
+            "headers": [
+                {
+                    "source": "**",
+                    "headers": [
+                        {
+                            "key": "Cache-Control",
+                            "value": "no-cache, no-store, must-revalidate"
+                        }
+                    ]
+                },
+                {
+                    "source": "/_next/static/**",
+                    "headers": [
+                        {
+                            "key": "Cache-Control",
+                            "value": "public, max-age=31536000, immutable"
+                        }
+                    ]
+                }
             ],
             "frameworksBackend": {
                 "region": "southamerica-east1",

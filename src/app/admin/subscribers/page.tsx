@@ -31,6 +31,7 @@ import {
   Search
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PlanGate } from '@/components/PlanGate';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -208,7 +209,8 @@ export default function AdminSubscribersPage() {
   };
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 max-w-7xl mx-auto w-full">
+    <PlanGate module="club">
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 max-w-7xl mx-auto w-full">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Users className="h-8 w-8 text-secondary" />
@@ -336,5 +338,6 @@ export default function AdminSubscribersPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </PlanGate>
   );
 }

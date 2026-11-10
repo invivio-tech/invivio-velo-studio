@@ -1,5 +1,6 @@
 'use client';
 
+import { authFetch } from '@/lib/auth-fetch';
 import * as React from 'react';
 import { useState } from 'react';
 import { format, addMonths } from 'date-fns';
@@ -187,7 +188,7 @@ export default function SubscriberInvoicesModal({ isOpen, setIsOpen, membership 
       formData.append('file', file);
       formData.append('folder', 'invoices');
 
-      const res = await fetch('/api/upload', {
+      const res = await authFetch('/api/upload', {
         method: 'POST',
         body: formData,
       });

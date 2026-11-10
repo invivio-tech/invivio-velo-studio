@@ -129,7 +129,7 @@ export default function AppSidebar() {
     [firestore]
   );
   const { data: settings, isLoading: areSettingsLoading } = useDoc<EstablishmentSettings>(settingsRef);
-  const establishmentName = settings?.name || 'Barbearia Inteligente';
+  const establishmentName = settings?.name || '';
   const establishmentLogo = settings?.logoUrl;
 
   const storeEnabled = settings?.planLimits?.store?.enabled ?? true;
@@ -141,6 +141,8 @@ export default function AppSidebar() {
 
   const filteredAdminOperationsItems = adminOperationsItems.filter(item => {
     if (!whatsappBotEnabled && item.href === '/admin/mensagens') return false;
+    // Opcional: Se for plano apenas WhatsApp e não financeiro, esconder dashboard?
+    // Na dúvida, deixamos o Dashboard se não houver regra.
     return true;
   });
 
@@ -151,6 +153,7 @@ export default function AppSidebar() {
 
   const filteredAdminFinanceMarketingItems = adminFinanceMarketingItems.filter(item => {
     if (!financialEnabled && item.href === '/financial-report') return false;
+    if (!financialEnabled && item.href === '/invoices') return false; // Esconde financeiro básico no WhatsApp only
     if (!marketingEnabled && item.href === '/promotions') return false;
     return true;
   });
@@ -161,6 +164,8 @@ export default function AppSidebar() {
     if (!rewardsEnabled && item.href === '/rewards') return false;
     return true;
   });
+
+  const filteredStoreMenuItems = storeEnabled ? storeMenuItems : [];
 
   const handleLogout = async () => {
     await logout();
@@ -286,7 +291,7 @@ export default function AppSidebar() {
                         <span>Loja e Produtos</span>
                       </div>
                       <SidebarMenu>
-                        {storeMenuItems.map((item) => (
+                        {filteredStoreMenuItems.map((item) => (
                           <SidebarMenuItem key={item.href}>
                             <SidebarMenuButton
                               asChild

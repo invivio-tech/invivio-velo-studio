@@ -19,9 +19,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useUser, useUserProfile, useFirestore, useCollection, useMemoFirebase, useDoc, type UserProfile } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { collection, query, where, orderBy, Timestamp, getDocs, doc, updateDoc, runTransaction, getDoc, limit, addDoc } from 'firebase/firestore';
+import { rescheduleBookingRequest } from '@/lib/booking-client';
+import { collection, query, where, orderBy, Timestamp, getDocs, doc, updateDoc, runTransaction, getDoc, limit, addDoc, onSnapshot } from 'firebase/firestore';
 import { format, startOfDay, isBefore, subHours, startOfMonth, endOfMonth, endOfDay, addMonths, subMonths, isSameMonth, addMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -67,6 +68,7 @@ interface Appointment {
   serviceDuration: string;
   servicePrice: number;
   priceOnRequest?: boolean;
+  customerArrived?: boolean;
   notes: string;
   status: 'scheduled' | 'completed' | 'cancelled' | 'no-show';
   completionNotes?: string;
@@ -75,6 +77,31 @@ interface Appointment {
   isPortfolioFeatured?: boolean;
   type?: 'guest' | 'client';
 }
+
+// Audio context helper for the "Ding" sound
+const playDing = () => {
+  try {
+    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+    oscillator.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.1); // A4
+    
+    gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(1, audioCtx.currentTime + 0.05);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1);
+    
+    oscillator.start(audioCtx.currentTime);
+    oscillator.stop(audioCtx.currentTime + 1);
+  } catch (e) {
+    console.error('Audio not supported or blocked', e);
+  }
+};
 
 export default function SchedulePage() {
   const { user, isUserLoading } = useUser();
@@ -112,9 +139,11 @@ export default function SchedulePage() {
   , [firestore, user]);
   const { data: services } = useCollection<Service>(allServicesQuery);
 
+  // Lista de clientes só para a equipe (cliente não vê outros clientes)
+  const isStaffUser = userProfile?.role === 'admin' || userProfile?.role === 'professional';
   const clientsQuery = useMemoFirebase(() =>
-    (firestore && user) ? query(collection(firestore, 'users'), where('role', '==', 'client')) : null
-  , [firestore, user]);
+    (firestore && user && isStaffUser) ? query(collection(firestore, 'users'), where('role', '==', 'client')) : null
+  , [firestore, user, isStaffUser]);
   const { data: clients } = useCollection<UserProfile>(clientsQuery);
 
   const productsQuery = useMemoFirebase(() =>
@@ -448,6 +477,24 @@ export default function SchedulePage() {
     setIsUpdatingAppointment(true);
     const { id, ...data } = editingAppointment;
 
+    // Cliente remarca pelo servidor: serviço e preço não mudam e o horário é conferido
+    if (userProfile?.role === 'client') {
+      try {
+        await rescheduleBookingRequest({
+          appointmentId: id,
+          startTime: editingAppointment.startTime.toDate(),
+          professionalId: editingAppointment.professionalId,
+        });
+        toast({ title: 'Sucesso', description: 'Agendamento remarcado com sucesso.' });
+        setIsEditDialogOpen(false);
+      } catch (error: any) {
+        toast({ title: 'Erro', description: error?.message || 'Não foi possível remarcar.', variant: 'destructive' });
+      } finally {
+        setIsUpdatingAppointment(false);
+      }
+      return;
+    }
+
     try {
       const selectedPro = professionals?.find(p => p.id === editingAppointment.professionalId);
       const selectedSvc = services?.find(s => (s as any).id === editingAppointment.serviceId);
@@ -540,6 +587,7 @@ export default function SchedulePage() {
                 </Select>
               </div>
 
+              {userProfile?.role !== 'client' && (<>
               <div className="space-y-2">
                 <Label>Serviço</Label>
                 <Select 
@@ -566,6 +614,7 @@ export default function SchedulePage() {
                   onChange={(e) => setEditingAppointment({...editingAppointment, servicePrice: Number(e.target.value)})}
                 />
               </div>
+              </>)}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -696,6 +745,7 @@ function AdminDashboard({
   settings: EstablishmentSettings | undefined;
 }) {
   const firestore = useFirestore();
+  const router = useRouter();
   const [selectedProfessionalId, setSelectedProfessionalId] = useState<string>('all');
   const [periodType, setPeriodType] = useState<'day' | 'month'>('month');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -753,6 +803,23 @@ function AdminDashboard({
   const { data: upcomingAppointments, isLoading: isUpcomingLoading } = useCollection<Appointment>(upcomingQuery);
   const { data: pendingAppointments, isLoading: isPendingLoading } = useCollection<Appointment>(pendingQuery);
 
+  const blockedTimesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'blockedTimes');
+  }, [firestore]);
+  const { data: allBlockedTimes } = useCollection<any>(blockedTimesQuery);
+
+  const activeBlocksForSelectedDay = useMemo(() => {
+    if (!allBlockedTimes) return [];
+    const dayStart = startOfDay(selectedDate).getTime();
+    const dayEnd = endOfDay(selectedDate).getTime();
+    return allBlockedTimes.filter((b: any) => {
+      const bStart = b.startTime?.toDate ? b.startTime.toDate().getTime() : (b.startTime ? new Date(b.startTime).getTime() : 0);
+      const bEnd = b.endTime?.toDate ? b.endTime.toDate().getTime() : (b.endTime ? new Date(b.endTime).getTime() : 0);
+      return bStart < dayEnd && bEnd > dayStart;
+    });
+  }, [allBlockedTimes, selectedDate]);
+
   const totalRevenue = appointments?.reduce((sum, apt) => sum + (apt.servicePrice || 0), 0) || 0;
   const totalAppointments = appointments?.length || 0;
   const uniqueClients = new Set(appointments?.map(a => a.customerId)).size || 0;
@@ -772,6 +839,22 @@ function AdminDashboard({
     if (!appointments) return [];
     return Array.from(new Set(appointments.map(a => a.serviceName)));
   }, [appointments]);
+
+  // Check for newly arrived customers to play ding
+  useEffect(() => {
+    if (!upcomingAppointments) return;
+    const arrivedNow = upcomingAppointments.some(a => a.customerArrived && !a.arrivedNotified);
+    if (arrivedNow) {
+      playDing();
+      // Mark as notified in local state (prevent infinite ringing). 
+      // In a real app we might update the DB, but mutating the object locally is enough for the current session.
+      upcomingAppointments.forEach(a => {
+        if (a.customerArrived) {
+          (a as any).arrivedNotified = true;
+        }
+      });
+    }
+  }, [upcomingAppointments]);
 
   const handlePrevMonth = () => setSelectedMonth(prev => subMonths(prev, 1));
   const handleNextMonth = () => setSelectedMonth(prev => addMonths(prev, 1));
@@ -816,6 +899,9 @@ function AdminDashboard({
           </Button>
           <Button onClick={onQuickServiceOpen} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
             <Zap className="h-4 w-4" /> Novo Atendimento
+          </Button>
+          <Button onClick={() => router.push('/schedule/block')} variant="outline" className="gap-2 text-rose-400 border-rose-500/30 hover:bg-rose-500/10">
+            <Lock className="h-4 w-4" /> Bloquear Agenda
           </Button>
           <Select value={selectedProfessionalId} onValueChange={setSelectedProfessionalId}>
             <SelectTrigger className="w-[200px]"><SelectValue placeholder="Todos os Profissionais" /></SelectTrigger>
@@ -863,6 +949,36 @@ function AdminDashboard({
         </Card>
       </div>
 
+      {activeBlocksForSelectedDay && activeBlocksForSelectedDay.length > 0 && (
+        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="p-2 bg-rose-500/20 text-rose-400 rounded-xl shrink-0 mt-0.5 sm:mt-0">
+              <Lock className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                Atenção: Há {activeBlocksForSelectedDay.length} {activeBlocksForSelectedDay.length === 1 ? 'bloqueio de horário ativo' : 'bloqueios de horário ativos'} nesta data:
+              </p>
+              <p className="text-xs text-rose-300 mt-0.5">
+                {activeBlocksForSelectedDay.map((b: any) => {
+                  const s = b.startTime?.toDate ? b.startTime.toDate() : new Date(b.startTime);
+                  const e = b.endTime?.toDate ? b.endTime.toDate() : new Date(b.endTime);
+                  return `${format(s, 'HH:mm')} às ${format(e, 'HH:mm')} (${b.reason || 'Sem motivo'})`;
+                }).join(' • ')}
+              </p>
+            </div>
+          </div>
+          <Button 
+            size="sm" 
+            variant="outline" 
+            className="border-rose-500/30 text-rose-300 bg-background hover:bg-rose-500/10 text-xs shrink-0 font-medium rounded-xl" 
+            onClick={() => router.push('/schedule/block')}
+          >
+            Gerenciar / Desbloquear
+          </Button>
+        </div>
+      )}
+
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -876,15 +992,20 @@ function AdminDashboard({
         <CardContent>
           {isUpcomingLoading || isPendingLoading ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"><Skeleton className="h-[120px] w-full" /><Skeleton className="h-[120px] w-full" /><Skeleton className="h-[120px] w-full" /></div> : (showPending ? pendingAppointments : upcomingAppointments)?.length ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {(showPending ? pendingAppointments : upcomingAppointments)?.map((apt) => (
-                <div key={apt.id} className={cn("flex flex-col p-4 border rounded-lg hover:border-primary transition-colors gap-3 bg-card/50", showPending && "border-orange-200 bg-orange-50/30")}>
+              {(showPending ? pendingAppointments : upcomingAppointments)?.map((apt) => {
+                const isArrived = apt.status === 'arrived' || apt.customerArrived;
+                return (
+                <div key={apt.id} className={cn("flex flex-col p-4 border rounded-lg hover:border-primary transition-colors gap-3 bg-card/50", showPending && "border-orange-200 bg-orange-50/30", isArrived && "border-emerald-500 bg-emerald-50/50 shadow-[0_0_15px_rgba(16,185,129,0.3)] ring-1 ring-emerald-500")}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Badge variant={showPending ? "destructive" : "outline"} className="capitalize">
                         {format(apt.startTime.toDate(), "EEEE, dd/MM", { locale: ptBR })}
                       </Badge>
                       {apt.type === 'guest' && (
-                        <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200">Novo Cliente</Badge>
+                        <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200 text-[10px] py-0 h-4">Novo Cliente</Badge>
+                      )}
+                      {isArrived && (
+                        <Badge className="bg-emerald-500 text-white text-[10px] py-0 h-4">Na recepção</Badge>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
@@ -909,7 +1030,7 @@ function AdminDashboard({
                     <div className="flex-1 min-w-0"><p className="font-medium truncate text-sm">{apt.customerName}</p><p className="text-[10px] text-muted-foreground truncate">{apt.serviceName}</p></div>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           ) : <div className="text-center py-10 text-muted-foreground border-2 border-dashed rounded-lg"><CalendarIcon className="h-10 w-10 mx-auto mb-2 opacity-20" /><p>{showPending ? "Nenhum pendente." : "Nenhum agendamento futuro."}</p></div>}
         </CardContent>
@@ -1020,41 +1141,72 @@ function ProfessionalDashboard({
   , [user, firestore, isUserLoading]);
   const { data: completedAppointments } = useCollection<Appointment>(qCompleted);
 
+  useEffect(() => {
+    if (!upcomingAppointments) return;
+    const arrivedNow = upcomingAppointments.some(a => a.customerArrived && !a.arrivedNotified);
+    if (arrivedNow) {
+      playDing();
+      upcomingAppointments.forEach(a => {
+        if (a.customerArrived) {
+          (a as any).arrivedNotified = true;
+        }
+      });
+    }
+  }, [upcomingAppointments]);
+
   const wrapComplete = async (apt: Appointment) => {
     setIsUpdating(apt.id);
     await onCompleteClick(apt);
     setIsUpdating(null);
   };
 
-  const AppointmentItem = ({ appointment }: { appointment: Appointment }) => (
-    <div key={appointment.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-lg border">
-      <div className="flex items-center gap-4">
-        <Avatar><AvatarImage src={appointment.customerPhotoURL} /><AvatarFallback>{appointment.customerName?.charAt(0)}</AvatarFallback></Avatar>
-        <div>
-          <div className="flex items-center gap-2">
-            <p className="font-semibold">{appointment.customerName}</p>
-            {appointment.type === 'guest' && (
-              <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200 text-[10px] py-0 h-4">Novo Cliente</Badge>
-            )}
+
+
+  const handleSetArrived = async (apt: Appointment) => {
+    const success = await onUpdateStatus(apt, 'arrived' as any);
+    if (success) {
+      playDing();
+    }
+  };
+
+  const AppointmentItem = ({ appointment }: { appointment: Appointment }) => {
+    const isArrived = appointment.status === 'arrived';
+    return (
+      <div key={appointment.id} className={cn("flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-lg border transition-all", isArrived ? "border-emerald-500 bg-emerald-50/50" : "")}>
+        <div className="flex items-center gap-4">
+          <Avatar><AvatarImage src={appointment.customerPhotoURL} /><AvatarFallback>{appointment.customerName?.charAt(0)}</AvatarFallback></Avatar>
+          <div>
+            <div className="flex items-center gap-2">
+              <p className="font-semibold">{appointment.customerName}</p>
+              {appointment.type === 'guest' && (
+                <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200 text-[10px] py-0 h-4">Novo Cliente</Badge>
+              )}
+              {isArrived && <Badge className="bg-emerald-500 text-white text-[10px] py-0 h-4">Na recepção</Badge>}
+            </div>
+            <p className="text-sm text-muted-foreground">{appointment.serviceName} • {format(appointment.startTime.toDate(), "HH:mm")}</p>
           </div>
-          <p className="text-sm text-muted-foreground">{appointment.serviceName} • {format(appointment.startTime.toDate(), "HH:mm")}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {!isArrived && (
+            <Button size="sm" variant="outline" className="border-emerald-500 text-emerald-600 hover:bg-emerald-50" onClick={() => handleSetArrived(appointment)}>
+              Chegou
+            </Button>
+          )}
+          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1" onClick={() => wrapComplete(appointment)} disabled={isUpdating === appointment.id}>
+            {isUpdating === appointment.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} Concluir
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild><Button variant="outline" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+               <DropdownMenuItem onSelect={() => onTogglePortfolioFeatured(appointment)}><Star className={cn("h-4 w-4 mr-2", appointment.isPortfolioFeatured ? "text-amber-500 fill-amber-500" : "")} /> {appointment.isPortfolioFeatured ? 'Remover da Galeria' : 'Exibir na Galeria'}</DropdownMenuItem>
+               <DropdownMenuItem onSelect={() => onUpdateStatus(appointment, 'no-show')} className="text-orange-600"><AlertCircle className="h-4 w-4 mr-2" /> Não Compareceu</DropdownMenuItem>
+               <DropdownMenuItem onSelect={() => onCancelClick(appointment)} className="text-destructive"><X className="h-4 w-4 mr-2" /> Cancelar</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
-      <div className="flex items-center gap-2">
-        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1" onClick={() => wrapComplete(appointment)} disabled={isUpdating === appointment.id}>
-          {isUpdating === appointment.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} Concluir
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild><Button variant="outline" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-             <DropdownMenuItem onSelect={() => onTogglePortfolioFeatured(appointment)}><Star className={cn("h-4 w-4 mr-2", appointment.isPortfolioFeatured ? "text-amber-500 fill-amber-500" : "")} /> {appointment.isPortfolioFeatured ? 'Remover da Galeria' : 'Exibir na Galeria'}</DropdownMenuItem>
-             <DropdownMenuItem onSelect={() => onUpdateStatus(appointment, 'no-show')} className="text-orange-600"><AlertCircle className="h-4 w-4 mr-2" /> Não Compareceu</DropdownMenuItem>
-             <DropdownMenuItem onSelect={() => onCancelClick(appointment)} className="text-destructive"><X className="h-4 w-4 mr-2" /> Cancelar</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
      <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
@@ -1163,7 +1315,7 @@ function ClientDashboard({
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
       <div className="flex justify-between items-center"><h1 className="text-3xl font-headline font-bold">Olá, {userProfile.name}!</h1><Button asChild><Link href="/book-appointment">Novo Agendamento</Link></Button></div>
       <Card><CardHeader><CardTitle>Seus Agendamentos</CardTitle></CardHeader><CardContent><div className="space-y-4">{appointments?.length ? appointments.map(apt => {
-        const limitHours = settings?.cancellationTimeLimitHours || 24;
+        const limitHours = settings?.cancellationTimeLimitHours ?? 24;
         const canCancel = isBefore(new Date(), subHours(apt.startTime.toDate(), limitHours));
         
         return (
@@ -1191,7 +1343,7 @@ function ClientDashboard({
       
       <div className="text-xs text-muted-foreground bg-muted p-4 rounded-lg flex items-start gap-2 max-w-full">
         <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-        <p>Cancelamentos e alterações só podem ser realizados com até <strong>{settings?.cancellationTimeLimitHours || 24} horas</strong> de antecedência. Para imprevistos de última hora, por favor contate o estabelecimento diretamente.</p>
+        <p>Cancelamentos e alterações só podem ser realizados com até <strong>{settings?.cancellationTimeLimitHours ?? 24} horas</strong> de antecedência. Para imprevistos de última hora, por favor contate o estabelecimento diretamente.</p>
       </div>
 
       <footer className="text-center text-slate-600 mt-auto opacity-40 py-8">

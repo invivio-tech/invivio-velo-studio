@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,12 +23,14 @@ import {
   useCollection,
   useDoc,
   useMemoFirebase,
+  useUser,
+  hasStoredAuthSession,
 } from '@/firebase';
 import type { Service } from '@/app/services/page';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { EstablishmentSettings } from '@/app/establishment/page';
 import type { Product } from '@/types/store';
-import { Instagram, Star, Scissors as ScissorsIcon, User as UserIcon, ShoppingBag, Package, ArrowRight, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Instagram, Star, Scissors as ScissorsIcon, User as UserIcon, ShoppingBag, Package, ArrowRight, Sparkles, CheckCircle2, Loader2 } from 'lucide-react';
 
 export default function LandingPage() {
   const heroImage = PlaceHolderImages.find((p) => p.id === 'landing-hero');
@@ -50,6 +53,26 @@ export default function LandingPage() {
     [firestore]
   );
   const { data: settings, isLoading: areSettingsLoading } = useDoc<EstablishmentSettings>(settingsRef);
+  
+  const router = useRouter();
+  const { user, isUserLoading } = useUser();
+
+  // Se o usuário já está logado (ou tem sessão salva no localStorage), vai direto para a agenda/painel
+  useEffect(() => {
+    if ((!isUserLoading && user) || hasStoredAuthSession()) {
+      router.replace('/schedule');
+    }
+  }, [user, isUserLoading, router]);
+
+  useEffect(() => {
+    if (!areSettingsLoading && settings) {
+      // No plano whatsapp_only a loja pública é desligada. O site redireciona direto pro agendamento.
+      const hasStore = settings?.planLimits?.store?.enabled ?? true;
+      if (!hasStore) {
+        router.push('/book-appointment');
+      }
+    }
+  }, [areSettingsLoading, settings, router]);
 
   // Fetch Featured Products (up to 4 active products)
   const featuredProductsQuery = useMemoFirebase(
@@ -65,39 +88,30 @@ export default function LandingPage() {
   );
   const { data: membershipPlans, isLoading: arePlansLoading } = useCollection<any>(membershipPlansQuery);
 
-  // Fetch Portfolio (Completed Appointments with Photos)
-  const portfolioQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(
-      collection(firestore, 'appointments'),
-      where('status', '==', 'completed'),
-      where('isPortfolioFeatured', '==', true),
-      orderBy('startTime', 'desc'),
-      limit(6)
-    );
-  }, [firestore]);
-  
-  const { data: allCompleted, isLoading: isPortfolioLoading } = useCollection<any>(portfolioQuery);
-
-  const portfolioItems = useMemo(() => {
-    if (!allCompleted) return [];
-    // Filter items that have photos
-    return allCompleted.filter(apt => apt.completionPhotos && apt.completionPhotos.length > 0);
-  }, [allCompleted]);
+  // Portfólio (trabalhos em destaque) vem do servidor só com foto, serviço e profissional
+  const [portfolioItems, setPortfolioItems] = useState<{ id: string; serviceName: string; professionalName: string; completionPhotos: string[] }[]>([]);
+  const [isPortfolioLoading, setIsPortfolioLoading] = useState(true);
+  useEffect(() => {
+    fetch('/api/public/portfolio')
+      .then((r) => (r.ok ? r.json() : { items: [] }))
+      .then((d) => setPortfolioItems(d.items || []))
+      .catch(() => setPortfolioItems([]))
+      .finally(() => setIsPortfolioLoading(false));
+  }, []);
 
   const isLoading = areServicesLoading || areSettingsLoading;
 
   const defaultSettings: EstablishmentSettings = {
-    name: 'Barbearia Inteligente',
-    about: 'Fundada em 2024, nossa barbearia nasceu com o propósito de resgatar a essência das barbearias clássicas, incorporando tecnologia para oferecer uma experiência única e conveniente. Nossos profissionais são artistas apaixonados, dedicados a entregar o melhor resultado para cada cliente. Utilizamos produtos de alta qualidade e as técnicas mais apuradas para garantir que seu cabelo e barba estejam sempre impecáveis. Venha nos visitar e descubra por que somos a escolha inteligente para o homem moderno.',
+    name: '',
+    about: '',
     heroTitle: 'Estilo e Precisão em Cada Corte.',
-    heroSubtitle: 'Experimente a combination perfeita de tradição e modernidade. Na Barbearia Inteligente, cuidamos do seu visual com a maestria que você merece.',
+    heroSubtitle: 'Experimente a combinação perfeita de tradição e modernidade.',
     servicesTitle: 'Nossos Serviços Premium',
     servicesSubtitle: 'Do clássico ao contemporâneo, temos o serviço perfeito para você.',
-    storeSubtitle: 'Produtos profissionais usados pelos nossos barbeiros, disponíveis para você.',
-    address: 'Rua da Barbearia, 123 - Centro, Sua Cidade',
-    whatsapp: '5511999998888',
-    instagram: 'barbearia.inteligente',
+    storeSubtitle: 'Produtos profissionais recomendados para você.',
+    address: '',
+    whatsapp: '',
+    instagram: '',
     businessCategory: 'barbershop',
     businessTone: 'luxury',
   };
@@ -133,6 +147,14 @@ export default function LandingPage() {
 
   const establishmentStoreSubtitle = settings?.storeSubtitle || getStoreSubtitle(establishmentCategory);
 
+
+  if (user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -181,9 +203,17 @@ export default function LandingPage() {
             </a>
           </nav>
           <div className="flex flex-1 items-center justify-end space-x-2">
-            <Button variant="ghost" asChild>
-              <Link href="/login">Login</Link>
-            </Button>
+            {isUserLoading ? (
+              <Skeleton className="h-9 w-20" />
+            ) : (
+              <Button variant="ghost" asChild>
+                {user ? (
+                  <Link href="/schedule">Meu Painel</Link>
+                ) : (
+                  <Link href="/login">Login</Link>
+                )}
+              </Button>
+            )}
             <Button asChild>
               <Link href="/agendar">Agendar Agora</Link>
             </Button>
@@ -588,11 +618,13 @@ export default function LandingPage() {
           ) : (
             <>
               <p>
-                &copy; {new Date().getFullYear()} {establishmentName}. Todos os direitos reservados.
+                &copy; {new Date().getFullYear()} {establishmentName || 'Todos os direitos reservados.'}{establishmentName ? '. Todos os direitos reservados.' : ''}
               </p>
-              <p className="mt-2">
-                {establishmentAddress}
-              </p>
+              {establishmentAddress && (
+                <p className="mt-2">
+                  {establishmentAddress}
+                </p>
+              )}
               <div className="pb-4 pt-2 flex flex-col items-center justify-center gap-1 opacity-50 hover:opacity-100 transition-all duration-300">
                 <p className="text-[10px]">Invivio Velo v1.00056</p>
                 <p className="text-[10px] font-medium leading-tight">
