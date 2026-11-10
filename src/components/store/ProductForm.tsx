@@ -1,5 +1,6 @@
 'use client';
 
+import { authFetch } from '@/lib/auth-fetch';
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { generateProductDescription } from '@/ai/flows/generate-product-description';
+import { withWalletGuard } from '@/lib/studio-wallet';
 import { type EstablishmentSettings } from '@/app/establishment/page';
 import { compressImage } from '@/lib/image-compression';
 
@@ -115,7 +117,7 @@ export default function ProductForm({ initialData, onSave }: ProductFormProps) {
         const formData = new FormData();
         formData.append('file', compressedFile);
         formData.append('folder', 'uploads/products');
-        const response = await fetch('/api/upload', { method: 'POST', body: formData });
+        const response = await authFetch('/api/upload', { method: 'POST', body: formData });
         if (!response.ok) {
           const errorText = await response.text();
           let errorMessage = errorText;
@@ -173,13 +175,14 @@ export default function ProductForm({ initialData, onSave }: ProductFormProps) {
 
     setIsGeneratingDescription(true);
     try {
-      const result = await generateProductDescription({
-        name,
-        price,
-        categoryName,
-        establishmentName: settings?.name || 'Nossa Barbearia',
-        nicheContext: settings?.context || '',
-      });
+      const result = await withWalletGuard((idToken) => generateProductDescription(idToken, {
+          name,
+          price,
+          categoryName,
+          establishmentName: settings?.name || 'Nossa Barbearia',
+          nicheContext: settings?.context || '',
+        })
+      );
 
       if (result) {
         form.setValue('description', result.description, { shouldValidate: true });
@@ -188,12 +191,12 @@ export default function ProductForm({ initialData, onSave }: ProductFormProps) {
           description: 'A IA criou um anúncio persuasivo para seu produto.',
         });
       }
-    } catch (error) {
+    } catch (error: any) {
        console.error(error);
        toast({
         variant: 'destructive',
-        title: 'Erro na IA',
-        description: 'Não foi possível conectar com o serviço de IA.',
+        title: error?.message?.includes('créditos') ? 'Créditos Insuficientes' : 'Erro na IA',
+        description: error?.message || 'Não foi possível conectar com o serviço de IA.',
       });
     } finally {
       setIsGeneratingDescription(false);

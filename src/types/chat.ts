@@ -3,6 +3,8 @@ export interface Message {
   role: 'user' | 'ai' | 'human';
   content: string;
   timestamp: any; // Firebase Timestamp
+  mediaId?: string;
+  mimeType?: string;
 }
 
 export interface Chat {

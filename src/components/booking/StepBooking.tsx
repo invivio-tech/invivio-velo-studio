@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useFirestore, useUser, useUserProfile } from '@/firebase';
+import { fetchBusyAppointments, createBookingRequest } from '@/lib/booking-client';
 import { collection, getDocs, getDoc, doc, query, where, addDoc, Timestamp } from 'firebase/firestore';
 import { format, addDays, isSameDay, addMinutes, parse, isBefore, isEqual, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -168,19 +169,15 @@ export default function StepBooking({ onComplete, kioskMode = false }: StepBooki
         const start = startOfDay(selectedDate);
         const end = addDays(start, 1);
 
-        const qApts = query(
-          collection(firestore, 'appointments'),
-          where('startTime', '>=', Timestamp.fromDate(start)),
-          where('startTime', '<', Timestamp.fromDate(end))
-        );
         const qBlocked = query(
           collection(firestore, 'blockedTimes'),
           where('startTime', '>=', Timestamp.fromDate(start)),
           where('startTime', '<', Timestamp.fromDate(end))
         );
 
-        const [aptsSnap, blockedSnap] = await Promise.all([getDocs(qApts), getDocs(qBlocked)]);
-        setDailyAppointments(aptsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Appointment)));
+        // Horários ocupados vêm do servidor, sem dados de outros clientes
+        const [busy, blockedSnap] = await Promise.all([fetchBusyAppointments(start), getDocs(qBlocked)]);
+        setDailyAppointments(busy as unknown as Appointment[]);
         setDailyBlockedTimes(blockedSnap.docs.map(d => ({ id: d.id, ...d.data() } as BlockedTime)));
 
         // If a professional is selected, fetch their specific schedule
@@ -252,58 +249,18 @@ export default function StepBooking({ onComplete, kioskMode = false }: StepBooki
       const startTimeDate = new Date(selectedDate);
       startTimeDate.setHours(hours, minutes, 0, 0);
 
-      const durationMinutes = parseDuration(selectedService.duration);
-      const endTimeDate = addMinutes(startTimeDate, durationMinutes);
-
-      const appointmentData: any = {
+      // Preço, uso do plano e conflito de horário são conferidos no servidor
+      const isServiceIncluded = !!activeMembershipPlan?.includedServiceIds?.includes(selectedService.id);
+      const asGuest = kioskMode || !user;
+      await createBookingRequest({
         serviceId: selectedService.id,
-        serviceName: selectedService.name,
         professionalId: selectedProfessional.id,
-        professionalName: selectedProfessional.name,
-        customerName: contactInfo.name,
-        customerPhoneNumber: contactInfo.phone,
-        startTime: Timestamp.fromDate(startTimeDate),
-        endTime: Timestamp.fromDate(endTimeDate),
-        status: 'scheduled',
-        type: (user && !kioskMode) ? 'client' : 'guest',
-        createdAt: Timestamp.now(),
-        servicePrice: selectedService.price,
-        priceOnRequest: (selectedService as any).priceOnRequest || false,
-        serviceDuration: String(selectedService.duration),
-        reminderSent: false,
-        notes: ''
-      };
-
-      const isServiceIncluded = activeMembershipPlan?.includedServiceIds?.includes(selectedService.id);
-      if (user && !kioskMode && activeMembershipPlan && useSubscription && isServiceIncluded) {
-        appointmentData.isSubscriptionUsage = true;
-        appointmentData.servicePrice = 0;
-        const repassPct = (activeMembershipPlan as any).commissionRepassPercentage ?? 100;
-        appointmentData.commissionBaseValue = (selectedService.price * repassPct) / 100;
-        appointmentData.subscriptionPlanId = activeMembershipPlan.id;
-      }
-
-      if (user && !kioskMode) {
-        appointmentData.customerId = user.uid;
-        appointmentData.customerEmail = user.email || '';
-        if (userProfile?.photoURL) {
-          appointmentData.customerPhotoURL = userProfile.photoURL;
-        }
-      }
-
-      await addDoc(collection(firestore, 'appointments'), appointmentData);
-
-      // Increment usage if subscription was used
-      if (appointmentData.isSubscriptionUsage && activeMembershipPlan?.membershipDocId) {
-         try {
-           const membershipRef = doc(firestore, 'userMemberships', activeMembershipPlan.membershipDocId);
-           await updateDoc(membershipRef, {
-             usageThisMonth: (activeMembershipPlan.usageThisMonth || 0) + 1
-           });
-         } catch (err) {
-           console.error("Erro ao abater limite de uso do plano:", err);
-         }
-      }
+        startTime: startTimeDate,
+        useSubscription: !asGuest && useSubscription && isServiceIncluded,
+        guest: asGuest ? { name: contactInfo.name, phone: contactInfo.phone } : undefined,
+        kiosk: kioskMode,
+        pin: kioskMode && typeof window !== 'undefined' ? sessionStorage.getItem('totem_pin') || '' : undefined,
+      });
 
       // Fetch Upsell Product if relatedProductIds exists
       if (selectedService?.relatedProductIds && selectedService.relatedProductIds.length > 0) {
@@ -319,9 +276,9 @@ export default function StepBooking({ onComplete, kioskMode = false }: StepBooki
 
       setBookingSuccess(true);
       if (onComplete) onComplete();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating booking:", error);
-      alert("Ops! Ocorreu um erro ao salvar seu agendamento. Tente novamente.");
+      alert(error?.message || "Ops! Ocorreu um erro ao salvar seu agendamento. Tente novamente.");
     } finally {
       setIsSubmitting(false);
     }

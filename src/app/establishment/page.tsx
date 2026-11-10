@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { doc, setDoc } from 'firebase/firestore';
+import { authFetch } from '@/lib/auth-fetch';
 
 import { useUserProfile, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -14,6 +15,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { generateEstablishmentTexts } from '@/ai/flows/generate-establishment-texts';
 import { generateBirthdayMessage } from '@/ai/flows/generate-birthday-message';
 import { generateThemePalette } from '@/ai/flows/generate-theme-palette';
+import { withWalletGuard } from '@/lib/studio-wallet';
 import { hexToTailwindHsl, tailwindHslToHex } from '@/lib/color-utils';
 
 import { Skeleton } from '@/components/ui/skeleton';
@@ -61,6 +63,7 @@ export interface EstablishmentSettings {
   retargetingDays?: number;
   retargetingTitle?: string;
   retargetingBody?: string;
+  quickReplies?: string[];
   primaryColor?: string;
   primaryForegroundColor?: string;
   secondaryColor?: string;
@@ -220,7 +223,7 @@ export default function EstablishmentPage() {
         aiTimeoutHours: settings.aiTimeoutHours === undefined ? 12 : settings.aiTimeoutHours,
         cancellationTimeLimitHours: settings.cancellationTimeLimitHours === undefined ? 24 : settings.cancellationTimeLimitHours,
         slotIntervalMinutes: settings.slotIntervalMinutes === undefined ? 30 : settings.slotIntervalMinutes,
-        totemPin: settings.totemPin || '',
+        totemPin: form.getValues('totemPin') || '',
         loyaltyPercentage: settings.loyaltyPercentage === undefined ? 10 : settings.loyaltyPercentage,
         pointsPenaltyForNoShow: settings.pointsPenaltyForNoShow === undefined ? 5 : settings.pointsPenaltyForNoShow,
         professionalCommissionPercentage: settings.professionalCommissionPercentage === undefined ? 25 : settings.professionalCommissionPercentage,
@@ -258,7 +261,7 @@ export default function EstablishmentPage() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('folder', 'uploads/establishment/logo');
-      const response = await fetch('/api/upload', { method: 'POST', body: formData });
+      const response = await authFetch('/api/upload', { method: 'POST', body: formData });
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || 'Falha no upload');
@@ -284,7 +287,7 @@ export default function EstablishmentPage() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('folder', 'uploads/establishment/about');
-      const response = await fetch('/api/upload', { method: 'POST', body: formData });
+      const response = await authFetch('/api/upload', { method: 'POST', body: formData });
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || 'Falha no upload');
@@ -310,7 +313,7 @@ export default function EstablishmentPage() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('folder', 'uploads/establishment/background');
-      const response = await fetch('/api/upload', { method: 'POST', body: formData });
+      const response = await authFetch('/api/upload', { method: 'POST', body: formData });
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || 'Falha no upload');
@@ -326,10 +329,26 @@ export default function EstablishmentPage() {
     }
   };
 
+  // PIN do totem: guardado no servidor, fora do documento público de configurações
+  useEffect(() => {
+    authFetch('/api/establishment/totem-pin')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d && typeof d.pin === 'string') form.setValue('totemPin', d.pin); })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function onSubmit(values: SettingsFormValues) {
     if (!settingsRef) return;
     setIsSaving(true);
-    const settingsData = values;
+    const { totemPin, ...settingsData } = values;
+    authFetch('/api/establishment/totem-pin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin: totemPin || '' }),
+    }).then((r) => {
+      if (!r.ok) toast({ variant: 'destructive', title: 'PIN do totem não salvo', description: 'Tente novamente.' });
+    }).catch(() => {});
     setDoc(settingsRef, settingsData, { merge: true })
       .then(() => {
         toast({ title: 'Configurações salvas!', description: 'As informações do estabelecimento foram atualizadas.' });
@@ -355,10 +374,11 @@ export default function EstablishmentPage() {
     }
     setIsSuggesting(true);
     try {
-      const result = await generateEstablishmentTexts({ 
-        name: typeof name === 'string' ? name : '', 
-        context: typeof context === 'string' ? context : '' 
-      });
+      const result = await withWalletGuard((idToken) => generateEstablishmentTexts(idToken, { 
+          name: typeof name === 'string' ? name : '', 
+          context: typeof context === 'string' ? context : '' 
+        })
+      );
       if (result) {
         form.setValue('heroTitle', result.heroTitle, { shouldValidate: true });
         form.setValue('heroSubtitle', result.heroSubtitle, { shouldValidate: true });
@@ -368,9 +388,13 @@ export default function EstablishmentPage() {
         form.setValue('servicesSubtitle', result.servicesSubtitle, { shouldValidate: true });
         toast({ title: 'Sugestões aplicadas!', description: 'Novos textos foram gerados e preenchidos no formulário.' });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error suggesting texts:', error);
-      toast({ variant: 'destructive', title: 'Erro ao sugerir', description: 'Não foi possível gerar uma sugestão. Tente novamente.' });
+      toast({ 
+        variant: 'destructive', 
+        title: error?.message?.includes('créditos') ? 'Créditos Insuficientes' : 'Erro ao sugerir', 
+        description: error?.message || 'Não foi possível gerar uma sugestão. Tente novamente.' 
+      });
     } finally {
       setIsSuggesting(false);
     }
@@ -381,15 +405,20 @@ export default function EstablishmentPage() {
     const context = form.getValues('context');
     setIsSuggestingBirthday(true);
     try {
-      const result = await generateBirthdayMessage({ name, context });
+      const result = await withWalletGuard((idToken) => generateBirthdayMessage(idToken, { name, context })
+      );
       if (result) {
         form.setValue('birthdayTitle', result.birthdayTitle, { shouldValidate: true });
         form.setValue('birthdayMessage', result.birthdayMessage, { shouldValidate: true });
         toast({ title: 'Sugestão aplicada!', description: 'A mensagem de aniversário foi preenchida.' });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error suggesting birthday message:', error);
-      toast({ variant: 'destructive', title: 'Erro ao sugerir', description: 'Não foi possível gerar a sugestão de aniversário.' });
+      toast({ 
+        variant: 'destructive', 
+        title: error?.message?.includes('créditos') ? 'Créditos Insuficientes' : 'Erro ao sugerir', 
+        description: error?.message || 'Não foi possível gerar a sugestão de aniversário.' 
+      });
     } finally {
       setIsSuggestingBirthday(false);
     }
@@ -407,7 +436,8 @@ export default function EstablishmentPage() {
     }
     setIsSuggestingColors(true);
     try {
-      const result = await generateThemePalette({ logoUrl, businessCategory, businessTone });
+      const result = await withWalletGuard((idToken) => generateThemePalette(idToken, { logoUrl, businessCategory, businessTone })
+      );
       if (result) {
         form.setValue('primaryColor', result.primaryColor, { shouldValidate: true });
         form.setValue('primaryForegroundColor', result.primaryForegroundColor, { shouldValidate: true });
@@ -420,9 +450,13 @@ export default function EstablishmentPage() {
         form.setValue('borderColor', result.borderColor, { shouldValidate: true });
         toast({ title: 'Sugestão de cores aplicada!', description: result.reasoning || 'As cores sugeridas foram aplicadas no formulário.' });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error suggesting colors:', error);
-      toast({ variant: 'destructive', title: 'Erro ao sugerir cores', description: 'Não foi possível analisar a logo e gerar as cores. Verifique a imagem e tente novamente.' });
+      toast({ 
+        variant: 'destructive', 
+        title: error?.message?.includes('créditos') ? 'Créditos Insuficientes' : 'Erro ao sugerir cores', 
+        description: error?.message || 'Não foi possível analisar a logo e gerar as cores. Verifique a imagem e tente novamente.' 
+      });
     } finally {
       setIsSuggestingColors(false);
     }
@@ -541,25 +575,6 @@ export default function EstablishmentPage() {
                         <FormMessage />
                       </FormItem>
                     )} />
-
-                    <FormField control={form.control} name="businessTone" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tom de Voz da Comunicação</FormLabel>
-                        <FormControl>
-                          <select
-                            {...field}
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            <option value="friendly">Amigável e Próximo</option>
-                            <option value="casual">Casual e Moderno</option>
-                            <option value="formal">Formal e Profissional</option>
-                            <option value="luxury">Luxuoso e Exclusivo</option>
-                          </select>
-                        </FormControl>
-                        <FormDescription>Como a IA deve escrever seus textos.</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
                   </div>
 
                   <FormField control={form.control} name="name" render={({ field }) => (
@@ -571,19 +586,6 @@ export default function EstablishmentPage() {
                       <FormMessage />
                     </FormItem>
                   )} />
-
-                  {settings?.planLimits?.whatsappBot?.enabled && (
-                    <FormField control={form.control} name="botName" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nome do Bot (IA do WhatsApp)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ex: Zeca, Maria, Assistente Virtual" {...field} />
-                        </FormControl>
-                        <FormDescription>Como a IA deve se apresentar ao atender clientes no WhatsApp.</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                  )}
 
                   <FormField control={form.control} name="logoUrl" render={({ field }) => (
                     <FormItem>
@@ -1173,20 +1175,89 @@ export default function EstablishmentPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="font-headline flex items-center gap-2">
-                    <Bot className="h-5 w-5 text-primary" /> Inteligência Artificial
+                    <Bot className="h-5 w-5 text-primary" /> Assistente Virtual IA (WhatsApp)
                   </CardTitle>
-                  <CardDescription>Configurações do comportamento do seu assistente IA.</CardDescription>
+                  <CardDescription>
+                    Personalize a identidade, o tom de conversa e as regras de atendimento do seu robô no WhatsApp.
+                  </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <FormField
+                      control={form.control}
+                      name="botName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nome do Assistente Virtual</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Ex: Zeca, Maria, Barbearia Bot" {...field} />
+                          </FormControl>
+                          <FormDescription>
+                            Como a IA se apresentará nas conversas (ex: &quot;Sou o Zeca...&quot;).
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="businessTone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tom de Voz da IA</FormLabel>
+                          <FormControl>
+                            <select
+                              {...field}
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              <option value="friendly">Amigável e Próximo</option>
+                              <option value="casual">Casual e Moderno</option>
+                              <option value="formal">Formal e Profissional</option>
+                              <option value="luxury">Luxuoso e Exclusivo</option>
+                            </select>
+                          </FormControl>
+                          <FormDescription>
+                            Estilo e personalidade das respostas do bot.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="aiTimeoutHours"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Timeout de Retomada (Horas)</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="ex: 12" {...field} />
+                          </FormControl>
+                          <FormDescription>
+                            Horas para religar a IA após atendimento humano.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
                   <FormField
                     control={form.control}
-                    name="aiTimeoutHours"
+                    name="context"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Timeout de Retomada Automática (Horas)</FormLabel>
-                        <FormControl><Input type="number" placeholder="ex: 12" {...field} /></FormControl>
+                        <FormLabel>Regras e Dicas da Barbearia (Instruções Livres para a IA)</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Ex: Temos estacionamento conveniado gratuito por 1h ao lado. Servimos café e cerveja cortesia. Não atendemos sem hora marcada aos sábados."
+                            className="min-h-24"
+                            {...field}
+                          />
+                        </FormControl>
                         <FormDescription>
-                          Quando você assumir uma conversa pausando a IA, a IA voltará a responder automaticamente após essa quantidade de horas sem atividade do cliente.
+                          Instruções extras que o bot deve saber ao responder perguntas dos clientes pelo WhatsApp.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

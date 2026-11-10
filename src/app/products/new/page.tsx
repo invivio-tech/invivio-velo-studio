@@ -18,6 +18,7 @@ import type { EstablishmentSettings } from '@/app/establishment/page';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Link from 'next/link';
+import { PlanGate } from '@/components/PlanGate';
 
 export default function NewProductPage() {
   const router = useRouter();
@@ -71,56 +72,66 @@ export default function NewProductPage() {
   const isLoading = isProfileLoading || areSettingsLoading || areProductsLoading || !userProfile || userProfile.role !== 'admin';
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="outline" size="icon" onClick={() => router.push('/products')}>
-          <ChevronLeft className="w-4 h-4" />
-        </Button>
-        <h1 className="text-3xl font-headline font-bold tracking-tight">Criar Produto</h1>
+    <PlanGate module="store">
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        <div className="flex items-center gap-4 mb-6">
+          <Button variant="outline" size="icon" onClick={() => router.push('/products')}>
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <h1 className="text-3xl font-headline font-bold tracking-tight">Criar Produto</h1>
+        </div>
+        
+        {isLoading ? (
+          <Card className="w-full max-w-4xl">
+             <CardHeader>
+               <Skeleton className="h-6 w-32 mb-2" />
+               <Skeleton className="h-4 w-64" />
+             </CardHeader>
+             <CardContent>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Skeleton className="h-10 w-full md:col-span-2" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-24 w-full md:col-span-2" />
+               </div>
+             </CardContent>
+          </Card>
+        ) : (settings?.planLimits?.store?.enabled === false) || (settings?.planLimits?.store?.maxProducts !== undefined && products && products.length >= settings.planLimits.store.maxProducts) ? (
+          <Alert variant="destructive" className="max-w-4xl">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>
+              {settings?.planLimits?.store?.enabled === false
+                ? 'Módulo de Loja Desativado'
+                : 'Limite de Produtos Atingido'}
+            </AlertTitle>
+            <AlertDescription className="mt-2 space-y-4">
+              <p>
+                {settings?.planLimits?.store?.enabled === false
+                  ? 'O seu plano atual não inclui o módulo de catálogo de produtos e e-commerce.'
+                  : <>O seu plano atual permite o cadastro de no máximo <strong>{settings.planLimits.store.maxProducts}</strong> produtos.</>}
+              </p>
+              <p>Para adicionar itens ao seu catálogo, você precisará fazer um upgrade no seu plano.</p>
+              <Button variant="outline" className="mt-4 bg-background text-foreground" asChild>
+                <Link href="/products">Voltar para a Loja</Link>
+              </Button>
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <Card className="w-full max-w-4xl">
+            <CardHeader>
+              <CardTitle className="font-headline">Detalhes do Novo Item</CardTitle>
+              <CardDescription>
+                Preencha título, preços, estoque e fotos para adicionar o produto à loja.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ProductForm onSave={handleSave} />
+            </CardContent>
+          </Card>
+        )}
       </div>
-      
-      {isLoading ? (
-        <Card className="w-full max-w-4xl">
-           <CardHeader>
-             <Skeleton className="h-6 w-32 mb-2" />
-             <Skeleton className="h-4 w-64" />
-           </CardHeader>
-           <CardContent>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Skeleton className="h-10 w-full md:col-span-2" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-24 w-full md:col-span-2" />
-             </div>
-           </CardContent>
-        </Card>
-      ) : settings?.planLimits?.store?.maxProducts !== undefined && products && products.length >= settings.planLimits.store.maxProducts ? (
-        <Alert variant="destructive" className="max-w-4xl">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Limite de Produtos Atingido</AlertTitle>
-          <AlertDescription className="mt-2 space-y-4">
-            <p>O seu plano atual permite o cadastro de no máximo <strong>{settings.planLimits.store.maxProducts}</strong> produtos.</p>
-            <p>Para adicionar mais itens ao seu catálogo, você precisará fazer um upgrade no seu plano.</p>
-            <Button variant="outline" className="mt-4 bg-background text-foreground" asChild>
-              <Link href="/products">Voltar para a Loja</Link>
-            </Button>
-          </AlertDescription>
-        </Alert>
-      ) : (
-        <Card className="w-full max-w-4xl">
-          <CardHeader>
-            <CardTitle className="font-headline">Detalhes do Novo Item</CardTitle>
-            <CardDescription>
-              Preencha título, preços, estoque e fotos para adicionar o produto à loja.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ProductForm onSave={handleSave} />
-          </CardContent>
-        </Card>
-      )}
-    </div>
+    </PlanGate>
   );
 }

@@ -3,6 +3,8 @@
  * @fileOverview This file defines a Genkit flow for generating brand color suggestions based on logo analysis.
  */
 
+import { runGuardedAI } from '@/lib/ai-guard';
+import type { AIGuardError } from '@/lib/ai-guard-types';
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
@@ -43,13 +45,22 @@ async function imageUrlToDataUri(url: string): Promise<string> {
   }
 }
 
-export async function generateThemePalette(input: ThemePaletteInput): Promise<ThemePaletteOutput> {
-  // Convert logo URL to base64 data URI to pass to multimodal Gemini model securely
-  const dataUri = await imageUrlToDataUri(input.logoUrl);
-  return generateThemePaletteFlow({
-    ...input,
-    logoUrl: dataUri,
-  });
+export async function generateThemePalette(
+  idToken: string,
+  input: ThemePaletteInput,
+): Promise<ThemePaletteOutput | AIGuardError> {
+  return runGuardedAI(
+    idToken,
+    { category: 'GEMINI_COPYWRITING', description: 'IA: Paleta de cores da logo do estabelecimento', estimatedTokens: 600 },
+    async () => {
+      // Convert logo URL to base64 data URI to pass to multimodal Gemini model securely
+      const dataUri = await imageUrlToDataUri(input.logoUrl);
+      return generateThemePaletteFlow({
+        ...input,
+        logoUrl: dataUri,
+      });
+    },
+  );
 }
 
 const prompt = ai.definePrompt({

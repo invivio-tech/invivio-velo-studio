@@ -1,5 +1,6 @@
 'use client';
 
+import { authFetch } from '@/lib/auth-fetch';
 import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +23,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Sparkles, Loader2, Copy, Upload } from 'lucide-react';
 import { generateMembershipDescription } from '@/ai/flows/generate-membership-description';
+import { withWalletGuard } from '@/lib/studio-wallet';
 import { useToast } from '@/hooks/use-toast';
 import { compressImage } from '@/lib/image-compression';
 
@@ -73,7 +75,7 @@ export default function MembershipPlanForm({ isOpen, setIsOpen, plan, onSave }: 
         const formData = new FormData();
         formData.append('file', compressedFile);
         formData.append('folder', 'uploads/memberships');
-        const response = await fetch('/api/upload', { method: 'POST', body: formData });
+        const response = await authFetch('/api/upload', { method: 'POST', body: formData });
         if (!response.ok) {
           const errorText = await response.text();
           let errorMessage = errorText;
@@ -120,12 +122,13 @@ export default function MembershipPlanForm({ isOpen, setIsOpen, plan, onSave }: 
       const limit = Number(maxUsesPerMonth);
       const limitText = limit === 999 ? 'Uso Ilimitado' : `Até ${limit} uso(s) por mês`;
 
-      const result = await generateMembershipDescription({
-        name,
-        price: price.toString(),
-        servicesCount: includedServiceIds.length,
-        limitText
-      });
+      const result = await withWalletGuard((idToken) => generateMembershipDescription(idToken, {
+          name,
+          price: price.toString(),
+          servicesCount: includedServiceIds.length,
+          limitText
+        })
+      );
       setDescription(result.description);
       if (result.imagePrompt) {
         setImagePrompt(result.imagePrompt);
@@ -134,10 +137,10 @@ export default function MembershipPlanForm({ isOpen, setIsOpen, plan, onSave }: 
         title: 'Gerado! ✨',
         description: 'A inteligência artificial criou a descrição e o prompt de imagem.',
       });
-    } catch (e) {
+    } catch (e: any) {
       toast({
-        title: 'Erro na geração',
-        description: 'A IA não conseguiu gerar a descrição agora.',
+        title: e?.message?.includes('créditos') ? 'Créditos Insuficientes' : 'Erro na geração',
+        description: e?.message || 'A IA não conseguiu gerar a descrição agora.',
         variant: 'destructive',
       });
     } finally {

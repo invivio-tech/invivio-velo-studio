@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import AppSidebar from '@/components/layout/sidebar';
 import BottomNav from '@/components/layout/BottomNav';
+import { SubscriptionGuard } from '@/components/SubscriptionGuard';
 
 const appRoutes = [
   '/dashboard',
@@ -56,7 +57,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="hidden md:flex items-center h-14 px-4 border-b border-border bg-background/50 backdrop-blur-sm sticky top-0 z-40">
             <SidebarTrigger />
           </div>
-          {children}
+          <SubscriptionGuard>
+            {children}
+          </SubscriptionGuard>
         </main>
         <BottomNav />
       </SidebarProvider>

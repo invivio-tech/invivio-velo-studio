@@ -1,5 +1,6 @@
 'use client';
 
+import { authFetch } from '@/lib/auth-fetch';
 import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,6 +10,7 @@ import {
   analyzeBusinessData,
   type PromotionalOfferOutput,
 } from '@/ai/flows/generate-promotional-offers';
+import { withWalletGuard } from '@/lib/studio-wallet';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { format } from 'date-fns';
@@ -54,6 +56,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PlanGate } from '@/components/PlanGate';
 
 const formSchema = z.object({
   serviceCatalog: z
@@ -147,7 +150,7 @@ export default function PromotionsPage() {
         payload.scheduledFor = new Date(scheduledTime).toISOString();
       }
 
-      const response = await fetch('/api/send-push', {
+      const response = await authFetch('/api/send-push', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -185,7 +188,7 @@ export default function PromotionsPage() {
   const handleAnalyzeBusiness = async () => {
     setIsAnalyzing(true);
     try {
-      const data = await analyzeBusinessData();
+      const data = await withWalletGuard((idToken) => analyzeBusinessData(idToken));
 
       if (data.error) {
         toast({
@@ -228,7 +231,8 @@ export default function PromotionsPage() {
     setIsLoading(true);
     setResult(null);
     try {
-      const output = await generatePromotionalOffers(values);
+      const output = await withWalletGuard((idToken) => generatePromotionalOffers(idToken, values)
+      );
       setResult(output);
       
       // Pre-fill push form with AI suggestion
@@ -239,11 +243,11 @@ export default function PromotionsPage() {
         title: 'Campanha Gerada e Salva! 🌟',
         description: 'A oferta e a sugestão de push foram gravadas no histórico.',
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Ocorreu um erro',
-        description: 'Falha ao gerar oferta. Por favor, tente novamente.',
+        title: error?.message?.includes('créditos') ? 'Créditos Insuficientes' : 'Ocorreu um erro',
+        description: error?.message || 'Falha ao gerar oferta. Por favor, tente novamente.',
       });
     } finally {
       setIsLoading(false);
@@ -258,7 +262,8 @@ export default function PromotionsPage() {
   };
 
   return (
-    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
+    <PlanGate module="marketing">
+      <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -713,5 +718,6 @@ export default function PromotionsPage() {
         </div>
       </div>
     </div>
+    </PlanGate>
   );
 }

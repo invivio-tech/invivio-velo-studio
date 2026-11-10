@@ -46,6 +46,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { type ProductCategory } from '@/types/store';
 import { Badge } from '@/components/ui/badge';
+import { PlanGate } from '@/components/PlanGate';
 
 export default function ProductCategoriesPage() {
   const firestore = useFirestore();
@@ -156,130 +157,132 @@ export default function ProductCategoriesPage() {
   const isLoading = isProfileLoading || areCategoriesLoading;
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Tags className="h-8 w-8 text-secondary" />
-          <h1 className="text-3xl font-headline font-bold tracking-tight">
-            Categorias de Produtos
-          </h1>
+    <PlanGate module="store">
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Tags className="h-8 w-8 text-secondary" />
+            <h1 className="text-3xl font-headline font-bold tracking-tight">
+              Categorias de Produtos
+            </h1>
+          </div>
+          {isAdmin && (
+            <Button onClick={() => openCategoryForm()}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Nova Categoria
+            </Button>
+          )}
         </div>
-        {isAdmin && (
-          <Button onClick={() => openCategoryForm()}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Nova Categoria
-          </Button>
-        )}
-      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-headline">Organização da Loja</CardTitle>
-          <CardDescription>
-            Agrupe os produtos da sua vitrine (ex: Pomadas, Óleos, Acessórios).
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {[...Array(3)].map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-48" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Skeleton className="h-8 w-8 inline-block" />
-                      <Skeleton className="h-8 w-8 inline-block" />
-                    </TableCell>
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-headline">Organização da Loja</CardTitle>
+            <CardDescription>
+              Agrupe os produtos da sua vitrine (ex: Pomadas, Óleos, Acessórios).
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading && (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Descrição</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-
-          {!isLoading && error && (
-            <p className="text-destructive text-center">
-              Não foi possível carregar as categorias da loja.
-            </p>
-          )}
-
-          {!isLoading && !error && categories && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {categories.length > 0 ? (
-                  categories.map((category) => (
-                    <TableRow key={category.id}>
-                      <TableCell className="font-medium">{category.name}</TableCell>
-                      <TableCell className="text-muted-foreground">{category.description || '-'}</TableCell>
-                      <TableCell>
-                        {category.active ? (
-                          <Badge variant="default" className="bg-green-500/10 text-green-700 hover:bg-green-500/20 border-green-500/20">Ativo</Badge>
-                        ) : (
-                          <Badge variant="secondary" className="text-muted-foreground">Oculto</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button size="icon" variant="ghost" onClick={() => openCategoryForm(category)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button size="icon" variant="ghost" onClick={() => openDeleteAlert(category)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                </TableHeader>
+                <TableBody>
+                  {[...Array(3)].map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-48" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <Skeleton className="h-8 w-8 inline-block" />
+                        <Skeleton className="h-8 w-8 inline-block" />
                       </TableCell>
                     </TableRow>
-                  ))
-                ) : (
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+
+            {!isLoading && error && (
+              <p className="text-destructive text-center">
+                Não foi possível carregar as categorias da loja.
+              </p>
+            )}
+
+            {!isLoading && !error && categories && (
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground">
-                      Nenhuma categoria de loja cadastrada. Use o botão acima para criar a primeira.
-                    </TableCell>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Descrição</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {categories.length > 0 ? (
+                    categories.map((category) => (
+                      <TableRow key={category.id}>
+                        <TableCell className="font-medium">{category.name}</TableCell>
+                        <TableCell className="text-muted-foreground">{category.description || '-'}</TableCell>
+                        <TableCell>
+                          {category.active ? (
+                            <Badge variant="default" className="bg-green-500/10 text-green-700 hover:bg-green-500/20 border-green-500/20">Ativo</Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-muted-foreground">Oculto</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button size="icon" variant="ghost" onClick={() => openCategoryForm(category)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" onClick={() => openDeleteAlert(category)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center text-muted-foreground">
+                        Nenhuma categoria de loja cadastrada. Use o botão acima para criar a primeira.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
 
-      <ProductCategoryForm
-        isOpen={isFormOpen}
-        setIsOpen={setIsFormOpen}
-        category={selectedCategory}
-        onSave={handleSaveCategory}
-      />
+        <ProductCategoryForm
+          isOpen={isFormOpen}
+          setIsOpen={setIsFormOpen}
+          category={selectedCategory}
+          onSave={handleSaveCategory}
+        />
 
-      <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir categoria?</AlertDialogTitle>
-            <AlertDialogDescription>
-              A categoria "{categoryToDelete?.name}" será ocultada para os clientes da loja. 
-              Ao confirmar, os produtos que estavam nesta categoria poderão ficar sem filtro na loja. Deseja prosseguir?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteCategory}>Excluir permanentemente</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+        <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir categoria?</AlertDialogTitle>
+              <AlertDialogDescription>
+                A categoria "{categoryToDelete?.name}" será ocultada para os clientes da loja. 
+                Ao confirmar, os produtos que estavam nesta categoria poderão ficar sem filtro na loja. Deseja prosseguir?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteCategory}>Excluir permanentemente</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </PlanGate>
   );
 }
