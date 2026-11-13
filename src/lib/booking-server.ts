@@ -221,6 +221,17 @@ export async function rescheduleBooking(params: {
     if (!apt || apt.customerId !== params.uid) throw new BookingError('NOT_FOUND', 'Agendamento não encontrado.');
     if (apt.status !== 'scheduled') throw new BookingError('INVALID', 'Só é possível remarcar agendamentos ativos.');
 
+    // Antecedência mínima parametrizada por estabelecimento (mesma regra do cancelamento)
+    const settings = (await t.get(db.doc('establishmentSettings/main'))).data() || {};
+    const limitHours = Number(settings.cancellationTimeLimitHours ?? 24);
+    const currentStart = toDate(apt.startTime);
+    if (currentStart && currentStart.getTime() - Date.now() < limitHours * 60 * 60 * 1000) {
+      throw new BookingError(
+        'FORBIDDEN',
+        `Alterações só podem ser feitas com até ${limitHours} hora(s) de antecedência. Fale com o estabelecimento.`,
+      );
+    }
+
     const professionalId = params.professionalId || apt.professionalId;
     let professionalName = apt.professionalName;
     if (professionalId !== apt.professionalId) {
