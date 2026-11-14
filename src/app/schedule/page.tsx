@@ -178,6 +178,8 @@ export default function SchedulePage() {
       
       await runTransaction(firestore, async (transaction) => {
         let currentPoints = 0;
+        // Pontos só se aplicam a perfis de cliente existentes; o perfil só é gravado se os pontos mudarem
+        let customerIsClient = false;
         let finalCustomerId = appointment.customerId;
         let isNowClient = appointment.type === 'client';
         const isCreatingRegistration = !!(newStatus === 'completed' && completionData?.registration?.create && appointment.type === 'guest');
@@ -189,7 +191,8 @@ export default function SchedulePage() {
           const clientProfileRef = doc(firestore, 'users', appointment.customerId);
           const clientDoc = await transaction.get(clientProfileRef);
           if (clientDoc.exists()) {
-            currentPoints = clientDoc.data().loyaltyPoints || 0;
+            currentPoints = Number(clientDoc.data().loyaltyPoints) || 0;
+            customerIsClient = clientDoc.data().role === 'client';
           }
         }
         
@@ -225,7 +228,7 @@ export default function SchedulePage() {
         }
 
         // 2. Processar fidelidade
-        if (finalCustomerId) {
+        if (finalCustomerId && (clientWriteData || customerIsClient)) {
           const clientProfileRef = doc(firestore, 'users', finalCustomerId);
           let newPoints = currentPoints;
 
@@ -266,7 +269,7 @@ export default function SchedulePage() {
           if (clientWriteData) {
             clientWriteData.loyaltyPoints = newPoints;
             transaction.set(clientProfileRef, clientWriteData);
-          } else {
+          } else if (newPoints !== currentPoints) {
             transaction.update(clientProfileRef, { loyaltyPoints: newPoints });
           }
         }

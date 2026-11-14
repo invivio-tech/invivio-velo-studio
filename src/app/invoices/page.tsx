@@ -205,9 +205,10 @@ export default function InvoicesPage() {
 
   const transactionsRef = useMemoFirebase(
     () => {
-      if (!firestore || !user) return null;
+      // Espera o perfil: profissional só pode ler as próprias transações
+      if (!firestore || !user || !userProfile?.role) return null;
       let q: any = collection(firestore, 'professionalTransactions');
-      if (userProfile?.role === 'professional' && user?.uid) {
+      if (userProfile.role !== 'admin') {
         q = query(q, where('professionalId', '==', user.uid));
       }
       return q;
