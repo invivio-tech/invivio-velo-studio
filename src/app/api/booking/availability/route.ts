@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getBusyBlocks } from '@/lib/booking-server';
+import { clientIp, rateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
 /** Horários ocupados do dia (sem dados de clientes). Público: usado pela tela de agendamento. */
 export async function GET(request: Request) {
+  const limited = rateLimit(`availability:${clientIp(request)}`, 120, 60_000);
+  if (limited) return limited;
   // from/to: início e fim do dia no fuso do navegador (o servidor roda em UTC)
   const params = new URL(request.url).searchParams;
   const from = new Date(params.get('from') || '');
