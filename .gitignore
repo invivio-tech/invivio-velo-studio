@@ -56,3 +56,6 @@ serviceAccountKey*.json
 *-adminsdk-*.json
 admin_request.txt
 create-admin*.mjs
+
+# Scripts locais de manutenção (não versionar)
+/scratch/
