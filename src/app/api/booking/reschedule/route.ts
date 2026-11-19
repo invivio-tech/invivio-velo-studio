@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { optionalUser } from '@/lib/server-auth';
 import { bookingErrorStatus, BookingError, rescheduleBooking } from '@/lib/booking-server';
+import { rateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +9,8 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   const auth = await optionalUser(request);
   if (!auth || auth === 'invalid') return NextResponse.json({ error: 'Entre na sua conta para remarcar.' }, { status: 401 });
+  const limited = rateLimit(`reschedule:${auth.uid}`, 20, 10 * 60_000);
+  if (limited) return limited;
 
   const { appointmentId, startTime, professionalId } = await request.json().catch(() => ({}));
   try {

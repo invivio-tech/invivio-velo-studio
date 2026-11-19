@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getAdminFirestore } from '@/firebase/admin';
+import { clientIp, rateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
 /** Trabalhos em destaque da landing page: só foto, serviço e profissional. */
-export async function GET() {
+export async function GET(request: Request) {
+  const limited = rateLimit(`portfolio:${clientIp(request)}`, 60, 60_000);
+  if (limited) return limited;
   try {
     // Só igualdade em um campo (sem índice composto); status e ordem tratados em memória
     const snap = await getAdminFirestore().collection('appointments')

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { Timestamp } from 'firebase-admin/firestore';
 import { getAdminFirestore } from '@/firebase/admin';
 import { checkTotemPin, getTotemPin } from '@/lib/totem-server';
+import { clientIp, isLimited, rateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,12 +19,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ locked: (await getTotemPin()).length > 0 });
   }
 
+  // PIN errado: no máximo 10 tentativas a cada 15 minutos por IP
+  const pinKey = `totem-pin:${clientIp(request)}`;
+  const blocked = isLimited(pinKey, 10);
+  if (blocked) return blocked;
   if (!(await checkTotemPin(pin))) {
+    rateLimit(pinKey, 10, 15 * 60_000);
     return NextResponse.json({ error: 'PIN incorreto' }, { status: 403 });
   }
   if (action === 'unlock') return NextResponse.json({ ok: true });
 
   if (action === 'checkin') {
+    const limited = rateLimit(`totem-checkin:${clientIp(request)}`, 60, 10 * 60_000);
+    if (limited) return limited;
     const wanted = normalizePhone(String(phone || ''));
     if (wanted.length < 10) return NextResponse.json({ error: 'Telefone inválido' }, { status: 400 });
 
