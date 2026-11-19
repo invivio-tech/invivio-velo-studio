@@ -5,7 +5,7 @@ import { collection, getDocs, getDoc, doc, query, where, addDoc, Timestamp } fro
 import { format, addDays, isSameDay, addMinutes, parse, isBefore, isEqual, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Check, Calendar, User, Scissors, Clock, ArrowRight, ArrowLeft, Loader2, Search, Star } from 'lucide-react';
-import { parseDuration } from '@/lib/utils';
+import { formatDuration, parseDuration } from '@/lib/utils';
 
 interface Service {
   id: string;
@@ -433,7 +433,7 @@ export default function StepBooking({ onComplete, kioskMode = false }: StepBooki
                 <span className="font-mono text-primary font-bold text-sm">{service.priceOnRequest ? 'Sob Consulta' : `R$ ${service.price}`}</span>
                 {service.description && <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{service.description}</p>}
                 <div className="mt-4 flex items-center text-xs text-muted-foreground">
-                  <Clock className="w-3 h-3 mr-1" /> {service.duration} min
+                  <Clock className="w-3 h-3 mr-1" /> {formatDuration(service.duration)}
                 </div>
               </button>
             ))}

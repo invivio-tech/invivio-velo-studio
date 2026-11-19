@@ -13,7 +13,7 @@ import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
+import { cn, formatDuration, parseDuration } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -602,7 +602,7 @@ export default function SchedulePage() {
                   </SelectTrigger>
                   <SelectContent>
                     {services?.map(svc => (
-                      <SelectItem key={svc.id} value={svc.id}>{svc.name} ({svc.duration})</SelectItem>
+                      <SelectItem key={svc.id} value={svc.id}>{svc.name} ({formatDuration(svc.duration)})</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
