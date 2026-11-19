@@ -64,3 +64,29 @@ jobs:
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
           FIREBASE_CLI_EXPERIMENTS: webframeworks
+
+      - name: ✅ Verificar o site publicado
+        # Testa as rotas do servidor (não só a página). Se alguma falhar, a esteira falha e a
+        # Central de Versões mostra o cliente como "failed".
+        env:
+          SITE_ID: ${{ github.event.inputs.site_id }}
+        run: |
+          BASE="https://${SITE_ID}.web.app"
+          FROM=$(date -u -d 'today 03:00' +%FT%T.000Z)
+          TO=$(date -u -d 'tomorrow 03:00' +%FT%T.000Z)
+          check() { # nome, status esperado, curl args...
+            local name="$1" want="$2"; shift 2
+            for i in 1 2 3 4 5 6; do
+              got=$(curl -s -o /dev/null -m 60 -w '%{http_code}' "$@" || echo 000)
+              if [ "$got" = "$want" ]; then echo "ok    $name ($got)"; return 0; fi
+              echo "...   $name respondeu $got, esperado $want (tentativa $i)"; sleep 15
+            done
+            echo "::error::$name respondeu $got (esperado $want) em $BASE"; return 1
+          }
+          fail=0
+          check "página inicial" 200 "$BASE/" || fail=1
+          check "horários" 200 "$BASE/api/booking/availability?from=$FROM&to=$TO" || fail=1
+          check "portfólio" 200 "$BASE/api/public/portfolio" || fail=1
+          check "totem" 200 -X POST -H 'Content-Type: application/json' -d '{"action":"status"}' "$BASE/api/totem" || fail=1
+          check "agendamento (validação)" 400 -X POST -H 'Content-Type: application/json' -d '{}' "$BASE/api/booking" || fail=1
+          exit $fail
