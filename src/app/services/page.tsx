@@ -49,6 +49,7 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import type { CategoryWithId } from '@/app/categories/page';
+import { formatDuration } from '@/lib/utils';
 
 export interface Service {
   name: string;
@@ -292,7 +293,7 @@ export default function ServicesPage() {
                               <span className="text-xl font-bold font-headline text-primary">
                                 {service.priceOnRequest ? 'Sob Consulta' : `R$${service.price.toFixed(2).replace('.', ',')}`}
                               </span>
-                              <Badge variant="secondary">{service.duration}</Badge>
+                              <Badge variant="secondary">{formatDuration(service.duration)}</Badge>
                             </CardFooter>
                           </Card>
                         );
