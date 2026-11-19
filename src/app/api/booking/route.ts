@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { optionalUser } from '@/lib/server-auth';
 import { bookingErrorStatus, BookingError, createBooking } from '@/lib/booking-server';
 import { checkTotemPin } from '@/lib/totem-server';
+import { clientIp, isLimited, rateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,12 +11,20 @@ export const dynamic = 'force-dynamic';
  * Sem login: visitante/totem, exige nome e telefone.
  */
 export async function POST(request: Request) {
+  const ip = clientIp(request);
+  const limited = rateLimit(`booking:${ip}`, 15, 10 * 60_000);
+  if (limited) return limited;
   const auth = await optionalUser(request);
   if (auth === 'invalid') return NextResponse.json({ error: 'Sessão inválida. Entre novamente.' }, { status: 401 });
 
   const body = await request.json().catch(() => ({}));
   const { serviceId, professionalId, startTime, useSubscription, guest, kiosk, pin } = body || {};
+  if (kiosk) {
+    const blocked = isLimited(`totem-pin:${ip}`, 10);
+    if (blocked) return blocked;
+  }
   if (kiosk && !(await checkTotemPin(pin))) {
+    rateLimit(`totem-pin:${ip}`, 10, 15 * 60_000);
     return NextResponse.json({ error: 'Totem bloqueado. Peça ao estabelecimento para liberar.' }, { status: 403 });
   }
 

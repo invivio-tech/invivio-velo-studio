@@ -29,20 +29,31 @@ const ThemePaletteOutputSchema = z.object({
 });
 export type ThemePaletteOutput = z.infer<typeof ThemePaletteOutputSchema>;
 
+// O servidor só busca logos no armazenamento do próprio Velo (evita usar o servidor para acessar
+// endereços internos ou de terceiros).
+const ALLOWED_LOGO_HOSTS = ['storage.googleapis.com', 'firebasestorage.googleapis.com'];
+const MAX_LOGO_BYTES = 5 * 1024 * 1024;
+
+function isAllowedLogoUrl(raw: string): boolean {
+  try {
+    const url = new URL(raw);
+    return url.protocol === 'https:' && ALLOWED_LOGO_HOSTS.includes(url.hostname) && !url.port;
+  } catch {
+    return false;
+  }
+}
+
 async function imageUrlToDataUri(url: string): Promise<string> {
   if (!url) return '';
-  if (url.startsWith('data:')) return url;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Failed to fetch image: ${res.statusText}`);
-    const arrayBuffer = await res.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const contentType = res.headers.get('content-type') || 'image/png';
-    return `data:${contentType};base64,${buffer.toString('base64')}`;
-  } catch (error) {
-    console.error('Error converting image URL to data URI:', error);
-    return url; // fallback to URL
-  }
+  if (url.startsWith('data:image/')) return url;
+  if (!isAllowedLogoUrl(url)) throw new Error('Envie o logo pelo próprio sistema antes de gerar a paleta.');
+  const res = await fetch(url, { redirect: 'error' });
+  if (!res.ok) throw new Error(`Não foi possível baixar o logo (${res.status}).`);
+  const contentType = res.headers.get('content-type') || '';
+  if (!contentType.startsWith('image/')) throw new Error('O endereço do logo não é uma imagem.');
+  const buffer = Buffer.from(await res.arrayBuffer());
+  if (buffer.length > MAX_LOGO_BYTES) throw new Error('O logo é grande demais (máximo 5 MB).');
+  return `data:${contentType};base64,${buffer.toString('base64')}`;
 }
 
 export async function generateThemePalette(
