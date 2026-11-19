@@ -31,8 +31,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { EstablishmentSettings } from '@/app/establishment/page';
 import type { Product } from '@/types/store';
 import { Instagram, Star, Scissors as ScissorsIcon, User as UserIcon, ShoppingBag, Package, ArrowRight, Sparkles, CheckCircle2, Loader2 } from 'lucide-react';
+import { formatDuration } from '@/lib/utils';
 
 export default function LandingPage() {
+  // Fotos de exemplo externas (sem foto própria cadastrada); se não houver, o layout usa só o fundo
   const heroImage = PlaceHolderImages.find((p) => p.id === 'landing-hero');
   const aboutImage = PlaceHolderImages.find((p) => p.id === 'landing-about');
 
@@ -333,7 +335,7 @@ export default function LandingPage() {
                     <span className="text-xl font-bold font-headline text-primary">
                       {service.priceOnRequest ? 'Sob Consulta' : `R$${(service.price ?? 0).toFixed(2).replace('.', ',')}`}
                     </span>
-                    <Badge variant="secondary">{service.duration || 'Consultar'}</Badge>
+                    <Badge variant="secondary">{formatDuration(service.duration) || 'Consultar'}</Badge>
                   </CardFooter>
                 </Card>
               );
@@ -559,7 +561,7 @@ export default function LandingPage() {
 
         {/* About Section */}
         <section id="about" className="bg-card border-y">
-          <div className="container py-16 md:py-24 grid md:grid-cols-2 gap-12 items-center">
+          <div className={`container py-16 md:py-24 grid gap-12 items-center ${establishmentAboutImageUrl || aboutImage ? 'md:grid-cols-2' : 'max-w-3xl'}`}>
             <div>
               {isLoading ? (
                 <div className="space-y-4">
@@ -579,6 +581,7 @@ export default function LandingPage() {
                 </>
               )}
             </div>
+            {(establishmentAboutImageUrl || aboutImage) && (
             <div className="relative aspect-square w-full max-w-md mx-auto">
               {establishmentAboutImageUrl ? (
                 <img
@@ -596,6 +599,7 @@ export default function LandingPage() {
                 />
               ) : null}
             </div>
+            )}
           </div>
         </section>
       </main>
