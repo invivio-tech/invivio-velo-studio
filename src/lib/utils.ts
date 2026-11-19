@@ -46,3 +46,14 @@ export function parseDuration(duration: string | number): number {
   
   return parseInt(lower, 10) || 30;
 }
+
+/** Duração para exibir ("30 min", "1h", "1h30"), aceitando o texto livre do cadastro ("30min.", "2h."). */
+export function formatDuration(duration: string | number | null | undefined): string {
+  if (duration === null || duration === undefined || String(duration).trim() === '') return '';
+  const total = parseDuration(duration as string | number);
+  if (!total || total <= 0) return String(duration);
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  if (h === 0) return `${m} min`;
+  return m ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`;
+}

@@ -22,7 +22,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar as CalendarIcon, Clock, Users, Scissors, User, Check, ArrowLeft, Loader2, Star } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { parseDuration } from '@/lib/utils';
+import { formatDuration, parseDuration } from '@/lib/utils';
 
 // Types for data used in this page
 interface Appointment {
@@ -400,7 +400,7 @@ export default function BookAppointmentPage() {
                           </CardContent>
                           <CardFooter className="flex justify-between text-sm">
                             <span className="font-bold text-primary">{(service as any).priceOnRequest ? 'Sob Consulta' : `R$${service.price.toFixed(2).replace('.', ',')}`}</span>
-                            <span className="text-muted-foreground">{service.duration}</span>
+                            <span className="text-muted-foreground">{formatDuration(service.duration)}</span>
                           </CardFooter>
                         </Card>
                       ))}
